@@ -251,8 +251,9 @@ createToggleButton("Player ESP", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- 6. AUTO AURA
+-- 6. AUTO AURA (GÜNCELLENMİŞ)
 _G.isAura = false
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 createToggleButton("Auto Aura", function(on)
 	_G.isAura = on
@@ -261,7 +262,7 @@ createToggleButton("Auto Aura", function(on)
 			while _G.isAura do
 				local char = player.Character
 				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local hum  = char and char:FindFirstChild("Humanoid")
+				local hum = char and char:FindFirstChild("Humanoid")
 				if root and hum then
 					local nearest, nearDist = nil, math.huge
 					for _, p in pairs(Players:GetPlayers()) do
@@ -270,43 +271,31 @@ createToggleButton("Auto Aura", function(on)
 							local h2 = p.Character:FindFirstChild("Humanoid")
 							if r2 and h2 and h2.Health > 0 then
 								local d = (root.Position - r2.Position).Magnitude
-								if d < nearDist then
-									nearDist = d
-									nearest = p
-								end
+								if d < nearDist then nearDist = d; nearest = p end
 							end
 						end
 					end
-					if nearest and nearDist < 15 then
+					if nearest and nearDist < 20 then
 						local npcRoot = nearest.Character:FindFirstChild("HumanoidRootPart")
-						if npcRoot then
-							-- Gravity'yi kes, PlatformStand ile havada tut
-							hum.PlatformStand = true
-							root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 4, 0)))
-							task.wait(0.05)
-							-- Vur
-							local enemyHum = nearest.Character:FindFirstChild("Humanoid")
-							if enemyHum then enemyHum:TakeDamage(10) end
-							task.wait(0.1)
-							hum.PlatformStand = false
-						end
+						hum.PlatformStand = true
+						-- Tam üstüne değil, yanına ışınla (Sarsılmayı önler)
+						char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 5, 3)))
+						-- 1. slotu seç ve tıkla
+						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+						task.wait(0.1)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+						hum.PlatformStand = false
 					end
 				end
-				task.wait(0.5)
+				task.wait(0.2)
 			end
-			-- Loop bitince PlatformStand'ı sıfırla
-			local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-			if hum then hum.PlatformStand = false end
 		end)
-	else
-		local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-		if hum then hum.PlatformStand = false end
 	end
 end)
 
 -- ────────────────────────────────────────────────
--- 7. AUTO FARM (NPC)
+-- 7. AUTO FARM (GÜNCELLENMİŞ)
 _G.isAutoFarm = false
 
 createToggleButton("Auto Farm", function(on)
@@ -316,7 +305,7 @@ createToggleButton("Auto Farm", function(on)
 			while _G.isAutoFarm do
 				local char = player.Character
 				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local hum  = char and char:FindFirstChild("Humanoid")
+				local hum = char and char:FindFirstChild("Humanoid")
 				if root and hum then
 					local nearest, nearDist = nil, math.huge
 					for _, obj in pairs(workspace:GetDescendants()) do
@@ -324,37 +313,26 @@ createToggleButton("Auto Farm", function(on)
 							local r = obj.Parent:FindFirstChild("HumanoidRootPart")
 							if r then
 								local d = (root.Position - r.Position).Magnitude
-								if d < nearDist then
-									nearDist = d
-									nearest = obj
-								end
+								if d < nearDist then nearDist = d; nearest = obj end
 							end
 						end
 					end
 					if nearest then
 						local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
-						if npcRoot then
-							-- Gravity'yi kes
-							hum.PlatformStand = true
-							root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 4, 0)))
-							task.wait(0.05)
-							-- Vur
-							nearest:TakeDamage(20)
-							task.wait(0.1)
-							hum.PlatformStand = false
-						end
+						hum.PlatformStand = true
+						-- NPC'nin tam içine girme, biraz üst-yan kısmında kal
+						char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 5, 3)))
+						-- 1. slotu seç ve tıkla
+						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+						task.wait(0.1)
+						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+						hum.PlatformStand = false
 					end
 				end
-				task.wait(0.4)
+				task.wait(0.3)
 			end
-			-- Loop bitince sıfırla
-			local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-			if hum then hum.PlatformStand = false end
 		end)
-	else
-		local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-		if hum then hum.PlatformStand = false end
 	end
 end)
 
