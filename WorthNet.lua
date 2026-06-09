@@ -1,3 +1,4 @@
+repeat task.wait() until _G.Initialized == true -- GUI yüklendikten sonra çalışsın
 -- WORTHNET CLIENT V0.3 | FULL FEATURES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -295,47 +296,54 @@ createToggleButton("Auto Aura", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- 7. AUTO FARM (GÜNCELLENMİŞ)
+-- GÜNCEL AUTO FARM (NPC FİLTRELİ + YÜKSEK SALDIRI)
 _G.isAutoFarm = false
 
-createToggleButton("Auto Farm", function(on)
-	_G.isAutoFarm = on
-	if on then
-		task.spawn(function()
-			while _G.isAutoFarm do
-				local char = player.Character
-				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local hum = char and char:FindFirstChild("Humanoid")
-				if root and hum then
-					local nearest, nearDist = nil, math.huge
-					for _, obj in pairs(workspace:GetDescendants()) do
-						if obj:IsA("Humanoid") and obj.Parent ~= char and obj.Health > 0 then
-							local r = obj.Parent:FindFirstChild("HumanoidRootPart")
-							if r then
-								local d = (root.Position - r.Position).Magnitude
-								if d < nearDist then nearDist = d; nearest = obj end
-							end
-						end
-					end
-					if nearest then
-						local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
-						hum.PlatformStand = true
-						-- NPC'nin tam içine girme, biraz üst-yan kısmında kal
-						char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 5, 3)))
-						-- 1. slotu seç ve tıkla
-						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-						task.wait(0.1)
-						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-						hum.PlatformStand = false
-					end
-				end
-				task.wait(0.3)
-			end
-		end)
-	end
-end)
+local function isEnemy(name)
+    -- Buraya saldırılmayacak NPC'lerin isimlerini yaz
+    local blacklist = {"Quest Giver", "Shopkeeper", "Dealer", "Manager"}
+    for _, v in pairs(blacklist) do
+        if string.find(name, v) then return false end
+    end
+    return true
+end
 
+createToggleButton("Auto Farm", function(on)
+    _G.isAutoFarm = on
+    if on then
+        task.spawn(function()
+            while _G.isAutoFarm do
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local nearest, nearDist = nil, math.huge
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("Humanoid") and obj.Parent ~= char and obj.Health > 0 then
+                            -- İsim filtresini uygula (Görev NPC'lerine dalmasın)
+                            if isEnemy(obj.Parent.Name) then
+                                local r = obj.Parent:FindFirstChild("HumanoidRootPart")
+                                if r then
+                                    local d = (root.Position - r.Position).Magnitude
+                                    if d < nearDist then nearDist = d; nearest = obj end
+                                end
+                            end
+                        end
+                    end
+                    if nearest then
+                        local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
+                        -- Yükseklik offsetini 8 yapınca daha yukarıdan saldırır
+                        char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8, 3)))
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                        task.wait(0.2)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    end
+                end
+                task.wait(0.3)
+            end
+        end)
+    end
+end)
 -- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
 _G.isInfJump = false
@@ -1029,6 +1037,97 @@ mouse.Button1Down:Connect(function()
         selectedPart = mouse.Target
         targetLabel.Text = "Seçili: " .. (selectedPart.Name:sub(1,10))
     end
+end)
+
+-- ────────────────────────────────────────────────
+-- CUSTOM WALK ANIMATION
+local animBox = Instance.new("TextBox", scroll)
+animBox.Size = UDim2.new(0.88, 0, 0, 36)
+animBox.PlaceholderText = "Animasyon ID (ör: 180426354)"
+animBox.Text = ""
+animBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+animBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+animBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
+animBox.Font = Enum.Font.Gotham
+animBox.TextSize = 13
+animBox.ClearTextOnFocus = false
+local animCorner = Instance.new("UICorner", animBox) animCorner.CornerRadius = UDim.new(0, 8)
+local animStroke = Instance.new("UIStroke", animBox) animStroke.Color = Color3.fromRGB(0,255,80) animStroke.Thickness = 1
+
+local currentAnim = nil
+_G.isCustomAnim = false
+
+createToggleButton("Custom Walk Anim", function(on)
+	_G.isCustomAnim = on
+
+	local char = player.Character
+	if not char then return end
+
+	local hum = char:FindFirstChild("Humanoid")
+	local animFolder = char:FindFirstChild("Animate") -- Roblox'un varsayılan anim scripti
+
+	if on then
+		local id = animBox.Text
+		if id == "" then return end
+
+		-- Varsayılan walk animasyonunu bul ve değiştir
+		if animFolder then
+			local walk = animFolder:FindFirstChild("walk")
+			if walk then
+				local walkAnim = walk:FindFirstChildOfClass("Animation")
+				if walkAnim then
+					walkAnim.AnimationId = "rbxassetid://" .. id
+				end
+			end
+			local run = animFolder:FindFirstChild("run")
+			if run then
+				local runAnim = run:FindFirstChildOfClass("Animation")
+				if runAnim then
+					runAnim.AnimationId = "rbxassetid://" .. id
+				end
+			end
+		end
+
+		-- Mevcut animasyonu durdur, yenisini başlat
+		if hum then
+			local animator = hum:FindFirstChildOfClass("Animator")
+			if animator then
+				for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+					if track.Name == "walk" or track.Name == "run" then
+						track:Stop()
+					end
+				end
+			end
+
+			-- Yeni animasyonu yükle ve oynat
+			local anim = Instance.new("Animation")
+			anim.AnimationId = "rbxassetid://" .. id
+			currentAnim = hum:LoadAnimation(anim)
+			currentAnim:Play()
+
+			-- Yürürken sürekli oynat
+			task.spawn(function()
+				while _G.isCustomAnim do
+					if currentAnim and not currentAnim.IsPlaying then
+						currentAnim:Play()
+					end
+					task.wait(0.1)
+				end
+			end)
+		end
+	else
+		-- Kapat, varsayılan animasyona dön
+		if currentAnim then
+			currentAnim:Stop()
+			currentAnim = nil
+		end
+		-- Animate scriptini yeniden başlat
+		if animFolder then
+			animFolder.Disabled = true
+			task.wait(0.1)
+			animFolder.Disabled = false
+		end
+	end
 end)
 
 -- ────────────────────────────────────────────────
