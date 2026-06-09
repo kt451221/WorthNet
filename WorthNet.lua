@@ -999,8 +999,11 @@ LogService.MessageOut:Connect(function(msg, type)
 end)
 
 -- ────────────────────────────────────────────────
--- 18 & 19. GELİŞMİŞ PROPERTY EDITOR (PANEL İLE)
+-- 18. PROPERTY EDITOR (Menüye Entegre Versiyon)
 local selectedPart = nil
+local isSelecting = false
+
+-- Panelimiz (Başlangıçta gizli)
 local propFrame = Instance.new("Frame", screenGui)
 propFrame.Name = "PropertyPanel"
 propFrame.Size = UDim2.new(0, 180, 0, 200)
@@ -1009,67 +1012,44 @@ propFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 propFrame.Visible = false
 propFrame.Active = true
 propFrame.Draggable = true
-propFrame.BorderSizePixel = 0
-
-local pCorner = Instance.new("UICorner", propFrame) pCorner.CornerRadius = UDim.new(0, 10)
-local pStroke = Instance.new("UIStroke", propFrame) pStroke.Color = Color3.fromRGB(0, 255, 80) pStroke.Thickness = 2
-
-local titleLabel = Instance.new("TextLabel", propFrame)
-titleLabel.Size = UDim2.new(1, 0, 0, 30)
-titleLabel.Text = "OBJE AYARLARI"
-titleLabel.TextColor3 = Color3.fromRGB(0, 255, 80)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Font = Enum.Font.GothamBold
+Instance.new("UICorner", propFrame).CornerRadius = UDim.new(0, 10)
+Instance.new("UIStroke", propFrame).Color = Color3.fromRGB(0, 255, 80)
 
 local targetLabel = Instance.new("TextLabel", propFrame)
-targetLabel.Size = UDim2.new(1, 0, 0, 25)
-targetLabel.Position = UDim2.new(0, 0, 0, 30)
+targetLabel.Size = UDim2.new(1, 0, 0, 30)
 targetLabel.Text = "Obje Seçilmedi"
-targetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-targetLabel.TextSize = 12
+targetLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 targetLabel.BackgroundTransparency = 1
 
-local listLayout = Instance.new("UIListLayout", propFrame)
-listLayout.Padding = UDim.new(0, 5)
-listLayout.Padding = UDim.new(0, 5)
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-listLayout.Padding = UDim.new(0, 5)
-
--- Buton oluşturucu fonksiyon
 local function createPropBtn(text, action)
     local b = Instance.new("TextButton", propFrame)
     b.Size = UDim2.new(0.9, 0, 0, 30)
     b.Text = text
     b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    b.TextColor3 = Color3.fromRGB(255, 255, 255)
-    b.Font = Enum.Font.Gotham
-    b.AutoButtonColor = true
+    b.TextColor3 = Color3.fromRGB(0, 255, 80)
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
     b.MouseButton1Click:Connect(function()
         if selectedPart and selectedPart.Parent then action(selectedPart) end
     end)
-    return b
 end
 
--- Butonları ekle
-createPropBtn("X-Ray (Şeffaf Yap)", function(p) p.Transparency = 0.7 end)
-createPropBtn("Katı Yap (Collide On)", function(p) p.CanCollide = true end)
-createPropBtn("İçinden Geç (Collide Off)", function(p) p.CanCollide = false end)
-createPropBtn("Yok Et (Delete)", function(p) p:Destroy() targetLabel.Text = "Obje Silindi!" end)
+createPropBtn("X-Ray (Şeffaf)", function(p) p.Transparency = 0.7 end)
+createPropBtn("Collide Off", function(p) p.CanCollide = false end)
+createPropBtn("Sil (Delete)", function(p) p:Destroy() end)
 
--- Seçme Mantığı
-local isSelecting = false
-local mouse = player:GetMouse()
-
+-- BURASI ÖNEMLİ: Menüye Buton Olarak Ekleme
 createToggleButton("Property Editor", function(on)
     isSelecting = on
     propFrame.Visible = on
+    -- Seçim modu kapandıysa paneli de kapat
+    if not on then propFrame.Visible = false end
 end)
 
+local mouse = player:GetMouse()
 mouse.Button1Down:Connect(function()
     if isSelecting and mouse.Target then
         selectedPart = mouse.Target
-        targetLabel.Text = "Seçili: " .. (selectedPart.Name:sub(1, 15))
+        targetLabel.Text = "Seçili: " .. (selectedPart.Name:sub(1,10))
     end
 end)
 
