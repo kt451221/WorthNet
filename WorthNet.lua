@@ -1035,9 +1035,17 @@ end)
 
 -- ────────────────────────────────────────────────
 -- CUSTOM WALK ANIMATION
+local animLabel = Instance.new("TextLabel", scroll)
+animLabel.Size = UDim2.new(0.88, 0, 0, 20)
+animLabel.Text = "── Animasyon ID ──"
+animLabel.BackgroundTransparency = 1
+animLabel.TextColor3 = Color3.fromRGB(0, 200, 60)
+animLabel.Font = Enum.Font.GothamBold
+animLabel.TextSize = 12
+
 local animBox = Instance.new("TextBox", scroll)
 animBox.Size = UDim2.new(0.88, 0, 0, 36)
-animBox.PlaceholderText = "Animasyon ID (ör: 180426354)"
+animBox.PlaceholderText = "ID gir (ör: 180426354)"
 animBox.Text = ""
 animBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 animBox.TextColor3 = Color3.fromRGB(0, 255, 80)
@@ -1045,61 +1053,54 @@ animBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
 animBox.Font = Enum.Font.Gotham
 animBox.TextSize = 13
 animBox.ClearTextOnFocus = false
-local animCorner = Instance.new("UICorner", animBox) animCorner.CornerRadius = UDim.new(0, 8)
-local animStroke = Instance.new("UIStroke", animBox) animStroke.Color = Color3.fromRGB(0,255,80) animStroke.Thickness = 1
+local animCorner = Instance.new("UICorner", animBox)
+animCorner.CornerRadius = UDim.new(0, 8)
+local animStroke = Instance.new("UIStroke", animBox)
+animStroke.Color = Color3.fromRGB(0, 255, 80)
+animStroke.Thickness = 1
 
 local currentAnim = nil
 _G.isCustomAnim = false
 
 createToggleButton("Custom Walk Anim", function(on)
 	_G.isCustomAnim = on
-
 	local char = player.Character
 	if not char then return end
-
 	local hum = char:FindFirstChild("Humanoid")
-	local animFolder = char:FindFirstChild("Animate") -- Roblox'un varsayılan anim scripti
+	local animFolder = char:FindFirstChild("Animate")
 
 	if on then
 		local id = animBox.Text
-		if id == "" then return end
+		if id == "" then
+			-- ID boşsa toggle'ı geri kapat
+			_G.isCustomAnim = false
+			return
+		end
 
-		-- Varsayılan walk animasyonunu bul ve değiştir
 		if animFolder then
-			local walk = animFolder:FindFirstChild("walk")
-			if walk then
-				local walkAnim = walk:FindFirstChildOfClass("Animation")
-				if walkAnim then
-					walkAnim.AnimationId = "rbxassetid://" .. id
-				end
-			end
-			local run = animFolder:FindFirstChild("run")
-			if run then
-				local runAnim = run:FindFirstChildOfClass("Animation")
-				if runAnim then
-					runAnim.AnimationId = "rbxassetid://" .. id
+			for _, animType in pairs({"walk", "run"}) do
+				local folder = animFolder:FindFirstChild(animType)
+				if folder then
+					local animObj = folder:FindFirstChildOfClass("Animation")
+					if animObj then
+						animObj.AnimationId = "rbxassetid://" .. id
+					end
 				end
 			end
 		end
 
-		-- Mevcut animasyonu durdur, yenisini başlat
 		if hum then
 			local animator = hum:FindFirstChildOfClass("Animator")
 			if animator then
 				for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-					if track.Name == "walk" or track.Name == "run" then
-						track:Stop()
-					end
+					track:Stop()
 				end
 			end
-
-			-- Yeni animasyonu yükle ve oynat
 			local anim = Instance.new("Animation")
 			anim.AnimationId = "rbxassetid://" .. id
 			currentAnim = hum:LoadAnimation(anim)
 			currentAnim:Play()
 
-			-- Yürürken sürekli oynat
 			task.spawn(function()
 				while _G.isCustomAnim do
 					if currentAnim and not currentAnim.IsPlaying then
@@ -1110,12 +1111,10 @@ createToggleButton("Custom Walk Anim", function(on)
 			end)
 		end
 	else
-		-- Kapat, varsayılan animasyona dön
 		if currentAnim then
 			currentAnim:Stop()
 			currentAnim = nil
 		end
-		-- Animate scriptini yeniden başlat
 		if animFolder then
 			animFolder.Disabled = true
 			task.wait(0.1)
