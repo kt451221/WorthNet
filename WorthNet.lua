@@ -715,12 +715,6 @@ _G.isSilentAim = false
 local aimFOV = 150 
 local camera = workspace.CurrentCamera
 
-local crosshair = Drawing.new("Circle")
-crosshair.Radius = 60
-crosshair.Thickness = 1.5
-crosshair.Color = Color3.fromRGB(255, 0, 0)
-crosshair.Filled = false
-crosshair.Visible = false
 
 createToggleButton("Silent Aim", function(on)
     _G.isSilentAim = on
@@ -1031,7 +1025,7 @@ createToggleButton("Property Editor", function(on)
     if not on then propFrame.Visible = false end
 end)
 
-local mouse = player:GetMouse()
+
 mouse.Button1Down:Connect(function()
     if isSelecting and mouse.Target then
         selectedPart = mouse.Target
