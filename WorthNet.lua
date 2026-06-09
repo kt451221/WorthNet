@@ -1,4 +1,4 @@
-repeat task.wait() until _G.Initialized == true -- GUI yüklendikten sonra çalışsın
+
 -- WORTHNET CLIENT V0.3 | FULL FEATURES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
