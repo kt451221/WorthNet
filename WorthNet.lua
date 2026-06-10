@@ -31,7 +31,7 @@ screenGui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", screenGui)
 frame.Name = "MainFrame"
-frame.Size = UDim2.new(0.4, 0, 0.7, 0)
+frame.Size = UDim2.new(0.25, 0, 0.6, 0)
 frame.Position = UDim2.new(0.5, -120, 0.5, -250)
 frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 frame.BackgroundTransparency = 0.05
@@ -401,7 +401,7 @@ createToggleButton("Auto Farm", function(on)
 							root.Anchored = true
 							
 							-- Karakteri biraz daha yükseğe al (Vector3.new(0, 8, 2.5) yaptık)
-							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 9, 2.5)) * CFrame.Angles(0, math.pi, 0))
+							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8.25, 2.5)) * CFrame.Angles(0, math.pi, 0))
 
 							-- Saldırı Komutları
 							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
