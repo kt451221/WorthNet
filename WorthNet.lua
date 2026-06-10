@@ -5,7 +5,17 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- VirtualInputManager güvenli yükleme (kick önleme)
+local VirtualInputManager
+pcall(function()
+	VirtualInputManager = game:GetService("VirtualInputManager")
+end)
+
+-- PlayerGui fallback (CoreGui kick ederse)
+local guiParent
+pcall(function() guiParent = game:GetService("CoreGui") end)
+if not guiParent then guiParent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
 
 local player = Players.LocalPlayer
 
@@ -13,7 +23,7 @@ if CoreGui:FindFirstChild("WorthNetClient") then
 	CoreGui:FindFirstChild("WorthNetClient"):Destroy()
 end
 
-local screenGui = Instance.new("ScreenGui", CoreGui)
+local screenGui = Instance.new("ScreenGui", guiParent)
 screenGui.Name = "WorthNetClient"
 screenGui.IgnoreGuiInset = true
 screenGui.ResetOnSpawn = false
@@ -957,6 +967,677 @@ createToggleButton("Custom Walk Anim", function(on)
 			animFolder.Disabled = false
 		end
 	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 24. TIME CHANGER
+local timeBox = Instance.new("TextBox", scroll)
+timeBox.Size = UDim2.new(0.88, 0, 0, 36)
+timeBox.PlaceholderText = "Saat (0-24)"
+timeBox.Text = "12"
+timeBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+timeBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+timeBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
+timeBox.Font = Enum.Font.Gotham
+timeBox.TextSize = 13
+timeBox.ClearTextOnFocus = false
+local timeCorner = Instance.new("UICorner", timeBox) timeCorner.CornerRadius = UDim.new(0, 8)
+local timeStroke = Instance.new("UIStroke", timeBox) timeStroke.Color = Color3.fromRGB(0,255,80) timeStroke.Thickness = 1
+
+local timeRow = Instance.new("Frame", scroll)
+timeRow.Size = UDim2.new(0.88, 0, 0, 38)
+timeRow.BackgroundTransparency = 1
+local timeRowLayout = Instance.new("UIListLayout", timeRow)
+timeRowLayout.FillDirection = Enum.FillDirection.Horizontal
+timeRowLayout.Padding = UDim.new(0, 5)
+
+local function makeTimeBtn(label, hour)
+	local b = Instance.new("TextButton", timeRow)
+	b.Size = UDim2.new(0.33, -4, 1, 0)
+	b.Text = label
+	b.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+	b.TextColor3 = Color3.fromRGB(0, 255, 80)
+	b.Font = Enum.Font.Gotham
+	b.TextSize = 11
+	b.AutoButtonColor = false
+	local bc = Instance.new("UICorner", b) bc.CornerRadius = UDim.new(0, 8)
+	local bs = Instance.new("UIStroke", b) bs.Color = Color3.fromRGB(0,255,80) bs.Thickness = 1
+	b.MouseButton1Click:Connect(function()
+		Lighting.ClockTime = hour
+	end)
+end
+
+makeTimeBtn("🌅 Sabah", 6)
+makeTimeBtn("☀️ Öğle", 14)
+makeTimeBtn("🌙 Gece", 0)
+
+createButton("⚡ Saati Uygula", function()
+	local val = tonumber(timeBox.Text)
+	if val then Lighting.ClockTime = math.clamp(val, 0, 24) end
+end)
+
+-- ────────────────────────────────────────────────
+-- 25. SPIN
+_G.isSpin = false
+
+createToggleButton("Spin", function(on)
+	_G.isSpin = on
+	if on then
+		task.spawn(function()
+			local angle = 0
+			while _G.isSpin do
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if root then
+					angle = (angle + 5) % 360
+					root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(angle), 0)
+				end
+				task.wait(0.03)
+			end
+		end)
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 26. LOW GRAVITY
+local origGravity = workspace.Gravity
+_G.isLowGrav = false
+
+createToggleButton("Low Gravity", function(on)
+	_G.isLowGrav = on
+	if on then
+		workspace.Gravity = 20
+	else
+		workspace.Gravity = origGravity
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 27. INVISIBLE
+_G.isInvisible = false
+local origTransparencies = {}
+
+createToggleButton("Invisible", function(on)
+	_G.isInvisible = on
+	local char = player.Character
+	if not char then return end
+
+	if on then
+		origTransparencies = {}
+		for _, v in pairs(char:GetDescendants()) do
+			if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+				origTransparencies[v] = v.LocalTransparencyModifier
+				v.LocalTransparencyModifier = 1
+			end
+		end
+		-- Accessory'leri de gizle
+		for _, v in pairs(char:GetDescendants()) do
+			if v:IsA("Decal") or v:IsA("SpecialMesh") then
+				pcall(function() v.Transparency = 1 end)
+			end
+		end
+	else
+		for part, origVal in pairs(origTransparencies) do
+			if part and part.Parent then
+				part.LocalTransparencyModifier = origVal
+			end
+		end
+		origTransparencies = {}
+		for _, v in pairs(char:GetDescendants()) do
+			if v:IsA("Decal") then
+				pcall(function() v.Transparency = 0 end)
+			end
+		end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 28. ANTI-VOID
+_G.isAntiVoid = false
+local lastSafePos = nil
+
+createToggleButton("Anti-Void", function(on)
+	_G.isAntiVoid = on
+	if on then
+		task.spawn(function()
+			while _G.isAntiVoid do
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local hum  = char and char:FindFirstChild("Humanoid")
+				if root and hum then
+					-- Güvenli pozisyonu kaydet (yerde duruyorsa)
+					if hum.FloorMaterial ~= Enum.Material.Air then
+						lastSafePos = root.Position
+					end
+					-- Void'e düşünce kurtarır (-100 altı tehlikeli kabul edilir)
+					if root.Position.Y < -80 and lastSafePos then
+						root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+						char:PivotTo(CFrame.new(lastSafePos + Vector3.new(0, 5, 0)))
+					end
+				end
+				task.wait(0.2)
+			end
+		end)
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 29. DASH (E tuşu)
+_G.isDash = false
+local dashCooldown = false
+
+createToggleButton("Dash", function(on)
+	_G.isDash = on
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+	if not gpe and _G.isDash and input.KeyCode == Enum.KeyCode.E and not dashCooldown then
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if root then
+			dashCooldown = true
+			local dir = root.CFrame.LookVector
+			root.AssemblyLinearVelocity = dir * 120 + Vector3.new(0, 10, 0)
+			task.wait(0.8)
+			dashCooldown = false
+		end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 30. SLIDE (C tuşu)
+_G.isSlide = false
+
+createToggleButton("Slide", function(on)
+	_G.isSlide = on
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+	if not gpe and _G.isSlide and input.KeyCode == Enum.KeyCode.C then
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local hum  = char and char:FindFirstChild("Humanoid")
+		if root and hum then
+			local dir = root.CFrame.LookVector
+			hum.WalkSpeed = 0
+			root.AssemblyLinearVelocity = dir * 80
+			task.wait(0.6)
+			hum.WalkSpeed = tonumber(speedBox.Text) or 16
+		end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 31. RAINBOW ESP
+_G.isRainbowESP = false
+local rainbowHighlights = {}
+
+createToggleButton("Rainbow ESP", function(on)
+	_G.isRainbowESP = on
+	if on then
+		task.spawn(function()
+			local hue = 0
+			while _G.isRainbowESP do
+				hue = (hue + 0.01) % 1
+				local color = Color3.fromHSV(hue, 1, 1)
+				for _, p in pairs(Players:GetPlayers()) do
+					if p ~= player and p.Character then
+						if not rainbowHighlights[p.Name] then
+							local hl = Instance.new("Highlight", p.Character)
+							hl.FillTransparency = 0.5
+							rainbowHighlights[p.Name] = hl
+						end
+						rainbowHighlights[p.Name].FillColor    = color
+						rainbowHighlights[p.Name].OutlineColor = color
+					end
+				end
+				task.wait(0.05)
+			end
+		end)
+	else
+		for _, hl in pairs(rainbowHighlights) do
+			if hl then hl:Destroy() end
+		end
+		rainbowHighlights = {}
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 32. NPC ESP
+_G.isNpcESP = false
+local npcHighlights = {}
+
+createToggleButton("NPC ESP", function(on)
+	_G.isNpcESP = on
+	if on then
+		task.spawn(function()
+			while _G.isNpcESP do
+				for _, obj in pairs(workspace:GetDescendants()) do
+					if obj:IsA("Humanoid") and obj.Parent ~= player.Character then
+						local isPlayer = false
+						for _, p in pairs(Players:GetPlayers()) do
+							if p.Character == obj.Parent then isPlayer = true break end
+						end
+						if not isPlayer and not npcHighlights[obj.Parent.Name] then
+							local hl = Instance.new("Highlight", obj.Parent)
+							hl.FillColor = Color3.fromRGB(255, 100, 0)
+							hl.OutlineColor = Color3.fromRGB(255, 100, 0)
+							hl.FillTransparency = 0.5
+							npcHighlights[obj.Parent.Name] = hl
+						end
+					end
+				end
+				task.wait(1)
+			end
+		end)
+	else
+		for _, hl in pairs(npcHighlights) do
+			if hl then hl:Destroy() end
+		end
+		npcHighlights = {}
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 33. ITEM ESP
+_G.isItemESP = false
+local itemHighlights = {}
+
+createToggleButton("Item ESP", function(on)
+	_G.isItemESP = on
+	if on then
+		task.spawn(function()
+			while _G.isItemESP do
+				for _, obj in pairs(workspace:GetDescendants()) do
+					if obj:IsA("Tool") and not itemHighlights[obj.Name .. tostring(obj)] then
+						local hl = Instance.new("Highlight", obj)
+						hl.FillColor = Color3.fromRGB(255, 255, 0)
+						hl.OutlineColor = Color3.fromRGB(255, 255, 0)
+						hl.FillTransparency = 0.4
+						itemHighlights[obj.Name .. tostring(obj)] = hl
+					end
+				end
+				task.wait(1)
+			end
+		end)
+	else
+		for _, hl in pairs(itemHighlights) do
+			if hl then hl:Destroy() end
+		end
+		itemHighlights = {}
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 34. AURA EFEKTİ (görsel halka)
+_G.isAuraFX = false
+local auraParticle = nil
+
+createToggleButton("Aura Efekti", function(on)
+	_G.isAuraFX = on
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	if on then
+		-- Neon halka oluştur
+		auraParticle = Instance.new("SelectionBox", root)
+		auraParticle.Adornee = root
+		auraParticle.Color3 = Color3.fromRGB(0, 255, 80)
+		auraParticle.LineThickness = 0.05
+		auraParticle.SurfaceTransparency = 0.8
+		auraParticle.SurfaceColor3 = Color3.fromRGB(0, 255, 80)
+
+		-- Renk animasyonu
+		task.spawn(function()
+			local hue = 0
+			while _G.isAuraFX and auraParticle and auraParticle.Parent do
+				hue = (hue + 0.02) % 1
+				local color = Color3.fromHSV(hue, 1, 1)
+				auraParticle.Color3 = color
+				auraParticle.SurfaceColor3 = color
+				task.wait(0.05)
+			end
+		end)
+	else
+		if auraParticle then auraParticle:Destroy(); auraParticle = nil end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 35. KARAKTER KÜÇÜLT
+createButton("⬇ Küçült", function()
+	local char = player.Character
+	if not char then return end
+	for _, v in pairs(char:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Size = v.Size * 0.8
+		end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 36. KARAKTER BÜYÜT
+createButton("⬆ Büyüt", function()
+	local char = player.Character
+	if not char then return end
+	for _, v in pairs(char:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Size = v.Size * 1.2
+		end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 37-40. CUSTOM ANİMASYONLAR (Hepsi Ninja)
+local NINJA_ID = "656118852"
+
+local function applyAnim(animName, id)
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChild("Humanoid")
+	local animFolder = char:FindFirstChild("Animate")
+	if not (hum and animFolder) then return end
+
+	local folder = animFolder:FindFirstChild(animName)
+	if folder then
+		local animObj = folder:FindFirstChildOfClass("Animation")
+		if animObj then
+			animObj.AnimationId = "rbxassetid://" .. id
+		end
+	end
+
+	-- Animator'ı yenile
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if animator then
+		for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+			if track.Name == animName then track:Stop() end
+		end
+	end
+end
+
+createToggleButton("Ninja Idle Anim", function(on)
+	if on then applyAnim("idle", NINJA_ID)
+	else
+		local animFolder = player.Character and player.Character:FindFirstChild("Animate")
+		if animFolder then animFolder.Disabled = true task.wait(0.1) animFolder.Disabled = false end
+	end
+end)
+
+createToggleButton("Ninja Jump Anim", function(on)
+	if on then applyAnim("jump", NINJA_ID)
+	else
+		local animFolder = player.Character and player.Character:FindFirstChild("Animate")
+		if animFolder then animFolder.Disabled = true task.wait(0.1) animFolder.Disabled = false end
+	end
+end)
+
+createToggleButton("Ninja Fall Anim", function(on)
+	if on then applyAnim("fall", NINJA_ID)
+	else
+		local animFolder = player.Character and player.Character:FindFirstChild("Animate")
+		if animFolder then animFolder.Disabled = true task.wait(0.1) animFolder.Disabled = false end
+	end
+end)
+
+createToggleButton("Ninja Death Anim", function(on)
+	if on then applyAnim("death", NINJA_ID)
+	else
+		local animFolder = player.Character and player.Character:FindFirstChild("Animate")
+		if animFolder then animFolder.Disabled = true task.wait(0.1) animFolder.Disabled = false end
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 41. MİNİ MAP
+local miniMapFrame = Instance.new("Frame", screenGui)
+miniMapFrame.Size = UDim2.new(0, 160, 0, 160)
+miniMapFrame.Position = UDim2.new(1, -170, 1, -170)
+miniMapFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+miniMapFrame.BackgroundTransparency = 0.3
+miniMapFrame.Visible = false
+miniMapFrame.ZIndex = 5
+
+local miniMapCorner = Instance.new("UICorner", miniMapFrame)
+miniMapCorner.CornerRadius = UDim.new(0, 8)
+local miniMapStroke = Instance.new("UIStroke", miniMapFrame)
+miniMapStroke.Color = Color3.fromRGB(0, 255, 80)
+miniMapStroke.Thickness = 1.5
+
+local miniMapTitle = Instance.new("TextLabel", miniMapFrame)
+miniMapTitle.Size = UDim2.new(1, 0, 0, 20)
+miniMapTitle.Text = "🗺 Mini Map"
+miniMapTitle.BackgroundTransparency = 1
+miniMapTitle.TextColor3 = Color3.fromRGB(0, 255, 80)
+miniMapTitle.Font = Enum.Font.GothamBold
+miniMapTitle.TextSize = 11
+miniMapTitle.ZIndex = 6
+
+-- Oyuncu noktası (sen)
+local selfDot = Instance.new("Frame", miniMapFrame)
+selfDot.Size = UDim2.new(0, 8, 0, 8)
+selfDot.AnchorPoint = Vector2.new(0.5, 0.5)
+selfDot.BackgroundColor3 = Color3.fromRGB(0, 255, 80)
+selfDot.ZIndex = 7
+local selfDotCorner = Instance.new("UICorner", selfDot)
+selfDotCorner.CornerRadius = UDim.new(1, 0)
+
+local miniMapDots = {}
+local MAP_SCALE = 2 -- 1 stud = kaç pixel
+
+createToggleButton("Mini Map", function(on)
+	miniMapFrame.Visible = on
+	if on then
+		task.spawn(function()
+			while states["Mini Map"] do
+				local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if myRoot then
+					-- Kendi noktamızı ortada göster
+					selfDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+					-- Diğer oyuncuları göster
+					for name, dot in pairs(miniMapDots) do
+						dot:Destroy()
+						miniMapDots[name] = nil
+					end
+
+					for _, p in pairs(Players:GetPlayers()) do
+						if p ~= player and p.Character then
+							local r = p.Character:FindFirstChild("HumanoidRootPart")
+							if r then
+								local diff = r.Position - myRoot.Position
+								local px = 0.5 + (diff.X * MAP_SCALE) / 160
+								local py = 0.5 + (diff.Z * MAP_SCALE) / 160
+
+								if px > 0 and px < 1 and py > 0 and py < 1 then
+									local dot = Instance.new("Frame", miniMapFrame)
+									dot.Size = UDim2.new(0, 6, 0, 6)
+									dot.AnchorPoint = Vector2.new(0.5, 0.5)
+									dot.Position = UDim2.new(px, 0, py, 0)
+									dot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+									dot.ZIndex = 7
+									local dc = Instance.new("UICorner", dot)
+									dc.CornerRadius = UDim.new(1, 0)
+									miniMapDots[p.Name] = dot
+								end
+							end
+						end
+					end
+				end
+				task.wait(0.2)
+			end
+			-- Kapatınca noktaları temizle
+			for _, dot in pairs(miniMapDots) do dot:Destroy() end
+			miniMapDots = {}
+		end)
+	else
+		for _, dot in pairs(miniMapDots) do dot:Destroy() end
+		miniMapDots = {}
+	end
+end)
+
+-- ────────────────────────────────────────────────
+-- 42. NOTİFİKASYON SİSTEMİ
+local notifFrame = Instance.new("Frame", screenGui)
+notifFrame.Size = UDim2.new(0, 220, 0, 0)
+notifFrame.Position = UDim2.new(1, -230, 0, 10)
+notifFrame.BackgroundTransparency = 1
+notifFrame.ZIndex = 20
+notifFrame.AutomaticSize = Enum.AutomaticSize.Y
+
+local notifLayout = Instance.new("UIListLayout", notifFrame)
+notifLayout.Padding = UDim.new(0, 4)
+notifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function notify(text, color)
+	color = color or Color3.fromRGB(0, 255, 80)
+	local n = Instance.new("Frame", notifFrame)
+	n.Size = UDim2.new(1, 0, 0, 36)
+	n.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	n.BackgroundTransparency = 0.1
+	n.ZIndex = 20
+	local nc = Instance.new("UICorner", n) nc.CornerRadius = UDim.new(0, 8)
+	local ns = Instance.new("UIStroke", n) ns.Color = color ns.Thickness = 1
+	local nl = Instance.new("TextLabel", n)
+	nl.Size = UDim2.new(1, -10, 1, 0)
+	nl.Position = UDim2.new(0, 5, 0, 0)
+	nl.BackgroundTransparency = 1
+	nl.Text = text
+	nl.TextColor3 = color
+	nl.Font = Enum.Font.Gotham
+	nl.TextSize = 12
+	nl.TextXAlignment = Enum.TextXAlignment.Left
+	nl.ZIndex = 21
+
+	-- 3 saniye sonra sil
+	task.delay(3, function()
+		if n and n.Parent then
+			TweenService:Create(n, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+			task.wait(0.3)
+			n:Destroy()
+		end
+	end)
+end
+
+-- Toggle butonlarına notif bağla (createToggleButton override)
+-- Test butonu
+createButton("🔔 Notif Test", function()
+	notify("⚡ WorthNet aktif!", Color3.fromRGB(0, 255, 80))
+end)
+
+-- ────────────────────────────────────────────────
+-- 43. MÜZİK ÇALAR
+local musicIds = {
+	["Phonk 1"] = "1836906637",
+	["Lofi"]    = "1373026421",
+	["Bass"]    = "1845808327",
+}
+
+local musicSound = Instance.new("Sound", workspace)
+musicSound.Volume = 0.5
+musicSound.Looped = true
+
+local musicFrame = Instance.new("Frame", screenGui)
+musicFrame.Size = UDim2.new(0, 200, 0, 220)
+musicFrame.Position = UDim2.new(0, 10, 0.5, 0)
+musicFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+musicFrame.Visible = false
+musicFrame.Active = true
+musicFrame.Draggable = true
+musicFrame.ZIndex = 10
+
+local musicCorner = Instance.new("UICorner", musicFrame)
+musicCorner.CornerRadius = UDim.new(0, 12)
+local musicStroke = Instance.new("UIStroke", musicFrame)
+musicStroke.Color = Color3.fromRGB(0, 255, 80)
+musicStroke.Thickness = 1.5
+
+local musicTitle = Instance.new("TextLabel", musicFrame)
+musicTitle.Size = UDim2.new(1, 0, 0, 36)
+musicTitle.Text = "🎵 Müzik Çalar"
+musicTitle.BackgroundColor3 = Color3.fromRGB(0, 200, 60)
+musicTitle.TextColor3 = Color3.fromRGB(0, 0, 0)
+musicTitle.Font = Enum.Font.GothamBold
+musicTitle.TextSize = 13
+musicTitle.ZIndex = 11
+local musicTitleCorner = Instance.new("UICorner", musicTitle)
+musicTitleCorner.CornerRadius = UDim.new(0, 12)
+
+local musicScroll = Instance.new("ScrollingFrame", musicFrame)
+musicScroll.Size = UDim2.new(1, -10, 1, -80)
+musicScroll.Position = UDim2.new(0, 5, 0, 42)
+musicScroll.BackgroundTransparency = 1
+musicScroll.ScrollBarThickness = 4
+musicScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 80)
+musicScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+musicScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+musicScroll.BorderSizePixel = 0
+musicScroll.ZIndex = 11
+
+local musicScrollLayout = Instance.new("UIListLayout", musicScroll)
+musicScrollLayout.Padding = UDim.new(0, 4)
+musicScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Şarkı butonları
+for name, id in pairs(musicIds) do
+	local mb = Instance.new("TextButton", musicScroll)
+	mb.Size = UDim2.new(0.92, 0, 0, 32)
+	mb.Text = "▶ " .. name
+	mb.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+	mb.TextColor3 = Color3.fromRGB(0, 255, 80)
+	mb.Font = Enum.Font.Gotham
+	mb.TextSize = 12
+	mb.ZIndex = 12
+	local mbc = Instance.new("UICorner", mb) mbc.CornerRadius = UDim.new(0, 8)
+	local mbs = Instance.new("UIStroke", mb) mbs.Color = Color3.fromRGB(0,255,80) mbs.Thickness = 1
+	mb.MouseButton1Click:Connect(function()
+		musicSound.SoundId = "rbxassetid://" .. id
+		musicSound:Play()
+		notify("🎵 Çalıyor: " .. name)
+	end)
+end
+
+-- Custom ID kutusu
+local musicIdBox = Instance.new("TextBox", musicFrame)
+musicIdBox.Size = UDim2.new(0.9, 0, 0, 30)
+musicIdBox.Position = UDim2.new(0.05, 0, 1, -38)
+musicIdBox.PlaceholderText = "Sound ID gir..."
+musicIdBox.Text = ""
+musicIdBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+musicIdBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+musicIdBox.Font = Enum.Font.Gotham
+musicIdBox.TextSize = 12
+musicIdBox.ClearTextOnFocus = false
+musicIdBox.ZIndex = 12
+local musicIdCorner = Instance.new("UICorner", musicIdBox) musicIdCorner.CornerRadius = UDim.new(0, 6)
+
+musicIdBox.FocusLost:Connect(function()
+	local id = musicIdBox.Text
+	if id ~= "" then
+		musicSound.SoundId = "rbxassetid://" .. id
+		musicSound:Play()
+		notify("🎵 Custom ses çalıyor")
+	end
+end)
+
+-- Durdur butonu
+local stopBtn = Instance.new("TextButton", musicFrame)
+stopBtn.Size = UDim2.new(0.9, 0, 0, 28)
+stopBtn.Position = UDim2.new(0.05, 0, 1, -70)
+stopBtn.Text = "⏹ Durdur"
+stopBtn.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
+stopBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+stopBtn.Font = Enum.Font.Gotham
+stopBtn.TextSize = 12
+stopBtn.ZIndex = 12
+local stopCorner = Instance.new("UICorner", stopBtn) stopCorner.CornerRadius = UDim.new(0, 8)
+stopBtn.MouseButton1Click:Connect(function()
+	musicSound:Stop()
+	notify("⏹ Müzik durduruldu", Color3.fromRGB(255, 80, 80))
+end)
+
+createToggleButton("Müzik Çalar", function(on)
+	musicFrame.Visible = on
+	if not on then musicSound:Stop() end
 end)
 
 -- ────────────────────────────────────────────────
