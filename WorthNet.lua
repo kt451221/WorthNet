@@ -31,7 +31,7 @@ screenGui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", screenGui)
 frame.Name = "MainFrame"
-frame.Size = UDim2.new(0, 240, 0, 500)
+frame.Size = UDim2.new(0.4, 0, 0.7, 0)
 frame.Position = UDim2.new(0.5, -120, 0.5, -250)
 frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 frame.BackgroundTransparency = 0.05
