@@ -293,7 +293,6 @@ end)
 -- ────────────────────────────────────────────────
 -- 7. AUTO FARM
 _G.isAutoFarm = false
-
 local function isEnemy(name)
 	local blacklist = {"Quest Giver", "Shopkeeper", "Dealer", "Manager"}
 	for _, v in pairs(blacklist) do
@@ -301,7 +300,6 @@ local function isEnemy(name)
 	end
 	return true
 end
-
 createToggleButton("Auto Farm", function(on)
 	_G.isAutoFarm = on
 	if on then
@@ -345,7 +343,7 @@ createToggleButton("Auto Farm", function(on)
 		local h = player.Character and player.Character:FindFirstChild("Humanoid")
 		if h then h.PlatformStand = false end
 	end
-end)
+end) en iyi şekilde güncelle ve at
 
 -- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
