@@ -344,7 +344,7 @@ createToggleButton("Auto Farm", function(on)
 		local h = player.Character and player.Character:FindFirstChild("Humanoid")
 		if h then h.PlatformStand = false end
 	end
-end) en iyi şekilde güncelle ve at
+end)
 
 -- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
