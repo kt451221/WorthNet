@@ -292,6 +292,149 @@ createToggleButton("Auto Aura", function(on)
 end)
 
 -- ────────────────────────────────────────────────
+-- SILENT AIM + FOV ÇEMBERİ
+local Camera = workspace.CurrentCamera
+_G.isSilentAim = false
+
+-- Çemberi ÖNCE tanımla
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Radius = 150
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Thickness = 1
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.5
+
+-- Sonra butonu tanımla
+createToggleButton("Silent Aim", function(on)
+    _G.isSilentAim = on
+    FOVCircle.Visible = on
+end)
+
+RunService.RenderStepped:Connect(function()
+    if _G.isSilentAim then
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    end
+end)
+
+-- hookmetamethod executor desteği kontrolü
+if hookmetamethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local args = {...}
+        local method = getnamecallmethod()
+        if _G.isSilentAim and method == "FireServer" and self.Name == "WeaponEvent" then
+            local closest, shortestDist = nil, 150
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if dist < shortestDist then
+                            closest = p.Character.HumanoidRootPart
+                            shortestDist = dist
+                        end
+                    end
+                end
+            end
+            if closest then
+                args[1] = closest.Position
+                return oldNamecall(self, table.unpack(args))
+            end
+        end
+        return oldNamecall(self, ...)
+    end)
+end
+
+-- ────────────────────────────────────────────────
+-- 7. AUTO FARM
+_G.isAutoFarm = false
+
+local function isEnemy(name)
+	local blacklist = {"Quest Giver", "Shopkeeper", "Dealer", "Manager"}
+	for _, v in pairs(blacklist) do
+		if string.find(name, v) then return false end
+	end
+	return true
+end
+
+local function cleanupChar()
+	local char = player.Character
+	if not char then return end
+	local h = char:FindFirstChild("Humanoid")
+	local r = char:FindFirstChild("HumanoidRootPart")
+	if h then h.PlatformStand = false end
+	if r then r.Anchored = false end
+end
+
+createToggleButton("Auto Farm", function(on)
+	_G.isAutoFarm = on
+	if on then
+		task.spawn(function()
+			while _G.isAutoFarm do
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local hum  = char and char:FindFirstChild("Humanoid")
+
+				if root and hum and hum.Health > 0 then
+					-- En yakın düşmanı bul
+					local nearest, nearDist = nil, math.huge
+					for _, obj in pairs(workspace:GetDescendants()) do
+						if obj:IsA("Humanoid")
+							and obj ~= hum
+							and obj.Health > 0
+							and obj.Parent ~= char
+						then
+							if isEnemy(obj.Parent.Name) then
+								local r = obj.Parent:FindFirstChild("HumanoidRootPart")
+								if r then
+									local d = (root.Position - r.Position).Magnitude
+									if d < nearDist then
+										nearDist = d
+										nearest = obj
+									end
+								end
+							end
+						end
+					end
+
+					if nearest then
+						local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
+						if npcRoot and nearest.Health > 0 then
+							-- Karakteri dondur ve teleport et
+							hum.PlatformStand = true
+							root.Anchored = true
+							root.AssemblyLinearVelocity  = Vector3.zero
+							root.AssemblyAngularVelocity = Vector3.zero
+
+							char:PivotTo(CFrame.new(
+								npcRoot.Position + Vector3.new(0, 5, 2.5)
+							) * CFrame.Angles(0, math.pi, 0))
+
+							-- Saldır
+							VirtualInputManager:SendKeyEvent(true,  Enum.KeyCode.One, false, game)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true,  game, 1)
+							task.wait(0.15)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+
+							-- Serbest bırak
+							root.Anchored     = false
+							hum.PlatformStand = false
+						end
+					end
+				end
+
+				task.wait(0.25)
+			end
+
+			cleanupChar()
+		end)
+	else
+		cleanupChar()
+	end
+end)
+
+-- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
 _G.isInfJump = false
 
