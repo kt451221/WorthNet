@@ -401,7 +401,7 @@ createToggleButton("Auto Farm", function(on)
 							root.Anchored = true
 							
 							-- Karakteri biraz daha yükseğe al (Vector3.new(0, 8, 2.5) yaptık)
-							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8, 2.5)) * CFrame.Angles(0, math.pi, 0))
+							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 12, 2.5)) * CFrame.Angles(0, math.pi, 0))
 
 							-- Saldırı Komutları
 							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
