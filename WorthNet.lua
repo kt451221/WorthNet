@@ -374,17 +374,12 @@ createToggleButton("Auto Farm", function(on)
 			while _G.isAutoFarm do
 				local char = player.Character
 				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local hum  = char and char:FindFirstChild("Humanoid")
+				local hum = char and char:FindFirstChild("Humanoid")
 
 				if root and hum and hum.Health > 0 then
-					-- En yakın düşmanı bul
 					local nearest, nearDist = nil, math.huge
 					for _, obj in pairs(workspace:GetDescendants()) do
-						if obj:IsA("Humanoid")
-							and obj ~= hum
-							and obj.Health > 0
-							and obj.Parent ~= char
-						then
+						if obj:IsA("Humanoid") and obj ~= hum and obj.Health > 0 and obj.Parent ~= char then
 							if isEnemy(obj.Parent.Name) then
 								local r = obj.Parent:FindFirstChild("HumanoidRootPart")
 								if r then
@@ -401,39 +396,33 @@ createToggleButton("Auto Farm", function(on)
 					if nearest then
 						local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
 						if npcRoot and nearest.Health > 0 then
-							-- Karakteri dondur ve teleport et
+							-- Havada sabit durması için:
 							hum.PlatformStand = true
 							root.Anchored = true
-							root.AssemblyLinearVelocity  = Vector3.zero
-							root.AssemblyAngularVelocity = Vector3.zero
+							
+							-- Karakteri biraz daha yükseğe al (Vector3.new(0, 8, 2.5) yaptık)
+							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8, 2.5)) * CFrame.Angles(0, math.pi, 0))
 
-							char:PivotTo(CFrame.new(
-								npcRoot.Position + Vector3.new(0, 5, 2.5)
-							) * CFrame.Angles(0, math.pi, 0))
-
-							-- Saldır
-							VirtualInputManager:SendKeyEvent(true,  Enum.KeyCode.One, false, game)
-							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true,  game, 1)
-							task.wait(0.15)
+							-- Saldırı Komutları
+							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+							task.wait(0.1)
 							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-
-							-- Serbest bırak
-							root.Anchored     = false
-							hum.PlatformStand = false
 						end
+					else
+						-- Düşman yoksa karakteri serbest bırak
+						root.Anchored = false
+						hum.PlatformStand = false
 					end
 				end
-
-				task.wait(0.25)
+				task.wait(0.1) -- Tepki süresini biraz kısalttık
 			end
-
 			cleanupChar()
 		end)
 	else
 		cleanupChar()
 	end
 end)
-
 -- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
 _G.isInfJump = false
