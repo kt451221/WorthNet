@@ -1641,6 +1641,45 @@ createToggleButton("Müzik Çalar", function(on)
 end)
 
 -- ────────────────────────────────────────────────
+-- ESP SİSTEMİ (GÜNCEL VE STABİL)
+_G.isESP = false
+
+local function createHighlight(target)
+    if not target:FindFirstChild("Highlight") then
+        local h = Instance.new("Highlight")
+        h.Parent = target
+        h.FillColor = Color3.fromRGB(255, 0, 0) -- Kırmızı renk
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.FillTransparency = 0.5
+        h.OutlineTransparency = 0
+    end
+end
+
+createToggleButton("Zombi ESP", function(on)
+    _G.isESP = on
+    if on then
+        task.spawn(function()
+            while _G.isESP do
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    -- Sadece zombi veya düşmanları bul
+                    if obj:IsA("Model") and (obj.Name == "Zombie" or obj:FindFirstChild("Humanoid")) then
+                        if obj ~= player.Character then
+                            createHighlight(obj)
+                        end
+                    end
+                end
+                task.wait(2) -- 2 saniyede bir tara (Daha hızlı tarama ban riskini artırır!)
+            end
+        end)
+    else
+        -- Kapatınca tüm highlightları sil
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Highlight") then obj:Destroy() end
+        end
+    end
+end)
+
+-- ────────────────────────────────────────────────
 -- X TUŞU: Gizle/Göster
 UserInputService.InputBegan:Connect(function(input, gpe)
 	if not gpe and input.KeyCode == Enum.KeyCode.X then
