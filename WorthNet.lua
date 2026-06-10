@@ -1167,57 +1167,52 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ────────────────────────────────────────────────
--- 31. GÜNCELLENMİŞ RAINBOW ESP
+-- 31. RAINBOW ESP (GÜNCEL VE GÖZÜ PEK)
 _G.isRainbowESP = false
 local rainbowHighlights = {}
 
--- Karakter değiştiğinde (öldüğünde/doğduğunda) ESP'yi güncelleyen fonksiyon
-local function applyESP(char)
-	if not _G.isRainbowESP then return end
-	task.wait(0.5) -- Karakterin tam yüklenmesini bekle
-	local hl = Instance.new("Highlight", char)
-	hl.FillTransparency = 0.5
-	rainbowHighlights[char.Name] = hl
+local function addHighlight(obj)
+    if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj.Name ~= player.Name then
+        if not rainbowHighlights[obj.Name] then
+            local hl = Instance.new("Highlight", obj)
+            hl.FillTransparency = 0.5
+            rainbowHighlights[obj.Name] = hl
+        end
+    end
 end
 
 createToggleButton("Rainbow ESP", function(on)
-	_G.isRainbowESP = on
-	if on then
-		-- Zaten oyundaki herkes için dinleyici başlatalım
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= player then
-				if p.Character then applyESP(p.Character) end
-				p.CharacterAdded:Connect(applyESP) -- Öldüğünde tekrar tetiklenir
-			end
-		end
-		
-		-- Yeni giren oyuncular için
-		Players.PlayerAdded:Connect(function(p)
-			p.CharacterAdded:Connect(applyESP)
-		end)
-
-		-- Renk döngüsü
-		task.spawn(function()
-			local hue = 0
-			while _G.isRainbowESP do
-				hue = (hue + 0.01) % 1
-				local color = Color3.fromHSV(hue, 1, 1)
-				for name, hl in pairs(rainbowHighlights) do
-					if hl and hl.Parent then
-						hl.FillColor = color
-						hl.OutlineColor = color
-					end
-				end
-				task.wait(0.05)
-			end
-		end)
-	else
-		-- Kapatınca her şeyi temizle
-		for name, hl in pairs(rainbowHighlights) do
-			if hl then hl:Destroy() end
-		end
-		rainbowHighlights = {}
-	end
+    _G.isRainbowESP = on
+    if on then
+        task.spawn(function()
+            local hue = 0
+            while _G.isRainbowESP do
+                hue = (hue + 0.01) % 1
+                local color = Color3.fromHSV(hue, 1, 1)
+                
+                -- HERŞEYİ TARA
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    addHighlight(obj)
+                end
+                
+                -- RENKLERİ GÜNCELLE
+                for name, hl in pairs(rainbowHighlights) do
+                    if hl and hl.Parent then
+                        hl.FillColor = color
+                        hl.OutlineColor = color
+                    else
+                        rainbowHighlights[name] = nil
+                    end
+                end
+                task.wait(0.5) -- Tarama süresi
+            end
+        end)
+    else
+        for _, hl in pairs(rainbowHighlights) do
+            if hl then hl:Destroy() end
+        end
+        rainbowHighlights = {}
+    end
 end)
 -- ────────────────────────────────────────────────
 -- 32. NPC ESP
@@ -1698,43 +1693,29 @@ createToggleButton("Zombi ESP", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- TAM SİLYENT AİM + FOV ÇEMBERİ
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local player = Players.LocalPlayer
+-- SİLYENT AİM + FOV ÇEMBERİ (BUTONLU)
 
-_G.isSilentAim = false
-_G.SilentAimFov = 150 -- Çember boyutu
+createToggleButton("Silent Aim", function(on)
+    _G.isSilentAim = on
+    -- Çemberin görünürlüğünü buton durumuna göre ayarla
+    FOVCircle.Visible = on
+end)
 
--- Çemberi Oluştur
+-- Çemberi Oluştur (Buton dışında tanımladık ki hata vermesin)
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
-FOVCircle.Radius = _G.SilentAimFov
+FOVCircle.Radius = 150 -- Çember boyutu
 FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 FOVCircle.Thickness = 1
 FOVCircle.Filled = false
 FOVCircle.Transparency = 0.5
 
--- Hedef Bulma Fonksiyonu
-local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = _G.SilentAimFov
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-            if onScreen then
-                local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                if dist < shortestDistance then
-                    closestPlayer = p.Character.HumanoidRootPart
-                    shortestDistance = dist
-                end
-            end
-        end
+-- RenderStepped ile çemberi güncelle
+RunService.RenderStepped:Connect(function()
+    if _G.isSilentAim then
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     end
-    return closestPlayer
-end
+end)
 
 -- Hook İşlemi
 local oldNamecall
@@ -1742,8 +1723,23 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
     
-    if _G.isSilentAim and method == "FireServer" and self.Name == "WeaponEvent" then -- Burayı oyununa göre değiştir!
-        local closest = getClosestPlayer()
+    if _G.isSilentAim and method == "FireServer" and self.Name == "WeaponEvent" then -- Burayı oyununa göre düzelt!
+        local closest = nil
+        local shortestDistance = 150 -- FOV boyutuyla aynı olmalı
+        
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                    if dist < shortestDistance then
+                        closest = p.Character.HumanoidRootPart
+                        shortestDistance = dist
+                    end
+                end
+            end
+        end
+        
         if closest then
             args[1] = closest.Position
             return oldNamecall(self, unpack(args))
@@ -1751,19 +1747,6 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     end
     return oldNamecall(self, ...)
 end)
-
--- Ana Döngü (Çemberi Yönetir)
-RunService.RenderStepped:Connect(function()
-    if _G.isSilentAim then
-        FOVCircle.Visible = true
-        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    else
-        FOVCircle.Visible = false
-    end
-end)
-
--- Toggle (Oyun içi menün varsa buraya bağla)
-_G.isSilentAim = true -- Şu an direkt aktif!
 
 -- ────────────────────────────────────────────────
 -- X TUŞU: Gizle/Göster
