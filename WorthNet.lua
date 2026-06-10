@@ -1,4 +1,3 @@
-
 -- WORTHNET CLIENT V0.3 | FULL FEATURES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -6,10 +5,10 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 
--- Eski GUI'yi temizle
 if CoreGui:FindFirstChild("WorthNetClient") then
 	CoreGui:FindFirstChild("WorthNetClient"):Destroy()
 end
@@ -19,7 +18,6 @@ screenGui.Name = "WorthNetClient"
 screenGui.IgnoreGuiInset = true
 screenGui.ResetOnSpawn = false
 
--- Ana Frame
 local frame = Instance.new("Frame", screenGui)
 frame.Name = "MainFrame"
 frame.Size = UDim2.new(0, 240, 0, 500)
@@ -37,7 +35,6 @@ local frameStroke = Instance.new("UIStroke", frame)
 frameStroke.Color = Color3.fromRGB(0, 255, 80)
 frameStroke.Thickness = 1.5
 
--- Başlık
 local titleBar = Instance.new("Frame", frame)
 titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -47,7 +44,6 @@ titleBar.BorderSizePixel = 0
 local titleCorner = Instance.new("UICorner", titleBar)
 titleCorner.CornerRadius = UDim.new(0, 12)
 
--- Alt kısmı düzelt (üst yuvarlak, alt düz)
 local titleFix = Instance.new("Frame", titleBar)
 titleFix.Size = UDim2.new(1, 0, 0.5, 0)
 titleFix.Position = UDim2.new(0, 0, 0.5, 0)
@@ -62,7 +58,6 @@ titleLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
 titleLabel.TextScaled = true
 titleLabel.Font = Enum.Font.GothamBold
 
--- Hız TextBox
 local speedBox = Instance.new("TextBox", frame)
 speedBox.Size = UDim2.new(0.88, 0, 0, 36)
 speedBox.Position = UDim2.new(0.06, 0, 0, 52)
@@ -77,12 +72,10 @@ speedBox.ClearTextOnFocus = false
 
 local speedBoxCorner = Instance.new("UICorner", speedBox)
 speedBoxCorner.CornerRadius = UDim.new(0, 8)
-
 local speedBoxStroke = Instance.new("UIStroke", speedBox)
 speedBoxStroke.Color = Color3.fromRGB(0, 255, 80)
 speedBoxStroke.Thickness = 1
 
--- ScrollingFrame
 local scroll = Instance.new("ScrollingFrame", frame)
 scroll.Size = UDim2.new(1, 0, 1, -98)
 scroll.Position = UDim2.new(0, 0, 0, 95)
@@ -101,13 +94,10 @@ local scrollPadding = Instance.new("UIPadding", scroll)
 scrollPadding.PaddingTop = UDim.new(0, 6)
 scrollPadding.PaddingBottom = UDim.new(0, 6)
 
--- State tablosu
 local states = {}
 
--- Buton oluşturma fonksiyonu (ON/OFF toggle)
 local function createToggleButton(text, callback)
 	states[text] = false
-
 	local btn = Instance.new("TextButton", scroll)
 	btn.Text = "[ OFF ]  " .. text
 	btn.Size = UDim2.new(0.88, 0, 0, 38)
@@ -116,14 +106,11 @@ local function createToggleButton(text, callback)
 	btn.Font = Enum.Font.Gotham
 	btn.TextSize = 13
 	btn.AutoButtonColor = false
-
 	local btnCorner = Instance.new("UICorner", btn)
 	btnCorner.CornerRadius = UDim.new(0, 8)
-
 	local btnStroke = Instance.new("UIStroke", btn)
 	btnStroke.Color = Color3.fromRGB(50, 50, 50)
 	btnStroke.Thickness = 1
-
 	btn.MouseButton1Click:Connect(function()
 		states[text] = not states[text]
 		if states[text] then
@@ -139,11 +126,9 @@ local function createToggleButton(text, callback)
 		end
 		callback(states[text])
 	end)
-
 	return btn
 end
 
--- Normal buton (toggle değil)
 local function createButton(text, callback)
 	local btn = Instance.new("TextButton", scroll)
 	btn.Text = text
@@ -153,14 +138,11 @@ local function createButton(text, callback)
 	btn.Font = Enum.Font.Gotham
 	btn.TextSize = 13
 	btn.AutoButtonColor = false
-
 	local btnCorner = Instance.new("UICorner", btn)
 	btnCorner.CornerRadius = UDim.new(0, 8)
-
 	local btnStroke = Instance.new("UIStroke", btn)
 	btnStroke.Color = Color3.fromRGB(0, 255, 80)
 	btnStroke.Thickness = 1
-
 	btn.MouseButton1Click:Connect(callback)
 	return btn
 end
@@ -171,6 +153,7 @@ _G.isNoclip = false
 _G.isFly    = false
 _G.isGod    = false
 local bv, bg
+local mouse = player:GetMouse()
 
 -- ────────────────────────────────────────────────
 -- 1. HIZ UYGULA
@@ -196,11 +179,9 @@ createToggleButton("Fly", function(on)
 		bv = Instance.new("BodyVelocity", root)
 		bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 		bv.Velocity = Vector3.new(0, 0, 0)
-
 		bg = Instance.new("BodyGyro", root)
 		bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
 		bg.CFrame = root.CFrame
-
 		task.spawn(function()
 			while _G.isFly and root and root.Parent do
 				local cam = workspace.CurrentCamera
@@ -252,9 +233,8 @@ createToggleButton("Player ESP", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- 6. AUTO AURA (GÜNCELLENMİŞ)
+-- 6. AUTO AURA
 _G.isAura = false
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 createToggleButton("Auto Aura", function(on)
 	_G.isAura = on
@@ -278,72 +258,85 @@ createToggleButton("Auto Aura", function(on)
 					end
 					if nearest and nearDist < 20 then
 						local npcRoot = nearest.Character:FindFirstChild("HumanoidRootPart")
-						hum.PlatformStand = true
-						-- Tam üstüne değil, yanına ışınla (Sarsılmayı önler)
-						char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 5, 3)))
-						-- 1. slotu seç ve tıkla
-						VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-						task.wait(0.1)
-						VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-						hum.PlatformStand = false
+						if npcRoot then
+							hum.PlatformStand = true
+							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 5, 3)))
+							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+							task.wait(0.1)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+							hum.PlatformStand = false
+						end
 					end
 				end
 				task.wait(0.2)
 			end
+			local h = player.Character and player.Character:FindFirstChild("Humanoid")
+			if h then h.PlatformStand = false end
 		end)
+	else
+		local h = player.Character and player.Character:FindFirstChild("Humanoid")
+		if h then h.PlatformStand = false end
 	end
 end)
 
 -- ────────────────────────────────────────────────
--- GÜNCEL AUTO FARM (NPC FİLTRELİ + YÜKSEK SALDIRI)
+-- 7. AUTO FARM
 _G.isAutoFarm = false
 
 local function isEnemy(name)
-    -- Buraya saldırılmayacak NPC'lerin isimlerini yaz
-    local blacklist = {"Quest Giver", "Shopkeeper", "Dealer", "Manager"}
-    for _, v in pairs(blacklist) do
-        if string.find(name, v) then return false end
-    end
-    return true
+	local blacklist = {"Quest Giver", "Shopkeeper", "Dealer", "Manager"}
+	for _, v in pairs(blacklist) do
+		if string.find(name, v) then return false end
+	end
+	return true
 end
 
 createToggleButton("Auto Farm", function(on)
-    _G.isAutoFarm = on
-    if on then
-        task.spawn(function()
-            while _G.isAutoFarm do
-                local char = player.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local nearest, nearDist = nil, math.huge
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Humanoid") and obj.Parent ~= char and obj.Health > 0 then
-                            -- İsim filtresini uygula (Görev NPC'lerine dalmasın)
-                            if isEnemy(obj.Parent.Name) then
-                                local r = obj.Parent:FindFirstChild("HumanoidRootPart")
-                                if r then
-                                    local d = (root.Position - r.Position).Magnitude
-                                    if d < nearDist then nearDist = d; nearest = obj end
-                                end
-                            end
-                        end
-                    end
-                    if nearest then
-                        local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
-                        -- Yükseklik offsetini 8 yapınca daha yukarıdan saldırır
-                        char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8, 3)))
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                        task.wait(0.2)
-                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                    end
-                end
-                task.wait(0.3)
-            end
-        end)
-    end
+	_G.isAutoFarm = on
+	if on then
+		task.spawn(function()
+			while _G.isAutoFarm do
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local hum  = char and char:FindFirstChild("Humanoid")
+				if root and hum then
+					local nearest, nearDist = nil, math.huge
+					for _, obj in pairs(workspace:GetDescendants()) do
+						if obj:IsA("Humanoid") and obj.Parent ~= char and obj.Health > 0 then
+							if isEnemy(obj.Parent.Name) then
+								local r = obj.Parent:FindFirstChild("HumanoidRootPart")
+								if r then
+									local d = (root.Position - r.Position).Magnitude
+									if d < nearDist then nearDist = d; nearest = obj end
+								end
+							end
+						end
+					end
+					if nearest then
+						local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
+						if npcRoot then
+							hum.PlatformStand = true
+							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8, 3)))
+							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+							task.wait(0.2)
+							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+							hum.PlatformStand = false
+						end
+					end
+				end
+				task.wait(0.3)
+			end
+			local h = player.Character and player.Character:FindFirstChild("Humanoid")
+			if h then h.PlatformStand = false end
+		end)
+	else
+		local h = player.Character and player.Character:FindFirstChild("Humanoid")
+		if h then h.PlatformStand = false end
+	end
 end)
+
 -- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
 _G.isInfJump = false
@@ -362,10 +355,8 @@ end)
 -- ────────────────────────────────────────────────
 -- 9. FULLBRIGHT
 local origAmbient, origOutdoor, origBrightness
-_G.isFullBright = false
 
 createToggleButton("FullBright", function(on)
-	_G.isFullBright = on
 	if on then
 		origAmbient    = Lighting.Ambient
 		origOutdoor    = Lighting.OutdoorAmbient
@@ -389,8 +380,8 @@ createToggleButton("Anti-Knockback", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- 11. BTOOLS (Sil/Taşı)
-local btoolMode = nil -- "delete" | "move"
+-- 11. BTOOLS
+local btoolMode = nil
 
 local btoolFrame = Instance.new("Frame", scroll)
 btoolFrame.Size = UDim2.new(0.88, 0, 0, 38)
@@ -424,28 +415,11 @@ end
 makeBtoolBtn("🗑 Sil", "delete")
 makeBtoolBtn("✋ Taşı", "move")
 
--- Btools tıklama
-local mouse = player:GetMouse()
-mouse.Button1Down:Connect(function()
-	if btoolMode == "delete" then
-		local target = mouse.Target
-		if target and not target:IsDescendantOf(screenGui) then
-			target:Destroy()
-		end
-	elseif btoolMode == "move" then
-		local target = mouse.Target
-		if target and target:IsA("BasePart") and not target:IsDescendantOf(screenGui) then
-			target.Position = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and
-				player.Character.HumanoidRootPart.Position + Vector3.new(0, 5, -5) or target.Position
-		end
-	end
-end)
-
 -- ────────────────────────────────────────────────
 -- 12. TELEPORT LIST
 local tpListVisible = false
 local tpFrame = Instance.new("Frame", screenGui)
-tpFrame.Size = UDim2.new(0, 200, 0, 300)
+tpFrame.Size = UDim2.new(0, 220, 0, 300)
 tpFrame.Position = UDim2.new(0.5, 130, 0.5, -150)
 tpFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 tpFrame.Visible = false
@@ -454,7 +428,6 @@ tpFrame.Draggable = true
 
 local tpCorner = Instance.new("UICorner", tpFrame)
 tpCorner.CornerRadius = UDim.new(0, 12)
-
 local tpStroke = Instance.new("UIStroke", tpFrame)
 tpStroke.Color = Color3.fromRGB(0, 255, 80)
 tpStroke.Thickness = 1.5
@@ -466,7 +439,7 @@ tpTitle.BackgroundColor3 = Color3.fromRGB(0, 200, 60)
 tpTitle.TextColor3 = Color3.fromRGB(0,0,0)
 tpTitle.Font = Enum.Font.GothamBold
 tpTitle.TextSize = 13
-
+tpTitle.BorderSizePixel = 0
 local tpTitleCorner = Instance.new("UICorner", tpTitle)
 tpTitleCorner.CornerRadius = UDim.new(0, 12)
 
@@ -481,41 +454,75 @@ tpScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 tpScroll.BorderSizePixel = 0
 
 local tpLayout = Instance.new("UIListLayout", tpScroll)
-tpLayout.Padding = UDim.new(0, 4)
+tpLayout.Padding = UDim.new(0, 6)
 tpLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function refreshTpList()
 	for _, c in pairs(tpScroll:GetChildren()) do
-		if c:IsA("TextButton") then c:Destroy() end
+		if not c:IsA("UIListLayout") then c:Destroy() end
 	end
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= player then
-			local b = Instance.new("TextButton", tpScroll)
-			b.Size = UDim2.new(0.92, 0, 0, 34)
-			b.Text = "➜ " .. p.Name
-			b.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-			b.TextColor3 = Color3.fromRGB(0, 255, 80)
-			b.Font = Enum.Font.Gotham
-			b.TextSize = 12
-			local bc = Instance.new("UICorner", b) bc.CornerRadius = UDim.new(0, 8)
-			local bs = Instance.new("UIStroke", b) bs.Color = Color3.fromRGB(0, 255, 80) bs.Thickness = 1
+			local nameLabel = Instance.new("TextLabel", tpScroll)
+			nameLabel.Size = UDim2.new(0.92, 0, 0, 22)
+			nameLabel.Text = "👤 " .. p.Name
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+			nameLabel.Font = Enum.Font.GothamBold
+			nameLabel.TextSize = 12
 
-			b.MouseButton1Click:Connect(function()
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			local row = Instance.new("Frame", tpScroll)
+			row.Size = UDim2.new(0.92, 0, 0, 32)
+			row.BackgroundTransparency = 1
+			local rowLayout = Instance.new("UIListLayout", row)
+			rowLayout.FillDirection = Enum.FillDirection.Horizontal
+			rowLayout.Padding = UDim.new(0, 5)
+
+			local goBtn = Instance.new("TextButton", row)
+			goBtn.Size = UDim2.new(0.5, -3, 1, 0)
+			goBtn.Text = "➜ Git"
+			goBtn.BackgroundColor3 = Color3.fromRGB(0, 40, 15)
+			goBtn.TextColor3 = Color3.fromRGB(0, 255, 80)
+			goBtn.Font = Enum.Font.Gotham
+			goBtn.TextSize = 12
+			local gc = Instance.new("UICorner", goBtn) gc.CornerRadius = UDim.new(0, 8)
+			local gs = Instance.new("UIStroke", goBtn) gs.Color = Color3.fromRGB(0, 255, 80) gs.Thickness = 1
+
+			goBtn.MouseButton1Click:Connect(function()
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
 				local tgt  = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
-				if not (root and tgt) then return end
-
-				-- Fizik sıfırla + anchor et
-				root.Velocity = Vector3.new(0, 0, 0)
-				root.RotVelocity = Vector3.new(0, 0, 0)
-				root.Anchored = true
-
-				-- Hedefin o anki konumuna ışınlan
-				root.CFrame = CFrame.new(tgt.Position + Vector3.new(0, 3, 0))
-
-				task.wait(0.1) -- Fizik engine'in yerleşmesi için kısa bekle
-				root.Anchored = false
+				if not (char and root and tgt) then return end
+				root.AssemblyLinearVelocity  = Vector3.new(0, 0, 0)
+				root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				char:PivotTo(tgt.CFrame * CFrame.new(2, 0, 0))
 			end)
+
+			local pullBtn = Instance.new("TextButton", row)
+			pullBtn.Size = UDim2.new(0.5, -3, 1, 0)
+			pullBtn.Text = "⬇ Çek"
+			pullBtn.BackgroundColor3 = Color3.fromRGB(30, 15, 0)
+			pullBtn.TextColor3 = Color3.fromRGB(255, 160, 0)
+			pullBtn.Font = Enum.Font.Gotham
+			pullBtn.TextSize = 12
+			local pc = Instance.new("UICorner", pullBtn) pc.CornerRadius = UDim.new(0, 8)
+			local ps = Instance.new("UIStroke", pullBtn) ps.Color = Color3.fromRGB(255, 160, 0) ps.Thickness = 1
+
+			pullBtn.MouseButton1Click:Connect(function()
+				local myChar   = player.Character
+				local myRoot   = myChar and myChar:FindFirstChild("HumanoidRootPart")
+				local theirChar = p.Character
+				local theirRoot = theirChar and theirChar:FindFirstChild("HumanoidRootPart")
+				if not (myRoot and theirChar and theirRoot) then return end
+				theirRoot.AssemblyLinearVelocity  = Vector3.new(0, 0, 0)
+				theirRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				theirChar:PivotTo(myRoot.CFrame * CFrame.new(2, 0, 0))
+			end)
+
+			local divider = Instance.new("Frame", tpScroll)
+			divider.Size = UDim2.new(0.92, 0, 0, 1)
+			divider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+			divider.BorderSizePixel = 0
 		end
 	end
 end
@@ -548,7 +555,7 @@ createToggleButton("Anti-AFK", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- RUNSERVICE: Noclip / God / Anti-Knockback
+-- RUNSERVICE: Noclip / God / Anti-Knockback / Btools
 RunService.Stepped:Connect(function()
 	if player.Character then
 		if _G.isNoclip then
@@ -562,7 +569,7 @@ RunService.Stepped:Connect(function()
 		end
 		if _G.isAntiKnock then
 			local root = player.Character:FindFirstChild("HumanoidRootPart")
-			if root and root:FindFirstChild("RootAttachment") then
+			if root then
 				local vel = root.AssemblyLinearVelocity
 				root.AssemblyLinearVelocity = Vector3.new(0, math.min(vel.Y, 0), 0)
 			end
@@ -570,23 +577,43 @@ RunService.Stepped:Connect(function()
 	end
 end)
 
+-- Mouse: Btools + Property Editor ortak
+mouse.Button1Down:Connect(function()
+	if btoolMode == "delete" then
+		local target = mouse.Target
+		if target and not target:IsDescendantOf(screenGui) then
+			target:Destroy()
+		end
+	elseif btoolMode == "move" then
+		local target = mouse.Target
+		if target and target:IsA("BasePart") and not target:IsDescendantOf(screenGui) then
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if root then target.Position = root.Position + Vector3.new(0, 5, -5) end
+		end
+	end
+	if isSelecting and mouse.Target then
+		selectedPart = mouse.Target
+		targetLabel.Text = "Seçili: " .. (selectedPart.Name:sub(1,10))
+	end
+end)
+
 -- ────────────────────────────────────────────────
--- NO FOG
+-- 14. NO FOG
 createToggleButton("No Fog", function(on)
 	if on then
 		Lighting.FogEnd   = 100000
 		Lighting.FogStart = 100000
 	else
-		Lighting.FogEnd   = 100000 -- orijinali bilmiyoruz, oyuna göre değişir
+		Lighting.FogEnd   = 1000
 		Lighting.FogStart = 0
 	end
 end)
 
 -- ────────────────────────────────────────────────
--- FOV CHANGER
+-- 15. FOV CHANGER
 local fovBox = Instance.new("TextBox", scroll)
 fovBox.Size = UDim2.new(0.88, 0, 0, 36)
-fovBox.PlaceholderText = "FOV (70-120)"
+fovBox.PlaceholderText = "FOV (50-120)"
 fovBox.Text = "70"
 fovBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 fovBox.TextColor3 = Color3.fromRGB(0, 255, 80)
@@ -601,19 +628,15 @@ local origFOV = workspace.CurrentCamera.FieldOfView
 
 createButton("⚡ FOV Uygula", function()
 	local val = tonumber(fovBox.Text)
-	if val then
-		workspace.CurrentCamera.FieldOfView = math.clamp(val, 50, 120)
-	end
+	if val then workspace.CurrentCamera.FieldOfView = math.clamp(val, 50, 120) end
 end)
 
-createToggleButton("FOV Sıfırla", function(on)
-	if on then
-		workspace.CurrentCamera.FieldOfView = origFOV
-	end
+createButton("FOV Sıfırla", function()
+	workspace.CurrentCamera.FieldOfView = origFOV
 end)
 
 -- ────────────────────────────────────────────────
--- CROSSHAIR
+-- 16. CROSSHAIR
 local crosshair = Instance.new("Frame", screenGui)
 crosshair.Size = UDim2.new(0, 20, 0, 20)
 crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -622,7 +645,6 @@ crosshair.BackgroundTransparency = 1
 crosshair.Visible = false
 crosshair.ZIndex = 10
 
--- Yatay çizgi
 local chH = Instance.new("Frame", crosshair)
 chH.Size = UDim2.new(1, 0, 0, 2)
 chH.Position = UDim2.new(0, 0, 0.5, -1)
@@ -630,7 +652,6 @@ chH.BackgroundColor3 = Color3.fromRGB(0, 255, 80)
 chH.BorderSizePixel = 0
 chH.ZIndex = 10
 
--- Dikey çizgi
 local chV = Instance.new("Frame", crosshair)
 chV.Size = UDim2.new(0, 2, 1, 0)
 chV.Position = UDim2.new(0.5, -1, 0, 0)
@@ -638,21 +659,21 @@ chV.BackgroundColor3 = Color3.fromRGB(0, 255, 80)
 chV.BorderSizePixel = 0
 chV.ZIndex = 10
 
--- Merkez nokta
 local chDot = Instance.new("Frame", crosshair)
 chDot.Size = UDim2.new(0, 4, 0, 4)
 chDot.Position = UDim2.new(0.5, -2, 0.5, -2)
 chDot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 chDot.BorderSizePixel = 0
 chDot.ZIndex = 11
-local chDotCorner = Instance.new("UICorner", chDot) chDotCorner.CornerRadius = UDim.new(1, 0)
+local chDotCorner = Instance.new("UICorner", chDot)
+chDotCorner.CornerRadius = UDim.new(1, 0)
 
 createToggleButton("Crosshair", function(on)
 	crosshair.Visible = on
 end)
 
 -- ────────────────────────────────────────────────
--- THIRD PERSON
+-- 17. THIRD PERSON
 local origCamType
 _G.isThirdPerson = false
 
@@ -662,7 +683,6 @@ createToggleButton("Third Person", function(on)
 	if on then
 		origCamType = cam.CameraType
 		cam.CameraType = Enum.CameraType.Attach
-		-- Karakter kamerasını uzaklaştır
 		task.spawn(function()
 			while _G.isThirdPerson do
 				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -679,24 +699,18 @@ createToggleButton("Third Person", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- NO CAMERA SHAKE
+-- 18. NO CAM SHAKE
 _G.isNoCamShake = false
-local origCamCFrame
 
 createToggleButton("No Cam Shake", function(on)
 	_G.isNoCamShake = on
 	if on then
 		task.spawn(function()
 			while _G.isNoCamShake do
-				local cam = workspace.CurrentCamera
-				-- CameraOffset sıfırla, shake efektlerini kes
 				if player.Character then
 					local hum = player.Character:FindFirstChild("Humanoid")
-					if hum then
-						hum.CameraOffset = Vector3.new(0, 0, 0)
-					end
+					if hum then hum.CameraOffset = Vector3.new(0, 0, 0) end
 				end
-				-- Tüm camera shake scriptlerini devre dışı bırak
 				for _, v in pairs(workspace:GetDescendants()) do
 					if v:IsA("LocalScript") and v.Name:lower():find("shake") then
 						v.Disabled = true
@@ -709,181 +723,29 @@ createToggleButton("No Cam Shake", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- ────────────────────────────────────────────────
--- GÜNCELLENMİŞ SILENT AIM (Duvar Arkası Engelli & En Yakın Hedef)
-_G.isSilentAim = false
-local aimFOV = 150 
-local camera = workspace.CurrentCamera
-
-
-createToggleButton("Silent Aim", function(on)
-    _G.isSilentAim = on
-    crosshair.Visible = on
-end)
-
--- Görüş hattı kontrolü (Duvar arkasını engeller)
-local function isVisible(targetPart)
-    local origin = camera.CFrame.Position
-    local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {player.Character}
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    
-    local raycastResult = workspace:Raycast(origin, direction, raycastParams)
-    
-    if raycastResult then
-        return raycastResult.Instance:IsDescendantOf(targetPart.Parent)
-    end
-    return false
-end
-
-RunService.RenderStepped:Connect(function()
-    crosshair.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-    
-    if _G.isSilentAim then
-        local nearest, minDistance = nil, aimFOV -- FOV'u sınır olarak al
-        local mousePos = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-        
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                local head = p.Character.Head
-                local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
-                
-                if onScreen then
-                    local distToMouse = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                    
-                    -- Hem FOV içinde mi, hem en yakın mı, hem de GÖRÜNÜYOR mu?
-                    if distToMouse < minDistance and isVisible(head) then
-                        minDistance = distToMouse
-                        nearest = head
-                    end
-                end
-            end
-        end
-        
-        if nearest then
-            -- Kamerayı hedefe kilitle
-            camera.CFrame = CFrame.new(camera.CFrame.Position, nearest.Position)
-        end
-    end
-end)
-
--- ────────────────────────────────────────────────
--- 15. GERÇEK FPS GÖSTERGESİ (Performans Tabanlı)
+-- 19. FPS GÖSTERGESİ
 local fpsLabel = Instance.new("TextLabel", screenGui)
-fpsLabel.Size = UDim2.new(0, 120, 0, 30)
+fpsLabel.Size = UDim2.new(0, 80, 0, 26)
 fpsLabel.Position = UDim2.new(0, 10, 0, 60)
 fpsLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 80)
 fpsLabel.Font = Enum.Font.Code
-fpsLabel.TextSize = 16
-fpsLabel.Text = "FPS: 60"
+fpsLabel.TextSize = 14
+fpsLabel.Text = "FPS: --"
 fpsLabel.BorderSizePixel = 0
-
 local fpsCorner = Instance.new("UICorner", fpsLabel)
 fpsCorner.CornerRadius = UDim.new(0, 6)
 
--- Gerçek FPS Hesaplama
-RunService.RenderStepped:Connect(function(deltaTime)
-    if deltaTime > 0 then
-        local fps = math.floor(1 / deltaTime)
-        fpsLabel.Text = "FPS: " .. fps
-        
-        -- FPS değerine göre renk değişimi (Havalı durur)
-        if fps < 30 then
-            fpsLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- FPS düşükse kırmızı
-        else
-            fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 80) -- FPS iyiyse yeşil
-        end
-    end
-end)
-
--- ────────────────────────────────────────────────
--- 16. GÜNCELLENMİŞ HITBOX EXPANDER (Stabil Mantık)
-_G.isHitbox = false
-local hitboxSize = 6
-
-createToggleButton("Hitbox Expander", function(on)
-    _G.isHitbox = on
-    -- Kapatıldığında tüm eklenenleri temizle
-    if not on then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("HitboxPart") then
-                p.Character.HitboxPart:Destroy()
-            end
-        end
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    if _G.isHitbox then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-                local head = p.Character.Head
-                
-                -- Eğer daha önce oluşturulmamışsa veya silinmişse yeniden oluştur
-                if not p.Character:FindFirstChild("HitboxPart") then
-                    local hb = Instance.new("Part", p.Character)
-                    hb.Name = "HitboxPart"
-                    hb.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-                    hb.Transparency = 0.8
-                    hb.Color = Color3.fromRGB(255, 0, 0)
-                    hb.Material = Enum.Material.Neon
-                    hb.CanCollide = false
-                    hb.Anchored = false
-                    
-                    -- Kafaya sabitlemek için Weld
-                    local weld = Instance.new("WeldConstraint", hb)
-                    weld.Part0 = hb
-                    weld.Part1 = head
-                end
-                
-                -- Oluşturulan parçayı sürekli güncelle
-                local hb = p.Character.HitboxPart
-                hb.CFrame = head.CFrame
-            end
-        end
-    end
-end)
-
--- ────────────────────────────────────────────────
--- WALL CHECK KALDIR (Kamera duvardan geçer)
-_G.isNoWall = false
-
-createToggleButton("No Wall Check", function(on)
-	_G.isNoWall = on
-	local cam = workspace.CurrentCamera
-	if on then
-		-- Kameranın duvarla çarpışmasını kapat
-		player.CameraMode = Enum.CameraMode.Classic
-		task.spawn(function()
-			while _G.isNoWall do
-				cam.CameraType = Enum.CameraType.Custom
-				-- Tüm parçaların kameraya çarpışmasını kapat
-				for _, v in pairs(workspace:GetDescendants()) do
-					if v:IsA("BasePart") and not v:IsDescendantOf(player.Character or Instance.new("Folder")) then
-						v.CastShadow = v.CastShadow -- dokunma
-						pcall(function()
-							v.LocalTransparencyModifier = 0.5
-						end)
-					end
-				end
-				task.wait(0.1)
-			end
-			-- Kapat, orijinale dön
-			for _, v in pairs(workspace:GetDescendants()) do
-				if v:IsA("BasePart") then
-					pcall(function()
-						v.LocalTransparencyModifier = 0
-					end)
-				end
-			end
-		end)
+RunService.RenderStepped:Connect(function(dt)
+	if dt > 0 then
+		local fps = math.floor(1 / dt)
+		fpsLabel.Text = "FPS: " .. fps
+		fpsLabel.TextColor3 = fps < 30 and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 80)
 	end
 end)
 
 -- ────────────────────────────────────────────────
--- KILL AURA V2 (Çoklu hedef, 20 stud menzil)
+-- 20. KILL AURA V2
 _G.isKillAuraV2 = false
 
 createToggleButton("Kill Aura V2", function(on)
@@ -895,16 +757,12 @@ createToggleButton("Kill Aura V2", function(on)
 				local root = char and char:FindFirstChild("HumanoidRootPart")
 				local hum  = char and char:FindFirstChild("Humanoid")
 				if root and hum then
-
-					-- Tüm yakın oyuncuları topla
 					for _, p in pairs(Players:GetPlayers()) do
 						if p ~= player and p.Character then
 							local r2 = p.Character:FindFirstChild("HumanoidRootPart")
 							local h2 = p.Character:FindFirstChild("Humanoid")
 							if r2 and h2 and h2.Health > 0 then
-								local dist = (root.Position - r2.Position).Magnitude
-								if dist <= 20 then
-									-- 3 stud üstüne çık, vur
+								if (root.Position - r2.Position).Magnitude <= 20 then
 									hum.PlatformStand = true
 									root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 									char:PivotTo(CFrame.new(r2.Position + Vector3.new(0, 4, 0)))
@@ -916,29 +774,23 @@ createToggleButton("Kill Aura V2", function(on)
 							end
 						end
 					end
-
-					-- NPC'leri de hedef al
 					for _, obj in pairs(workspace:GetDescendants()) do
 						if obj:IsA("Humanoid") and obj.Parent ~= char and obj.Health > 0 then
 							local r = obj.Parent:FindFirstChild("HumanoidRootPart")
-							if r then
-								local dist = (root.Position - r.Position).Magnitude
-								if dist <= 20 then
-									hum.PlatformStand = true
-									root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-									char:PivotTo(CFrame.new(r.Position + Vector3.new(0, 4, 0)))
-									task.wait(0.05)
-									obj:TakeDamage(15)
-									task.wait(0.05)
-									hum.PlatformStand = false
-								end
+							if r and (root.Position - r.Position).Magnitude <= 20 then
+								hum.PlatformStand = true
+								root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+								char:PivotTo(CFrame.new(r.Position + Vector3.new(0, 4, 0)))
+								task.wait(0.05)
+								obj:TakeDamage(15)
+								task.wait(0.05)
+								hum.PlatformStand = false
 							end
 						end
 					end
 				end
 				task.wait(0.3)
 			end
-			-- Kapatınca PlatformStand sıfırla
 			local h = player.Character and player.Character:FindFirstChild("Humanoid")
 			if h then h.PlatformStand = false end
 		end)
@@ -949,92 +801,86 @@ createToggleButton("Kill Aura V2", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- 17. BYPASS (Anti-Kick & Remote Protection)
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local args = {...}
-    local method = getnamecallmethod()
-    
-    -- Anti-Kick: Sunucunun gönderdiği kick isteklerini engelle
-    if method == "Kick" or method == "kick" then
-        return nil
-    end
+-- 21. NO WALL CHECK
+_G.isNoWall = false
 
-    -- RemoteEvent Manipülasyonu: Hileli istekleri meşrulaştır
-    if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
-        if args[1] == "TeleportDetect" or args[1] == "SpeedHack" then
-            return nil -- Sunucunun algılama sinyallerini boşa düşür
-        end
-    end
-
-    return oldNamecall(self, ...)
-end)
-
--- Anti-Log: Oyunun 'LogService'ini sustur
-local LogService = game:GetService("LogService")
-LogService.MessageOut:Connect(function(msg, type)
-    if string.find(msg, "Detected") or string.find(msg, "Exploit") then
-        -- Hile algılama mesajlarını konsoldan temizle
-    end
+createToggleButton("No Wall Check", function(on)
+	_G.isNoWall = on
+	if on then
+		task.spawn(function()
+			while _G.isNoWall do
+				for _, v in pairs(workspace:GetDescendants()) do
+					if v:IsA("BasePart") and not v:IsDescendantOf(player.Character or Instance.new("Folder")) then
+						pcall(function() v.LocalTransparencyModifier = 0.5 end)
+					end
+				end
+				task.wait(0.1)
+			end
+			for _, v in pairs(workspace:GetDescendants()) do
+				if v:IsA("BasePart") then
+					pcall(function() v.LocalTransparencyModifier = 0 end)
+				end
+			end
+		end)
+	end
 end)
 
 -- ────────────────────────────────────────────────
--- 18. PROPERTY EDITOR (Menüye Entegre Versiyon)
+-- 22. PROPERTY EDITOR
 local selectedPart = nil
 local isSelecting = false
 
--- Panelimiz (Başlangıçta gizli)
 local propFrame = Instance.new("Frame", screenGui)
-propFrame.Name = "PropertyPanel"
-propFrame.Size = UDim2.new(0, 180, 0, 200)
+propFrame.Size = UDim2.new(0, 180, 0, 175)
 propFrame.Position = UDim2.new(0.5, 250, 0.5, -200)
 propFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 propFrame.Visible = false
 propFrame.Active = true
 propFrame.Draggable = true
 Instance.new("UICorner", propFrame).CornerRadius = UDim.new(0, 10)
-Instance.new("UIStroke", propFrame).Color = Color3.fromRGB(0, 255, 80)
+local propStroke = Instance.new("UIStroke", propFrame)
+propStroke.Color = Color3.fromRGB(0, 255, 80)
+propStroke.Thickness = 1.5
+
+local propLayout = Instance.new("UIListLayout", propFrame)
+propLayout.Padding = UDim.new(0, 4)
+propLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local targetLabel = Instance.new("TextLabel", propFrame)
 targetLabel.Size = UDim2.new(1, 0, 0, 30)
 targetLabel.Text = "Obje Seçilmedi"
-targetLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+targetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 targetLabel.BackgroundTransparency = 1
+targetLabel.Font = Enum.Font.Gotham
+targetLabel.TextSize = 12
 
 local function createPropBtn(text, action)
-    local b = Instance.new("TextButton", propFrame)
-    b.Size = UDim2.new(0.9, 0, 0, 30)
-    b.Text = text
-    b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    b.TextColor3 = Color3.fromRGB(0, 255, 80)
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-    b.MouseButton1Click:Connect(function()
-        if selectedPart and selectedPart.Parent then action(selectedPart) end
-    end)
+	local b = Instance.new("TextButton", propFrame)
+	b.Size = UDim2.new(0.9, 0, 0, 32)
+	b.Text = text
+	b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	b.TextColor3 = Color3.fromRGB(0, 255, 80)
+	b.Font = Enum.Font.Gotham
+	b.TextSize = 12
+	b.AutoButtonColor = false
+	local bc = Instance.new("UICorner", b) bc.CornerRadius = UDim.new(0, 6)
+	local bs = Instance.new("UIStroke", b) bs.Color = Color3.fromRGB(0,255,80) bs.Thickness = 1
+	b.MouseButton1Click:Connect(function()
+		if selectedPart and selectedPart.Parent then action(selectedPart) end
+	end)
 end
 
-createPropBtn("X-Ray (Şeffaf)", function(p) p.Transparency = 0.7 end)
-createPropBtn("Collide Off", function(p) p.CanCollide = false end)
-createPropBtn("Sil (Delete)", function(p) p:Destroy() end)
+createPropBtn("👁 X-Ray (Şeffaf)", function(p) p.Transparency = 0.7 end)
+createPropBtn("🚫 Collide Off",    function(p) p.CanCollide = false end)
+createPropBtn("🗑 Sil (Delete)",   function(p) p:Destroy(); selectedPart = nil; targetLabel.Text = "Obje Seçilmedi" end)
 
--- BURASI ÖNEMLİ: Menüye Buton Olarak Ekleme
 createToggleButton("Property Editor", function(on)
-    isSelecting = on
-    propFrame.Visible = on
-    -- Seçim modu kapandıysa paneli de kapat
-    if not on then propFrame.Visible = false end
-end)
-
-
-mouse.Button1Down:Connect(function()
-    if isSelecting and mouse.Target then
-        selectedPart = mouse.Target
-        targetLabel.Text = "Seçili: " .. (selectedPart.Name:sub(1,10))
-    end
+	isSelecting = on
+	propFrame.Visible = on
 end)
 
 -- ────────────────────────────────────────────────
--- CUSTOM WALK ANIMATION
+-- 23. CUSTOM WALK ANIMATION
 local animLabel = Instance.new("TextLabel", scroll)
 animLabel.Size = UDim2.new(0.88, 0, 0, 20)
 animLabel.Text = "── Animasyon ID ──"
@@ -1071,11 +917,7 @@ createToggleButton("Custom Walk Anim", function(on)
 
 	if on then
 		local id = animBox.Text
-		if id == "" then
-			-- ID boşsa toggle'ı geri kapat
-			_G.isCustomAnim = false
-			return
-		end
+		if id == "" then _G.isCustomAnim = false return end
 
 		if animFolder then
 			for _, animType in pairs({"walk", "run"}) do
@@ -1100,21 +942,15 @@ createToggleButton("Custom Walk Anim", function(on)
 			anim.AnimationId = "rbxassetid://" .. id
 			currentAnim = hum:LoadAnimation(anim)
 			currentAnim:Play()
-
 			task.spawn(function()
 				while _G.isCustomAnim do
-					if currentAnim and not currentAnim.IsPlaying then
-						currentAnim:Play()
-					end
+					if currentAnim and not currentAnim.IsPlaying then currentAnim:Play() end
 					task.wait(0.1)
 				end
 			end)
 		end
 	else
-		if currentAnim then
-			currentAnim:Stop()
-			currentAnim = nil
-		end
+		if currentAnim then currentAnim:Stop(); currentAnim = nil end
 		if animFolder then
 			animFolder.Disabled = true
 			task.wait(0.1)
