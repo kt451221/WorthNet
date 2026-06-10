@@ -5,6 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
 
 -- VirtualInputManager güvenli yükleme (kick önleme)
 local VirtualInputManager
@@ -1691,60 +1692,59 @@ createToggleButton("Zombi ESP", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- SİLYENT AİM + FOV ÇEMBERİ (BUTONLU)
+-- SILENT AIM + FOV ÇEMBERİ
+local Camera = workspace.CurrentCamera
+_G.isSilentAim = false
 
-createToggleButton("Silent Aim", function(on)
-    _G.isSilentAim = on
-    -- Çemberin görünürlüğünü buton durumuna göre ayarla
-    FOVCircle.Visible = on
-end)
-
--- Çemberi Oluştur (Buton dışında tanımladık ki hata vermesin)
+-- Çemberi ÖNCE tanımla
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
-FOVCircle.Radius = 150 -- Çember boyutu
+FOVCircle.Radius = 150
 FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 FOVCircle.Thickness = 1
 FOVCircle.Filled = false
 FOVCircle.Transparency = 0.5
 
--- RenderStepped ile çemberi güncelle
+-- Sonra butonu tanımla
+createToggleButton("Silent Aim", function(on)
+    _G.isSilentAim = on
+    FOVCircle.Visible = on
+end)
+
 RunService.RenderStepped:Connect(function()
     if _G.isSilentAim then
-        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     end
 end)
 
--- Hook İşlemi
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local args = {...}
-    local method = getnamecallmethod()
-    
-    if _G.isSilentAim and method == "FireServer" and self.Name == "WeaponEvent" then -- Burayı oyununa göre düzelt!
-        local closest = nil
-        local shortestDistance = 150 -- FOV boyutuyla aynı olmalı
-        
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-                if onScreen then
-                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                    if dist < shortestDistance then
-                        closest = p.Character.HumanoidRootPart
-                        shortestDistance = dist
+-- hookmetamethod executor desteği kontrolü
+if hookmetamethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local args = {...}
+        local method = getnamecallmethod()
+        if _G.isSilentAim and method == "FireServer" and self.Name == "WeaponEvent" then
+            local closest, shortestDist = nil, 150
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if dist < shortestDist then
+                            closest = p.Character.HumanoidRootPart
+                            shortestDist = dist
+                        end
                     end
                 end
             end
+            if closest then
+                args[1] = closest.Position
+                return oldNamecall(self, table.unpack(args))
+            end
         end
-        
-        if closest then
-            args[1] = closest.Position
-            return oldNamecall(self, unpack(args))
-        end
-    end
-    return oldNamecall(self, ...)
-end)
+        return oldNamecall(self, ...)
+    end)
+end
 
 -- ────────────────────────────────────────────────
 -- X TUŞU: Gizle/Göster
