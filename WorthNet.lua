@@ -182,6 +182,33 @@ createToggleButton("Noclip", function(on)
 end)
 
 -- ────────────────────────────────────────────────
+-- REMOTE SPY
+-- ────────────────────────────────────────────────
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+	local args = {...}
+	local method = getnamecallmethod()
+	
+	if (method == "FireServer" or method == "InvokeServer") and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
+		print("--- REMOTE LOG ---")
+		print("Name: " .. self.Name)
+		print("Method: " .. method)
+		print("Args: ", unpack(args))
+	end
+	
+	return oldNamecall(self, ...)
+end)
+
+setreadonly(mt, true)
+
+createButton("🔍 Remote Spy: Aktif", function()
+	warn("Remote Spy çalışıyor, F9 tuşuna basarak konsolu kontrol et!")
+end)
+
+-- ────────────────────────────────────────────────
 -- 3. FLY
 createToggleButton("Fly", function(on)
 	_G.isFly = on
