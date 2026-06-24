@@ -5,6 +5,10 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Debris = game:GetService("Debris")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera = workspace.CurrentCamera
 
 -- VirtualInputManager güvenli yükleme (kick önleme)
@@ -182,33 +186,6 @@ createToggleButton("Noclip", function(on)
 end)
 
 -- ────────────────────────────────────────────────
--- REMOTE SPY
--- ────────────────────────────────────────────────
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-	local args = {...}
-	local method = getnamecallmethod()
-	
-	if (method == "FireServer" or method == "InvokeServer") and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
-		print("--- REMOTE LOG ---")
-		print("Name: " .. self.Name)
-		print("Method: " .. method)
-		print("Args: ", unpack(args))
-	end
-	
-	return oldNamecall(self, ...)
-end)
-
-setreadonly(mt, true)
-
-createButton("🔍 Remote Spy: Aktif", function()
-	warn("Remote Spy çalışıyor, F9 tuşuna basarak konsolu kontrol et!")
-end)
-
--- ────────────────────────────────────────────────
 -- 3. FLY
 createToggleButton("Fly", function(on)
 	_G.isFly = on
@@ -322,20 +299,399 @@ end)
 -- SILENT AIM + FOV ÇEMBERİ
 local Camera = workspace.CurrentCamera
 _G.isSilentAim = false
+_G.isAutoClicker = false
+local autoClickerSpeedBox = Instance.new("TextBox", frame)
+autoClickerSpeedBox.Size = UDim2.new(0.88, 0, 0, 36)
+autoClickerSpeedBox.Position = UDim2.new(0.06, 0, 0, 97)
+autoClickerSpeedBox.PlaceholderText = "Click interval (ms)"
+autoClickerSpeedBox.Text = "100"
+autoClickerSpeedBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+autoClickerSpeedBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+autoClickerSpeedBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
+autoClickerSpeedBox.Font = Enum.Font.Gotham
+autoClickerSpeedBox.TextSize = 14
+autoClickerSpeedBox.ClearTextOnFocus = false
+local autoClickerSpeedCorner = Instance.new("UICorner", autoClickerSpeedBox)
+autoClickerSpeedCorner.CornerRadius = UDim.new(0, 8)
+local autoClickerSpeedStroke = Instance.new("UIStroke", autoClickerSpeedBox)
+autoClickerSpeedStroke.Color = Color3.fromRGB(0, 255, 80)
+autoClickerSpeedStroke.Thickness = 1
 
--- Çemberi ÖNCE tanımla
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = false
-FOVCircle.Radius = 150
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-FOVCircle.Thickness = 1
-FOVCircle.Filled = false
-FOVCircle.Transparency = 0.5
+local chatMessageBox = Instance.new("TextBox", frame)
+chatMessageBox.Size = UDim2.new(0.88, 0, 0, 36)
+chatMessageBox.Position = UDim2.new(0.06, 0, 0, 140)
+chatMessageBox.PlaceholderText = "Chat mesajını gir..."
+chatMessageBox.Text = "WORTHNET aktiftir!"
+chatMessageBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+chatMessageBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+chatMessageBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
+chatMessageBox.Font = Enum.Font.Gotham
+chatMessageBox.TextSize = 14
+chatMessageBox.ClearTextOnFocus = false
+local chatMessageCorner = Instance.new("UICorner", chatMessageBox)
+chatMessageCorner.CornerRadius = UDim.new(0, 8)
+local chatMessageStroke = Instance.new("UIStroke", chatMessageBox)
+chatMessageStroke.Color = Color3.fromRGB(0, 255, 80)
+chatMessageStroke.Thickness = 1
+
+local fakeNameBox = Instance.new("TextBox", frame)
+fakeNameBox.Size = UDim2.new(0.88, 0, 0, 36)
+fakeNameBox.Position = UDim2.new(0.06, 0, 0, 186)
+fakeNameBox.PlaceholderText = "Fake isim gir..."
+fakeNameBox.Text = "WORTHNET"
+fakeNameBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+fakeNameBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+fakeNameBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
+fakeNameBox.Font = Enum.Font.Gotham
+fakeNameBox.TextSize = 14
+fakeNameBox.ClearTextOnFocus = false
+local fakeNameCorner = Instance.new("UICorner", fakeNameBox)
+fakeNameCorner.CornerRadius = UDim.new(0, 8)
+local fakeNameStroke = Instance.new("UIStroke", fakeNameBox)
+fakeNameStroke.Color = Color3.fromRGB(0, 255, 80)
+fakeNameStroke.Thickness = 1
+
+local remoteSpyFrame = Instance.new("Frame", screenGui)
+remoteSpyFrame.Size = UDim2.new(0, 280, 0, 220)
+remoteSpyFrame.Position = UDim2.new(1, -290, 0, 10)
+remoteSpyFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+remoteSpyFrame.BorderSizePixel = 0
+remoteSpyFrame.Visible = false
+remoteSpyFrame.ZIndex = 30
+local remoteSpyCorner = Instance.new("UICorner", remoteSpyFrame)
+remoteSpyCorner.CornerRadius = UDim.new(0, 12)
+local remoteSpyTitle = Instance.new("TextLabel", remoteSpyFrame)
+remoteSpyTitle.Size = UDim2.new(1, 0, 0, 32)
+remoteSpyTitle.BackgroundTransparency = 1
+remoteSpyTitle.Text = "🔎 Remote Spy"
+remoteSpyTitle.TextColor3 = Color3.fromRGB(0, 255, 80)
+remoteSpyTitle.Font = Enum.Font.GothamBold
+remoteSpyTitle.TextSize = 14
+remoteSpyTitle.ZIndex = 31
+local remoteSpyLogScroll = Instance.new("ScrollingFrame", remoteSpyFrame)
+remoteSpyLogScroll.Size = UDim2.new(1, -10, 1, -42)
+remoteSpyLogScroll.Position = UDim2.new(0, 5, 0, 37)
+remoteSpyLogScroll.BackgroundTransparency = 1
+remoteSpyLogScroll.BorderSizePixel = 0
+remoteSpyLogScroll.ScrollBarThickness = 4
+remoteSpyLogScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 80)
+remoteSpyLogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+remoteSpyLogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+remoteSpyLogScroll.ZIndex = 31
+local remoteSpyLogLayout = Instance.new("UIListLayout", remoteSpyLogScroll)
+remoteSpyLogLayout.Padding = UDim.new(0, 4)
+remoteSpyLogLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+local remoteSpyLogs = {}
+local function addRemoteSpyLog(text)
+    table.insert(remoteSpyLogs, 1, text)
+    if #remoteSpyLogs > 20 then table.remove(remoteSpyLogs, #remoteSpyLogs) end
+    for _, child in pairs(remoteSpyLogScroll:GetChildren()) do
+        if child:IsA("TextLabel") then child:Destroy() end
+    end
+    for i = 1, #remoteSpyLogs do
+        local label = Instance.new("TextLabel", remoteSpyLogScroll)
+        label.Size = UDim2.new(1, 0, 0, 22)
+        label.BackgroundTransparency = 1
+        label.Text = remoteSpyLogs[i]
+        label.TextColor3 = Color3.fromRGB(200, 200, 200)
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Font = Enum.Font.Code
+        label.TextSize = 12
+        label.ZIndex = 31
+    end
+end
+
+local function formatArg(arg)
+    if typeof(arg) == "Instance" then return arg:GetFullName() end
+    if typeof(arg) == "string" then return arg end
+    if typeof(arg) == "Vector3" or typeof(arg) == "Vector2" or typeof(arg) == "CFrame" then return tostring(arg) end
+    if typeof(arg) == "table" then return "<table>" end
+    return tostring(arg)
+end
+
+local function formatArgs(args)
+    local out = {}
+    for _, a in ipairs(args) do table.insert(out, formatArg(a)) end
+    return table.concat(out, ", ")
+end
+
+local function sendChatMessage(msg)
+    msg = tostring(msg or "")
+    if msg == "" then return end
+    if chatEvents and chatEvents:FindFirstChild("SayMessageRequest") then
+        pcall(function() chatEvents.SayMessageRequest:FireServer(msg, "All") end)
+    else
+        pcall(function() player:Chat(msg) end)
+    end
+end
+
+local function setSystemMessage(text, color)
+    local success, StarterGui = pcall(function() return game:GetService("StarterGui") end)
+    if success and StarterGui then
+        pcall(function()
+            StarterGui:SetCore("ChatMakeSystemMessage", {Text = text, Color = color or Color3.fromRGB(0, 255, 80), Font = Enum.Font.GothamBold, FontSize = Enum.FontSize.Size24})
+        end)
+    end
+end
+
+local function boldify(text)
+    local map = {}
+    for i = 1, 26 do
+        map[string.char(64 + i)] = string.char(0x1D400 + i - 1)
+        map[string.char(96 + i)] = string.char(0x1D41A + i - 1)
+    end
+    map["0"] = "𝟎" map["1"] = "𝟏" map["2"] = "𝟐" map["3"] = "𝟑" map["4"] = "𝟒" map["5"] = "𝟓" map["6"] = "𝟔" map["7"] = "𝟕" map["8"] = "𝟖" map["9"] = "𝟗"
+    local result = ""
+    for c in text:gmatch(".") do
+        result = result .. (map[c] or c)
+    end
+    return result
+end
+
+local function updateFakeName()
+    if fakeNameGui and fakeNameLabel then
+        fakeNameLabel.Text = fakeNameBox.Text ~= "" and fakeNameBox.Text or "WORTHNET"
+    end
+end
+
+local fakeNameGui = nil
+local fakeNameLabel = nil
+local function createFakeNameGui()
+    local char = player.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+    if fakeNameGui then fakeNameGui:Destroy() end
+    fakeNameGui = Instance.new("BillboardGui", head)
+    fakeNameGui.Size = UDim2.new(0, 200, 0, 50)
+    fakeNameGui.StudsOffset = Vector3.new(0, 2.5, 0)
+    fakeNameGui.AlwaysOnTop = true
+    fakeNameLabel = Instance.new("TextLabel", fakeNameGui)
+    fakeNameLabel.Size = UDim2.new(1, 0, 1, 0)
+    fakeNameLabel.BackgroundTransparency = 1
+    fakeNameLabel.TextColor3 = Color3.fromRGB(0, 255, 80)
+    fakeNameLabel.TextStrokeTransparency = 0.7
+    fakeNameLabel.Font = Enum.Font.GothamBold
+    fakeNameLabel.TextSize = 18
+    fakeNameLabel.Text = fakeNameBox.Text ~= "" and fakeNameBox.Text or "WORTHNET"
+end
+
+local antiRagdollConnections = {}
+local function setupAntiRagdoll()
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    if antiRagdollConnections[char] then return end
+
+    local conn = hum.StateChanged:Connect(function(oldState, newState)
+        if not _G.isAntiRagdoll then return end
+        if newState == Enum.HumanoidStateType.Physics or newState == Enum.HumanoidStateType.Ragdoll or newState == Enum.HumanoidStateType.FallingDown or newState == Enum.HumanoidStateType.GettingUp then
+            pcall(function()
+                hum:ChangeState(Enum.HumanoidStateType.Running)
+                hum.PlatformStand = false
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                    root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end)
+        end
+    end)
+
+    antiRagdollConnections[char] = conn
+    char.AncestryChanged:Connect(function(_, parent)
+        if not parent and antiRagdollConnections[char] then
+            antiRagdollConnections[char]:Disconnect()
+            antiRagdollConnections[char] = nil
+        end
+    end)
+end
+
+player.CharacterAdded:Connect(function()
+    if _G.isFakeName then
+        task.wait(1)
+        createFakeNameGui()
+    end
+    if _G.isAntiRagdoll then
+        task.wait(1)
+        setupAntiRagdoll()
+    end
+end)
+
+local chatSpyConnections = {}
+local function connectChatSpy(playerObj)
+    if chatSpyConnections[playerObj] then return end
+    chatSpyConnections[playerObj] = playerObj.Chatted:Connect(function(msg)
+        if _G.isChatSpy then
+            notify("[ChatSpy] " .. playerObj.Name .. ": " .. msg, Color3.fromRGB(0, 255, 255))
+        end
+    end)
+end
+
+Players.PlayerAdded:Connect(function(playerObj)
+    if _G.isChatSpy then connectChatSpy(playerObj) end
+end)
+
+Players.PlayerRemoving:Connect(function(playerObj)
+    if chatSpyConnections[playerObj] then
+        chatSpyConnections[playerObj]:Disconnect()
+        chatSpyConnections[playerObj] = nil
+    end
+end)
+
+local blockList = {}
+local function hideBlockedPlayers()
+    for _, p in pairs(Players:GetPlayers()) do
+        if blockList[p.UserId] and p.Character then
+            for _, part in pairs(p.Character:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("Decal") then
+                    pcall(function() part.Transparency = 1 end)
+                end
+            end
+        end
+    end
+end
+
+local function getNearestPlayer()
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local target, nearest = nil, math.huge
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (root.Position - p.Character.HumanoidRootPart.Position).Magnitude
+            if dist < nearest then nearest = dist; target = p end
+        end
+    end
+    return target
+end
+
+local function getPlayersInfo()
+    local info = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        local hum = p.Character and p.Character:FindFirstChild("Humanoid")
+        table.insert(info, p.Name .. " (" .. tostring(hum and math.floor(hum.Health) or "--") .. ")")
+    end
+    return table.concat(info, ", ")
+end
+
+local function getServerPing()
+    local ping = math.floor((game:GetService("Stats"):FindFirstChild("Network"):FindFirstChild("IncomingReplicationLag") and game:GetService("Stats").Network.IncomingReplicationLag.Value or 0) * 1000)
+    return ping
+end
+
+local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") or ReplicatedStorage:FindFirstChild("Chat")
+
+local FOVCircle = nil
+pcall(function()
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Visible = false
+    FOVCircle.Radius = 150
+    FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+    FOVCircle.Thickness = 1
+    FOVCircle.Filled = false
+    FOVCircle.Transparency = 0.5
+end)
+if not FOVCircle then
+    FOVCircle = {Visible = false, Position = Vector2.new(0,0)}
+end
 
 -- Sonra butonu tanımla
 createToggleButton("Silent Aim", function(on)
     _G.isSilentAim = on
     FOVCircle.Visible = on
+end)
+
+createToggleButton("Auto Clicker", function(on)
+    _G.isAutoClicker = on
+end)
+
+createToggleButton("Remote Spy", function(on)
+    _G.isRemoteSpy = on
+    remoteSpyFrame.Visible = on
+    if on then addRemoteSpyLog("Remote Spy açıldı") end
+end)
+
+createToggleButton("Chat Spy", function(on)
+    _G.isChatSpy = on
+    if on then
+        for _, p in pairs(Players:GetPlayers()) do
+            connectChatSpy(p)
+        end
+    end
+end)
+
+createToggleButton("Chat Spam", function(on)
+    _G.isChatSpam = on
+end)
+
+createToggleButton("Auto Say", function(on)
+    _G.isAutoSay = on
+end)
+
+createToggleButton("Rainbow Chat", function(on)
+    _G.isRainbowChat = on
+end)
+
+createToggleButton("Bold Chat", function(on)
+    _G.isBoldChat = on
+end)
+
+createToggleButton("Sound Spam", function(on)
+    _G.isSoundSpam = on
+end)
+
+createToggleButton("Emote Spam", function(on)
+    _G.isEmoteSpam = on
+end)
+
+createToggleButton("Effect Spam", function(on)
+    _G.isEffectSpam = on
+end)
+
+createToggleButton("Fake Name", function(on)
+    _G.isFakeName = on
+    if on then
+        createFakeNameGui()
+    else
+        if fakeNameGui then fakeNameGui:Destroy() fakeNameGui = nil end
+    end
+end)
+
+createButton("Friend Manager", function()
+    local success, friends = pcall(function()
+        return Players:GetFriendsAsync(player.UserId)
+    end)
+    if success and friends then
+        notify("Friend sayısı: " .. tostring(#friends), Color3.fromRGB(0, 255, 80))
+    else
+        notify("Friend listesi alınamadı.", Color3.fromRGB(255, 100, 100))
+    end
+end)
+
+createToggleButton("Block Manager", function(on)
+    _G.isBlockManager = on
+    if on then hideBlockedPlayers() end
+end)
+
+createButton("Server Info", function()
+    notify("Ping: " .. tostring(getServerPing()) .. " ms | Oyuncu: " .. tostring(#Players:GetPlayers()), Color3.fromRGB(0, 255, 80))
+end)
+
+createButton("Player List", function()
+    notify(getPlayersInfo(), Color3.fromRGB(0, 255, 80))
+end)
+
+createButton("Link Discord", function()
+    setSystemMessage("Discord: discord.gg/WORTHNET", Color3.fromRGB(0, 255, 80))
+end)
+
+createToggleButton("Anti Ragdoll", function(on)
+    _G.isAntiRagdoll = on
+    if on then
+        setupAntiRagdoll()
+    end
 end)
 
 RunService.RenderStepped:Connect(function()
@@ -344,33 +700,83 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- hookmetamethod executor desteği kontrolü
-if hookmetamethod then
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local args = {...}
-        local method = getnamecallmethod()
-        if _G.isSilentAim and method == "FireServer" and self.Name == "WeaponEvent" then
-            local closest, shortestDist = nil, 150
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-                    if onScreen then
-                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                        if dist < shortestDist then
-                            closest = p.Character.HumanoidRootPart
-                            shortestDist = dist
-                        end
-                    end
+task.spawn(function()
+    while true do
+        if _G.isAutoClicker then
+            local interval = tonumber(autoClickerSpeedBox.Text) or 100
+            interval = math.max(20, math.min(interval, 1000))
+            pcall(function()
+                if VirtualInputManager then
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                end
+            end)
+            task.wait(interval / 1000)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+
+local function handleRemoteSpy(self, method, args)
+    if not _G.isRemoteSpy then return end
+    if method ~= "FireServer" and method ~= "InvokeServer" and method ~= "FireClient" and method ~= "InvokeClient" then return end
+    local eventInfo = tostring(self.ClassName) .. " " .. tostring(self:GetFullName())
+    addRemoteSpyLog("[" .. method .. "] " .. eventInfo .. " => " .. formatArgs(args))
+end
+
+local function handleSilentAim(self, method, args)
+    if not _G.isSilentAim or method ~= "FireServer" or self.Name ~= "WeaponEvent" then return nil end
+    local closest, shortestDist = nil, 150
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                if dist < shortestDist then
+                    closest = p.Character.HumanoidRootPart
+                    shortestDist = dist
                 end
             end
-            if closest then
-                args[1] = closest.Position
-                return oldNamecall(self, table.unpack(args))
-            end
         end
-        return oldNamecall(self, ...)
-    end)
+    end
+    if closest then
+        args[1] = closest.Position
+        return true
+    end
+    return false
+end
+
+local function namecallHook(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    handleRemoteSpy(self, method, args)
+    local modified = handleSilentAim(self, method, args)
+    if modified then
+        return oldNamecall(self, table.unpack(args))
+    end
+    return oldNamecall(self, ...)
+end
+
+if hookmetamethod then
+    oldNamecall = hookmetamethod(game, "__namecall", namecallHook)
+elseif getrawmetatable and newcclosure then
+    local mt = getrawmetatable(game)
+    if mt then
+        local old = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            local args = {...}
+            local method = getnamecallmethod()
+            handleRemoteSpy(self, method, args)
+            local modified = handleSilentAim(self, method, args)
+            if modified then
+                return old(self, table.unpack(args))
+            end
+            return old(self, ...)
+        end)
+        setreadonly(mt, true)
+    end
 end
 
 -- ────────────────────────────────────────────────
@@ -639,6 +1045,56 @@ local function refreshTpList()
 		end
 	end
 end
+
+local function safeServerHop()
+	if not HttpService or not TeleportService then
+		notify("Safe Server Hop yapılamıyor.", Color3.fromRGB(255, 100, 100))
+		return
+	end
+
+	task.spawn(function()
+		local placeId = game.PlaceId
+		local jobId = game.JobId
+		notify("Safe Server Hop aranıyor...", Color3.fromRGB(0, 255, 80))
+		local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", placeId)
+		local success, result = pcall(function()
+			return HttpService:GetAsync(url, true)
+		end)
+		if not success then
+			notify("Server listesi alınamadı.", Color3.fromRGB(255, 100, 100))
+			return
+		end
+
+		local data = nil
+		pcall(function()
+			data = HttpService:JSONDecode(result)
+		end)
+		if type(data) ~= "table" or type(data.data) ~= "table" then
+			notify("Geçerli server verisi yok.", Color3.fromRGB(255, 100, 100))
+			return
+		end
+
+		local targetServer = nil
+		for _, server in ipairs(data.data) do
+			if type(server) == "table" and server.id and server.playing and server.maxPlayers and server.id ~= jobId and server.playing < server.maxPlayers then
+				targetServer = server.id
+				break
+			end
+		end
+
+		if not targetServer then
+			notify("Uygun server bulunamadı.", Color3.fromRGB(255, 100, 100))
+			return
+		end
+
+		pcall(function()
+			TeleportService:TeleportToPlaceInstance(placeId, targetServer, player)
+			notify("Yeni servera geçiliyor...", Color3.fromRGB(0, 255, 80))
+		end)
+	end)
+end
+
+createButton("Safe Server Hop", safeServerHop)
 
 createToggleButton("Teleport Listesi", function(on)
 	tpListVisible = on
@@ -1358,6 +1814,99 @@ end)
 _G.isItemESP = false
 local itemHighlights = {}
 
+local healthOverlayEnabled = false
+local healthOverlays = {}
+local healthConnections = {}
+local healthCache = {}
+
+local function updateHealthOverlay(model)
+	local root = model:FindFirstChild("HumanoidRootPart")
+	local hum = model:FindFirstChild("Humanoid")
+	if not root or not hum then return end
+
+	local overlay = healthOverlays[model]
+	if not overlay then
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "HealthOverlay"
+		gui.Adornee = root
+		gui.AlwaysOnTop = true
+		gui.Size = UDim2.new(0, 120, 0, 40)
+		gui.StudsOffset = Vector3.new(0, 3, 0)
+		gui.Parent = root
+
+		local label = Instance.new("TextLabel", gui)
+		label.Size = UDim2.new(1, 1, 1, 0)
+		label.BackgroundTransparency = 1
+		label.TextColor3 = Color3.fromRGB(0, 255, 80)
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = 12
+		label.TextWrapped = true
+		label.TextYAlignment = Enum.TextYAlignment.Top
+
+		healthOverlays[model] = {gui = gui, label = label}
+		if not healthConnections[hum] then
+			healthConnections[hum] = hum.HealthChanged:Connect(function(newHealth)
+				local prev = healthCache[hum] or hum.MaxHealth
+				healthCache[hum] = newHealth
+				if newHealth < prev then
+					local dmg = math.floor(prev - newHealth)
+					local dmgGui = Instance.new("BillboardGui")
+					dmgGui.Adornee = root
+					dmgGui.AlwaysOnTop = true
+					dmgGui.Size = UDim2.new(0, 80, 0, 30)
+					dmgGui.StudsOffset = Vector3.new(0, 5, 0)
+					dmgGui.Parent = root
+					local dmgLabel = Instance.new("TextLabel", dmgGui)
+					dmgLabel.Size = UDim2.new(1, 1, 1, 0)
+					dmgLabel.BackgroundTransparency = 1
+					dmgLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+					dmgLabel.Font = Enum.Font.GothamBold
+					dmgLabel.TextSize = 16
+					dmgLabel.Text = "-" .. dmg
+					game:GetService("Debris"):AddItem(dmgGui, 0.7)
+				end
+			end)
+		end
+	end
+
+	local info = healthOverlays[model]
+	if info and info.label then
+		info.label.Text = string.format("HP: %d/%d", math.floor(hum.Health), math.floor(hum.MaxHealth or 0))
+	end
+end
+
+local function clearHealthOverlays()
+	for model, info in pairs(healthOverlays) do
+		if info.gui and info.gui.Parent then
+			info.gui:Destroy()
+		end
+		healthOverlays[model] = nil
+	end
+	for hum, conn in pairs(healthConnections) do
+		if conn then conn:Disconnect() end
+		healthConnections[hum] = nil
+		healthCache[hum] = nil
+	end
+end
+
+createToggleButton("Health Overlay", function(on)
+	healthOverlayEnabled = on
+	if not on then
+		clearHealthOverlays()
+		return
+	end
+	task.spawn(function()
+		while healthOverlayEnabled do
+			for _, obj in pairs(workspace:GetDescendants()) do
+				if obj:IsA("Model") and obj ~= player.Character and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+					updateHealthOverlay(obj)
+				end
+			end
+			task.wait(1)
+		end
+	end)
+end)
+
 createToggleButton("Item ESP", function(on)
 	_G.isItemESP = on
 	if on then
@@ -1754,6 +2303,179 @@ end)
 createToggleButton("Müzik Çalar", function(on)
 	musicFrame.Visible = on
 	if not on then musicSound:Stop() end
+end)
+
+-- ────────────────────────────────────────────────
+-- 45. FPS BOOSTER
+_G.isFPSBooster = false
+_G.isAdaptiveFPSBooster = false
+local fpsSamples = {}
+local adaptiveThreshold = 45
+local origFPSLighting = {}
+local fpsBoostObjects = {}
+
+local function updateFPSSamples(dt)
+	if dt <= 0 then return end
+	table.insert(fpsSamples, 1 / dt)
+	if #fpsSamples > 30 then
+		table.remove(fpsSamples, 1)
+	end
+end
+
+local function getAverageFPS()
+	local sum = 0
+	for _, v in ipairs(fpsSamples) do
+		sum = sum + v
+	end
+	return #fpsSamples > 0 and sum / #fpsSamples or 0
+end
+
+local function restoreFPSBoostObjects()
+	for obj, state in pairs(fpsBoostObjects) do
+		if obj and obj.Parent then
+			for prop, value in pairs(state) do
+				pcall(function() obj[prop] = value end)
+			end
+		end
+	end
+	fpsBoostObjects = {}
+end
+
+local function saveAndDisable(obj, prop)
+	if not fpsBoostObjects[obj] then
+		fpsBoostObjects[obj] = {}
+	end
+	if fpsBoostObjects[obj][prop] == nil then
+		fpsBoostObjects[obj][prop] = obj[prop]
+	end
+	pcall(function() obj[prop] = false end)
+end
+
+local function applyFPSBooster()
+	if not origFPSLighting.GlobalShadows then
+		origFPSLighting.GlobalShadows = Lighting.GlobalShadows
+		origFPSLighting.FogStart = Lighting.FogStart
+		origFPSLighting.FogEnd = Lighting.FogEnd
+		origFPSLighting.Brightness = Lighting.Brightness
+		origFPSLighting.Ambient = Lighting.Ambient
+		origFPSLighting.OutdoorAmbient = Lighting.OutdoorAmbient
+	end
+
+	pcall(function()
+		Lighting.GlobalShadows = false
+	end)
+	pcall(function()
+		Lighting.FogStart = 0
+		Lighting.FogEnd = 100000
+	end)
+	pcall(function()
+		Lighting.Brightness = math.clamp(Lighting.Brightness, 0.8, 1.4)
+	end)
+	pcall(function()
+		Lighting.Ambient = Color3.new(0.75, 0.75, 0.75)
+		Lighting.OutdoorAmbient = Color3.new(0.75, 0.75, 0.75)
+	end)
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Sparkles") or obj:IsA("Smoke") or obj:IsA("Fire") then
+			saveAndDisable(obj, "Enabled")
+		elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+			saveAndDisable(obj, "Enabled")
+		end
+	end
+
+	for _, obj in pairs(Lighting:GetDescendants()) do
+		if obj:IsA("BlurEffect") or obj:IsA("ColorCorrectionEffect") or obj:IsA("SunRaysEffect") or obj:IsA("BloomEffect") or obj:IsA("DepthOfFieldEffect") then
+			saveAndDisable(obj, "Enabled")
+		elseif obj:IsA("Atmosphere") then
+			if not fpsBoostObjects[obj] then fpsBoostObjects[obj] = {} end
+			if fpsBoostObjects[obj].Density == nil then fpsBoostObjects[obj].Density = obj.Density end
+			if fpsBoostObjects[obj].Offset == nil then fpsBoostObjects[obj].Offset = obj.Offset end
+			if fpsBoostObjects[obj].Glare == nil then fpsBoostObjects[obj].Glare = obj.Glare end
+			obj.Density = 0
+			obj.Offset = 0
+			obj.Glare = 0
+		elseif obj:IsA("Sky") then
+			if not fpsBoostObjects[obj] then fpsBoostObjects[obj] = {} end
+			if fpsBoostObjects[obj].MoonAngularSize == nil then fpsBoostObjects[obj].MoonAngularSize = obj.MoonAngularSize end
+			if fpsBoostObjects[obj].SunAngularSize == nil then fpsBoostObjects[obj].SunAngularSize = obj.SunAngularSize end
+			obj.MoonAngularSize = 0
+			obj.SunAngularSize = 0
+		end
+	end
+end
+
+local adaptiveFPSThresholdBox = Instance.new("TextBox", scroll)
+adaptiveFPSThresholdBox.Size = UDim2.new(0.88, 0, 0, 36)
+adaptiveFPSThresholdBox.PlaceholderText = "Adaptive FPS Threshold"
+adaptiveFPSThresholdBox.Text = "45"
+adaptiveFPSThresholdBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+adaptiveFPSThresholdBox.TextColor3 = Color3.fromRGB(0, 255, 80)
+adaptiveFPSThresholdBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
+adaptiveFPSThresholdBox.Font = Enum.Font.Gotham
+adaptiveFPSThresholdBox.TextSize = 14
+adaptiveFPSThresholdBox.ClearTextOnFocus = false
+local adaptiveThresholdCorner = Instance.new("UICorner", adaptiveFPSThresholdBox)
+adaptiveThresholdCorner.CornerRadius = UDim.new(0, 8)
+local adaptiveThresholdStroke = Instance.new("UIStroke", adaptiveFPSThresholdBox)
+adaptiveThresholdStroke.Color = Color3.fromRGB(0, 255, 80)
+adaptiveThresholdStroke.Thickness = 1
+
+local function updateAdaptiveThreshold()
+	adaptiveThreshold = math.clamp(tonumber(adaptiveFPSThresholdBox.Text) or 45, 25, 120)
+end
+
+local function adaptiveFPSBoosterLoop()
+	task.spawn(function()
+		while _G.isAdaptiveFPSBooster do
+			updateAdaptiveThreshold()
+			local avg = getAverageFPS()
+			if avg > 0 and avg < adaptiveThreshold then
+				applyFPSBooster()
+			elseif avg >= adaptiveThreshold + 5 then
+				restoreFPSBoostObjects()
+			end
+			task.wait(2)
+		end
+	end)
+end
+
+createToggleButton("FPS Booster", function(on)
+	_G.isFPSBooster = on
+	if on then
+		applyFPSBooster()
+		task.spawn(function()
+			while _G.isFPSBooster do
+				applyFPSBooster()
+				task.wait(1)
+			end
+		end)
+		notify("FPS Booster açık. Performans ayarları uygulandı.", Color3.fromRGB(0, 255, 80))
+	else
+		restoreFPSBoostObjects()
+		if origFPSLighting.GlobalShadows ~= nil then
+			Lighting.GlobalShadows = origFPSLighting.GlobalShadows
+			Lighting.FogStart = origFPSLighting.FogStart
+			Lighting.FogEnd = origFPSLighting.FogEnd
+			Lighting.Brightness = origFPSLighting.Brightness
+			Lighting.Ambient = origFPSLighting.Ambient
+			Lighting.OutdoorAmbient = origFPSLighting.OutdoorAmbient
+		end
+		notify("FPS Booster kapatıldı. Grafik ayarları geri alındı.", Color3.fromRGB(255, 100, 100))
+	end
+end)
+
+createToggleButton("Adaptive FPS Booster", function(on)
+	_G.isAdaptiveFPSBooster = on
+	if on then
+		adaptiveFPSBoosterLoop()
+		notify("Adaptive FPS Booster aktif.", Color3.fromRGB(0, 255, 80))
+	else
+		if not _G.isFPSBooster then
+			restoreFPSBoostObjects()
+		end
+		notify("Adaptive FPS Booster devre dışı.", Color3.fromRGB(255, 100, 100))
+	end
 end)
 
 -- ────────────────────────────────────────────────
