@@ -185,57 +185,61 @@ createToggleButton("Noclip", function(on)
 	_G.isNoclip = on
 end)
 --ENV GORME
-local function createPlayerESP()
+-- Görseldeki kutulu ESP sistemi
+local function createBoxESP(player)
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    local root = char.HumanoidRootPart
+    local gui = Instance.new("BillboardGui", root)
+    gui.Name = "BoxESP"
+    gui.Size = UDim2.new(0, 150, 0, 100)
+    gui.StudsOffset = Vector3.new(0, 2, 0)
+    gui.AlwaysOnTop = true
+
+    -- Arka plan kutusu (o fotodaki kutu olayı)
+    local frame = Instance.new("Frame", gui)
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.4
+    frame.BorderSizePixel = 1
+    frame.BorderColor3 = Color3.fromRGB(0, 255, 0) -- Yeşil çerçeve
+
+    -- İçindeki yazı
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(0, 255, 0)
+    label.TextScaled = false
+    label.TextSize = 12
+    label.Font = Enum.Font.Code
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Top
+
+    -- Veri güncelleme
     task.spawn(function()
-        while true do
-            for _, player in pairs(game.Players:GetPlayers()) do
-                if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local root = player.Character.HumanoidRootPart
-                    
-                    -- Zaten varsa güncelle, yoksa oluştur
-                    local billboard = root:FindFirstChild("InvDisplay")
-                    if not billboard then
-                        billboard = Instance.new("BillboardGui", root)
-                        billboard.Name = "InvDisplay"
-                        billboard.Size = UDim2.new(0, 200, 0, 100)
-                        billboard.StudsOffset = Vector3.new(0, -2, 0) -- Ayak hizası
-                        billboard.AlwaysOnTop = true
-                        
-                        local label = Instance.new("TextLabel", billboard)
-                        label.Size = UDim2.new(1, 0, 1, 0)
-                        label.BackgroundTransparency = 1
-                        label.TextColor3 = Color3.fromRGB(0, 255, 0)
-                        label.TextSize = 12
-                        label.Font = Enum.Font.Code
-                    end
-                    
-                    -- Envanter verisini çek ve label'a yaz
-                    local label = billboard:FindFirstChild("TextLabel")
-                    local invText = "Backpack:\n"
-                    for _, item in pairs(player.Backpack:GetChildren()) do
-                        if item:IsA("Tool") then
-                            invText = invText .. "- " .. item.Name .. "\n"
-                        end
-                    end
-                    label.Text = invText
-                end
+        while gui.Parent do
+            local inv = ""
+            for _, item in pairs(player.Backpack:GetChildren()) do
+                if item:IsA("Tool") then inv = inv .. item.Name .. "\n" end
             end
-            task.wait(2)
+            label.Text = " " .. player.Name .. "\n" .. inv
+            task.wait(1)
         end
     end)
 end
 
--- Butona bağla
-createToggleButton("ESP Envanter", function(on)
-    _G.isESPInv = on
+-- Toggle sistemine ekle
+createToggleButton("Pro Box ESP", function(on)
+    _G.isBoxESP = on
     if on then
-        createPlayerESP()
-    else
-        -- Kapatıldığında tüm BillboardGui'leri sil
         for _, p in pairs(game.Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local b = p.Character.HumanoidRootPart:FindFirstChild("InvDisplay")
-                if b then b:Destroy() end
+            if p ~= player then createBoxESP(p) end
+        end
+    else
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p.Character and p.Character.HumanoidRootPart:FindFirstChild("BoxESP") then
+                p.Character.HumanoidRootPart.BoxESP:Destroy()
             end
         end
     end
