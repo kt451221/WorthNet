@@ -185,45 +185,55 @@ createToggleButton("Noclip", function(on)
 	_G.isNoclip = on
 end)
 
--- WorthNet Envanter Paneli Kurulumu
-local function setupInventoryGUI()
-    -- Mevcut MainFrame içine bir ScrollingFrame ekle
-    local scrollFrame = Instance.new("ScrollingFrame", frame)
-    scrollFrame.Size = UDim2.new(0.9, 0, 0.6, 0)
-    scrollFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-    scrollFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    scrollFrame.ScrollBarThickness = 5
+-- ENVANTER GÖRÜNTÜLEYİCİ
+local invFrame = Instance.new("Frame", screenGui)
+invFrame.Size = UDim2.new(0, 150, 0, 200)
+invFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
+invFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+invFrame.Visible = false -- Başta kapalı
 
-    -- Oyuncuları tara ve listeye ekle
-    local function updateList()
-        scrollFrame:ClearAllChildren() -- Önceki listeyi temizle
-        
-        local yOffset = 0
-        for _, player in pairs(game.Players:GetPlayers()) do
-            local itemText = Instance.new("TextLabel", scrollFrame)
-            itemText.Size = UDim2.new(1, 0, 0, 20)
-            itemText.Position = UDim2.new(0, 0, 0, yOffset)
-            itemText.Text = player.Name .. ": " .. (player.Character and player.Character:FindFirstChildOfClass("Tool") and player.Character:FindFirstChildOfClass("Tool").Name or "Empty")
-            itemText.TextColor3 = Color3.fromRGB(0, 255, 0) -- Hacker Yeşili
-            itemText.BackgroundTransparency = 1
-            itemText.Font = Enum.Font.Code
-            
-            yOffset = yOffset + 25
-        end
-        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+local invScroll = Instance.new("ScrollingFrame", invFrame)
+invScroll.Size = UDim2.new(1, 0, 1, 0)
+invScroll.BackgroundTransparency = 1
+invScroll.ScrollBarThickness = 2
+
+createToggleButton("Envanter İzle", function(on)
+    invFrame.Visible = on
+    if on then
+        task.spawn(function()
+            while invFrame.Visible do
+                invScroll:ClearAllChildren()
+                local y = 0
+                for _, player in pairs(game.Players:GetPlayers()) do
+                    -- Oyuncu başlığı
+                    local pName = Instance.new("TextLabel", invScroll)
+                    pName.Size = UDim2.new(1, 0, 0, 15)
+                    pName.Position = UDim2.new(0, 0, 0, y)
+                    pName.Text = player.Name .. ":"
+                    pName.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    pName.BackgroundTransparency = 1
+                    y += 15
+                    
+                    -- Backpack'teki tüm itemler
+                    for _, item in pairs(player.Backpack:GetChildren()) do
+                        if item:IsA("Tool") then
+                            local t = Instance.new("TextLabel", invScroll)
+                            t.Size = UDim2.new(1, -10, 0, 12)
+                            t.Position = UDim2.new(0, 10, 0, y)
+                            t.Text = "- " .. item.Name
+                            t.TextColor3 = Color3.fromRGB(200, 200, 200)
+                            t.BackgroundTransparency = 1
+                            t.TextSize = 10
+                            y += 12
+                        end
+                    end
+                end
+                invScroll.CanvasSize = UDim2.new(0, 0, 0, y)
+                task.wait(3)
+            end
+        end)
     end
-
-    -- Döngü ile sürekli güncelle
-    task.spawn(function()
-        while true do
-            updateList()
-            task.wait(2) -- 2 saniyede bir tazele (Sunucuyu yormamak için)
-        end
-    end)
-end
-
--- Fonksiyonu çalıştır
-setupInventoryGUI()
+end)
 
 -- ────────────────────────────────────────────────
 -- 3. FLY
