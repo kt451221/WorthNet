@@ -194,7 +194,7 @@ local function createBoxESP(player)
     local gui = Instance.new("BillboardGui", root)
     gui.Name = "BoxESP"
     gui.Size = UDim2.new(0, 150, 0, 100)
-    gui.StudsOffset = Vector3.new(0, 2, 0)
+    gui.StudsOffset = Vector3.new(0, -3, 0)
     gui.AlwaysOnTop = true
 
     -- Arka plan kutusu (o fotodaki kutu olayı)
@@ -791,83 +791,6 @@ elseif getrawmetatable and newcclosure then
     end
 end
 
--- ────────────────────────────────────────────────
--- 7. AUTO FARM
-_G.isAutoFarm = false
-
-local function isEnemy(name)
-	local blacklist = {"Quest Giver", "Shopkeeper", "Dealer", "Manager"}
-	for _, v in pairs(blacklist) do
-		if string.find(name, v) then return false end
-	end
-	return true
-end
-
-local function cleanupChar()
-	local char = player.Character
-	if not char then return end
-	local h = char:FindFirstChild("Humanoid")
-	local r = char:FindFirstChild("HumanoidRootPart")
-	if h then h.PlatformStand = false end
-	if r then r.Anchored = false end
-end
-
-createToggleButton("Auto Farm", function(on)
-	_G.isAutoFarm = on
-	if on then
-		task.spawn(function()
-			while _G.isAutoFarm do
-				local char = player.Character
-				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local hum = char and char:FindFirstChild("Humanoid")
-
-				if root and hum and hum.Health > 0 then
-					local nearest, nearDist = nil, math.huge
-					for _, obj in pairs(workspace:GetDescendants()) do
-						if obj:IsA("Humanoid") and obj ~= hum and obj.Health > 0 and obj.Parent ~= char then
-							if isEnemy(obj.Parent.Name) then
-								local r = obj.Parent:FindFirstChild("HumanoidRootPart")
-								if r then
-									local d = (root.Position - r.Position).Magnitude
-									if d < nearDist then
-										nearDist = d
-										nearest = obj
-									end
-								end
-							end
-						end
-					end
-
-					if nearest then
-						local npcRoot = nearest.Parent:FindFirstChild("HumanoidRootPart")
-						if npcRoot and nearest.Health > 0 then
-							-- Havada sabit durması için:
-							hum.PlatformStand = true
-							root.Anchored = true
-							
-							-- Karakteri biraz daha yükseğe al (Vector3.new(0, 8, 2.5) yaptık)
-							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 8.25, 2.5)) * CFrame.Angles(0, math.pi, 0))
-
-							-- Saldırı Komutları
-							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-							task.wait(0.1)
-							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-						end
-					else
-						-- Düşman yoksa karakteri serbest bırak
-						root.Anchored = false
-						hum.PlatformStand = false
-					end
-				end
-				task.wait(0.1) -- Tepki süresini biraz kısalttık
-			end
-			cleanupChar()
-		end)
-	else
-		cleanupChar()
-	end
-end)
 -- ────────────────────────────────────────────────
 -- 8. INFINITE JUMP
 _G.isInfJump = false
@@ -1588,26 +1511,29 @@ createButton("⚡ Saati Uygula", function()
 end)
 
 -- ────────────────────────────────────────────────
--- 25. SPIN
+-- 25. SPIN (Hızlandırılmış)
 _G.isSpin = false
 
 createToggleButton("Spin", function(on)
-	_G.isSpin = on
-	if on then
-		task.spawn(function()
-			local angle = 0
-			while _G.isSpin do
-				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				if root then
-					angle = (angle + 5) % 360
-					root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(angle), 0)
-				end
-				task.wait(0.03)
-			end
-		end)
-	end
+    _G.isSpin = on
+    if on then
+        task.spawn(function()
+            local angle = 0
+            -- Hızı kontrol eden iki değişken:
+            local rotationSpeed = 20 -- Her karede kaç derece dönecek (5 yerine 20 yaptık)
+            local updateRate = 0.01 -- Kaç saniyede bir güncellenecek (0.03 yerine 0.01 yaptık)
+            
+            while _G.isSpin do
+                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    angle = (angle + rotationSpeed) % 360
+                    root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(angle), 0)
+                end
+                task.wait(updateRate)
+            end
+        end)
+    end
 end)
-
 -- ────────────────────────────────────────────────
 -- 26. LOW GRAVITY
 local origGravity = workspace.Gravity
@@ -1624,42 +1550,6 @@ end)
 
 -- ────────────────────────────────────────────────
 -- 27. INVISIBLE
-_G.isInvisible = false
-local origTransparencies = {}
-
-createToggleButton("Invisible", function(on)
-	_G.isInvisible = on
-	local char = player.Character
-	if not char then return end
-
-	if on then
-		origTransparencies = {}
-		for _, v in pairs(char:GetDescendants()) do
-			if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-				origTransparencies[v] = v.LocalTransparencyModifier
-				v.LocalTransparencyModifier = 1
-			end
-		end
-		-- Accessory'leri de gizle
-		for _, v in pairs(char:GetDescendants()) do
-			if v:IsA("Decal") or v:IsA("SpecialMesh") then
-				pcall(function() v.Transparency = 1 end)
-			end
-		end
-	else
-		for part, origVal in pairs(origTransparencies) do
-			if part and part.Parent then
-				part.LocalTransparencyModifier = origVal
-			end
-		end
-		origTransparencies = {}
-		for _, v in pairs(char:GetDescendants()) do
-			if v:IsA("Decal") then
-				pcall(function() v.Transparency = 0 end)
-			end
-		end
-	end
-end)
 
 -- ────────────────────────────────────────────────
 -- 28. ANTI-VOID
@@ -1980,29 +1870,6 @@ createToggleButton("Aura Efekti", function(on)
 	end
 end)
 
--- ────────────────────────────────────────────────
--- 35. KARAKTER KÜÇÜLT
-createButton("⬇ Küçült", function()
-	local char = player.Character
-	if not char then return end
-	for _, v in pairs(char:GetDescendants()) do
-		if v:IsA("BasePart") then
-			v.Size = v.Size * 0.8
-		end
-	end
-end)
-
--- ────────────────────────────────────────────────
--- 36. KARAKTER BÜYÜT
-createButton("⬆ Büyüt", function()
-	local char = player.Character
-	if not char then return end
-	for _, v in pairs(char:GetDescendants()) do
-		if v:IsA("BasePart") then
-			v.Size = v.Size * 1.2
-		end
-	end
-end)
 
 -- ────────────────────────────────────────────────
 -- 37-40. CUSTOM ANİMASYONLAR (Hepsi Ninja)
@@ -2317,178 +2184,6 @@ createToggleButton("Müzik Çalar", function(on)
 	if not on then musicSound:Stop() end
 end)
 
--- ────────────────────────────────────────────────
--- 45. FPS BOOSTER
-_G.isFPSBooster = false
-_G.isAdaptiveFPSBooster = false
-local fpsSamples = {}
-local adaptiveThreshold = 45
-local origFPSLighting = {}
-local fpsBoostObjects = {}
-
-local function updateFPSSamples(dt)
-	if dt <= 0 then return end
-	table.insert(fpsSamples, 1 / dt)
-	if #fpsSamples > 30 then
-		table.remove(fpsSamples, 1)
-	end
-end
-
-local function getAverageFPS()
-	local sum = 0
-	for _, v in ipairs(fpsSamples) do
-		sum = sum + v
-	end
-	return #fpsSamples > 0 and sum / #fpsSamples or 0
-end
-
-local function restoreFPSBoostObjects()
-	for obj, state in pairs(fpsBoostObjects) do
-		if obj and obj.Parent then
-			for prop, value in pairs(state) do
-				pcall(function() obj[prop] = value end)
-			end
-		end
-	end
-	fpsBoostObjects = {}
-end
-
-local function saveAndDisable(obj, prop)
-	if not fpsBoostObjects[obj] then
-		fpsBoostObjects[obj] = {}
-	end
-	if fpsBoostObjects[obj][prop] == nil then
-		fpsBoostObjects[obj][prop] = obj[prop]
-	end
-	pcall(function() obj[prop] = false end)
-end
-
-local function applyFPSBooster()
-	if not origFPSLighting.GlobalShadows then
-		origFPSLighting.GlobalShadows = Lighting.GlobalShadows
-		origFPSLighting.FogStart = Lighting.FogStart
-		origFPSLighting.FogEnd = Lighting.FogEnd
-		origFPSLighting.Brightness = Lighting.Brightness
-		origFPSLighting.Ambient = Lighting.Ambient
-		origFPSLighting.OutdoorAmbient = Lighting.OutdoorAmbient
-	end
-
-	pcall(function()
-		Lighting.GlobalShadows = false
-	end)
-	pcall(function()
-		Lighting.FogStart = 0
-		Lighting.FogEnd = 100000
-	end)
-	pcall(function()
-		Lighting.Brightness = math.clamp(Lighting.Brightness, 0.8, 1.4)
-	end)
-	pcall(function()
-		Lighting.Ambient = Color3.new(0.75, 0.75, 0.75)
-		Lighting.OutdoorAmbient = Color3.new(0.75, 0.75, 0.75)
-	end)
-
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Sparkles") or obj:IsA("Smoke") or obj:IsA("Fire") then
-			saveAndDisable(obj, "Enabled")
-		elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-			saveAndDisable(obj, "Enabled")
-		end
-	end
-
-	for _, obj in pairs(Lighting:GetDescendants()) do
-		if obj:IsA("BlurEffect") or obj:IsA("ColorCorrectionEffect") or obj:IsA("SunRaysEffect") or obj:IsA("BloomEffect") or obj:IsA("DepthOfFieldEffect") then
-			saveAndDisable(obj, "Enabled")
-		elseif obj:IsA("Atmosphere") then
-			if not fpsBoostObjects[obj] then fpsBoostObjects[obj] = {} end
-			if fpsBoostObjects[obj].Density == nil then fpsBoostObjects[obj].Density = obj.Density end
-			if fpsBoostObjects[obj].Offset == nil then fpsBoostObjects[obj].Offset = obj.Offset end
-			if fpsBoostObjects[obj].Glare == nil then fpsBoostObjects[obj].Glare = obj.Glare end
-			obj.Density = 0
-			obj.Offset = 0
-			obj.Glare = 0
-		elseif obj:IsA("Sky") then
-			if not fpsBoostObjects[obj] then fpsBoostObjects[obj] = {} end
-			if fpsBoostObjects[obj].MoonAngularSize == nil then fpsBoostObjects[obj].MoonAngularSize = obj.MoonAngularSize end
-			if fpsBoostObjects[obj].SunAngularSize == nil then fpsBoostObjects[obj].SunAngularSize = obj.SunAngularSize end
-			obj.MoonAngularSize = 0
-			obj.SunAngularSize = 0
-		end
-	end
-end
-
-local adaptiveFPSThresholdBox = Instance.new("TextBox", scroll)
-adaptiveFPSThresholdBox.Size = UDim2.new(0.88, 0, 0, 36)
-adaptiveFPSThresholdBox.PlaceholderText = "Adaptive FPS Threshold"
-adaptiveFPSThresholdBox.Text = "45"
-adaptiveFPSThresholdBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-adaptiveFPSThresholdBox.TextColor3 = Color3.fromRGB(0, 255, 80)
-adaptiveFPSThresholdBox.PlaceholderColor3 = Color3.fromRGB(0, 150, 50)
-adaptiveFPSThresholdBox.Font = Enum.Font.Gotham
-adaptiveFPSThresholdBox.TextSize = 14
-adaptiveFPSThresholdBox.ClearTextOnFocus = false
-local adaptiveThresholdCorner = Instance.new("UICorner", adaptiveFPSThresholdBox)
-adaptiveThresholdCorner.CornerRadius = UDim.new(0, 8)
-local adaptiveThresholdStroke = Instance.new("UIStroke", adaptiveFPSThresholdBox)
-adaptiveThresholdStroke.Color = Color3.fromRGB(0, 255, 80)
-adaptiveThresholdStroke.Thickness = 1
-
-local function updateAdaptiveThreshold()
-	adaptiveThreshold = math.clamp(tonumber(adaptiveFPSThresholdBox.Text) or 45, 25, 120)
-end
-
-local function adaptiveFPSBoosterLoop()
-	task.spawn(function()
-		while _G.isAdaptiveFPSBooster do
-			updateAdaptiveThreshold()
-			local avg = getAverageFPS()
-			if avg > 0 and avg < adaptiveThreshold then
-				applyFPSBooster()
-			elseif avg >= adaptiveThreshold + 5 then
-				restoreFPSBoostObjects()
-			end
-			task.wait(2)
-		end
-	end)
-end
-
-createToggleButton("FPS Booster", function(on)
-	_G.isFPSBooster = on
-	if on then
-		applyFPSBooster()
-		task.spawn(function()
-			while _G.isFPSBooster do
-				applyFPSBooster()
-				task.wait(1)
-			end
-		end)
-		notify("FPS Booster açık. Performans ayarları uygulandı.", Color3.fromRGB(0, 255, 80))
-	else
-		restoreFPSBoostObjects()
-		if origFPSLighting.GlobalShadows ~= nil then
-			Lighting.GlobalShadows = origFPSLighting.GlobalShadows
-			Lighting.FogStart = origFPSLighting.FogStart
-			Lighting.FogEnd = origFPSLighting.FogEnd
-			Lighting.Brightness = origFPSLighting.Brightness
-			Lighting.Ambient = origFPSLighting.Ambient
-			Lighting.OutdoorAmbient = origFPSLighting.OutdoorAmbient
-		end
-		notify("FPS Booster kapatıldı. Grafik ayarları geri alındı.", Color3.fromRGB(255, 100, 100))
-	end
-end)
-
-createToggleButton("Adaptive FPS Booster", function(on)
-	_G.isAdaptiveFPSBooster = on
-	if on then
-		adaptiveFPSBoosterLoop()
-		notify("Adaptive FPS Booster aktif.", Color3.fromRGB(0, 255, 80))
-	else
-		if not _G.isFPSBooster then
-			restoreFPSBoostObjects()
-		end
-		notify("Adaptive FPS Booster devre dışı.", Color3.fromRGB(255, 100, 100))
-	end
-end)
 
 -- ────────────────────────────────────────────────
 -- ESP SİSTEMİ (GÜNCEL VE STABİL)
@@ -2505,29 +2200,7 @@ local function createHighlight(target)
     end
 end
 
-createToggleButton("Zombi ESP", function(on)
-    _G.isESP = on
-    if on then
-        task.spawn(function()
-            while _G.isESP do
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    -- Sadece zombi veya düşmanları bul
-                    if obj:IsA("Model") and (obj.Name == "Zombie" or obj:FindFirstChild("Humanoid")) then
-                        if obj ~= player.Character then
-                            createHighlight(obj)
-                        end
-                    end
-                end
-                task.wait(2) -- 2 saniyede bir tara (Daha hızlı tarama ban riskini artırır!)
-            end
-        end)
-    else
-        -- Kapatınca tüm highlightları sil
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Highlight") then obj:Destroy() end
-        end
-    end
-end)
+
 
 -- ────────────────────────────────────────────────
 -- X TUŞU: Gizle/Göster
