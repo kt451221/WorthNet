@@ -184,63 +184,59 @@ end)
 createToggleButton("Noclip", function(on)
 	_G.isNoclip = on
 end)
---ENV GORME
--- Görseldeki kutulu ESP sistemi
-local function createBoxESP(player)
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    local root = char.HumanoidRootPart
-    local gui = Instance.new("BillboardGui", root)
-    gui.Name = "BoxESP"
-    gui.Size = UDim2.new(0, 150, 0, 100)
-    gui.StudsOffset = Vector3.new(0, -3, 0)
-    gui.AlwaysOnTop = true
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-    -- Arka plan kutusu (o fotodaki kutu olayı)
-    local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    frame.BackgroundTransparency = 0.4
-    frame.BorderSizePixel = 1
-    frame.BorderColor3 = Color3.fromRGB(0, 255, 0) -- Yeşil çerçeve
+-- Kutu ve yazı oluşturucu
+local function createESPBox(player)
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Thickness = 1
+    box.Color = Color3.fromRGB(0, 255, 0)
+    box.Filled = false
 
-    -- İçindeki yazı
-    local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(0, 255, 0)
-    label.TextScaled = false
-    label.TextSize = 12
-    label.Font = Enum.Font.Code
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextYAlignment = Enum.TextYAlignment.Top
+    local label = Drawing.new("Text")
+    label.Visible = false
+    label.Center = true
+    label.Outline = true
+    label.Font = 2
+    label.Size = 13
+    label.Color = Color3.fromRGB(0, 255, 0)
 
-    -- Veri güncelleme
-    task.spawn(function()
-        while gui.Parent do
-            local inv = ""
-            for _, item in pairs(player.Backpack:GetChildren()) do
-                if item:IsA("Tool") then inv = inv .. item.Name .. "\n" end
+    -- Sürekli güncelleme döngüsü
+    RunService.RenderStepped:Connect(function()
+        if _G.isESPBox and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local root = player.Character.HumanoidRootPart
+            local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
+
+            if onScreen then
+                -- Kutuyu hesapla
+                box.Size = Vector2.new(1000 / pos.Z, 1000 / pos.Z) -- Uzaklığa göre boyutlanma
+                box.Position = Vector2.new(pos.X - box.Size.X / 2, pos.Y - box.Size.Y / 2)
+                box.Visible = true
+
+                -- Yazıyı kutunun altına sabitle
+                label.Position = Vector2.new(pos.X, pos.Y + box.Size.Y / 2)
+                label.Text = player.Name .. "\n" .. (player.Character:FindFirstChildOfClass("Tool") and player.Character:FindFirstChildOfClass("Tool").Name or "Empty")
+                label.Visible = true
+            else
+                box.Visible = false
+                label.Visible = false
             end
-            label.Text = " " .. player.Name .. "\n" .. inv
-            task.wait(1)
+        else
+            box:Remove()
+            label:Remove()
         end
     end)
 end
 
--- Toggle sistemine ekle
+-- Butona bağla
 createToggleButton("Pro Box ESP", function(on)
-    _G.isBoxESP = on
+    _G.isESPBox = on
     if on then
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= player then createBoxESP(p) end
-        end
-    else
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p.Character and p.Character.HumanoidRootPart:FindFirstChild("BoxESP") then
-                p.Character.HumanoidRootPart.BoxESP:Destroy()
-            end
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= Players.LocalPlayer then createESPBox(p) end
         end
     end
 end)
