@@ -184,57 +184,62 @@ end)
 createToggleButton("Noclip", function(on)
 	_G.isNoclip = on
 end)
-
--- ENVANTER GÖRÜNTÜLEYİCİ
-local invFrame = Instance.new("Frame", screenGui)
-invFrame.Size = UDim2.new(0, 150, 0, 200)
-invFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
-invFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-invFrame.Visible = false -- Başta kapalı
-
-local invScroll = Instance.new("ScrollingFrame", invFrame)
-invScroll.Size = UDim2.new(1, 0, 1, 0)
-invScroll.BackgroundTransparency = 1
-invScroll.ScrollBarThickness = 2
-
-createToggleButton("Envanter İzle", function(on)
-    invFrame.Visible = on
-    if on then
-        task.spawn(function()
-            while invFrame.Visible do
-                invScroll:ClearAllChildren()
-                local y = 0
-                for _, player in pairs(game.Players:GetPlayers()) do
-                    -- Oyuncu başlığı
-                    local pName = Instance.new("TextLabel", invScroll)
-                    pName.Size = UDim2.new(1, 0, 0, 15)
-                    pName.Position = UDim2.new(0, 0, 0, y)
-                    pName.Text = player.Name .. ":"
-                    pName.TextColor3 = Color3.fromRGB(255, 255, 0)
-                    pName.BackgroundTransparency = 1
-                    y += 15
+--ENV GORME
+local function createPlayerESP()
+    task.spawn(function()
+        while true do
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = player.Character.HumanoidRootPart
                     
-                    -- Backpack'teki tüm itemler
+                    -- Zaten varsa güncelle, yoksa oluştur
+                    local billboard = root:FindFirstChild("InvDisplay")
+                    if not billboard then
+                        billboard = Instance.new("BillboardGui", root)
+                        billboard.Name = "InvDisplay"
+                        billboard.Size = UDim2.new(0, 200, 0, 100)
+                        billboard.StudsOffset = Vector3.new(0, -2, 0) -- Ayak hizası
+                        billboard.AlwaysOnTop = true
+                        
+                        local label = Instance.new("TextLabel", billboard)
+                        label.Size = UDim2.new(1, 0, 1, 0)
+                        label.BackgroundTransparency = 1
+                        label.TextColor3 = Color3.fromRGB(0, 255, 0)
+                        label.TextSize = 12
+                        label.Font = Enum.Font.Code
+                    end
+                    
+                    -- Envanter verisini çek ve label'a yaz
+                    local label = billboard:FindFirstChild("TextLabel")
+                    local invText = "Backpack:\n"
                     for _, item in pairs(player.Backpack:GetChildren()) do
                         if item:IsA("Tool") then
-                            local t = Instance.new("TextLabel", invScroll)
-                            t.Size = UDim2.new(1, -10, 0, 12)
-                            t.Position = UDim2.new(0, 10, 0, y)
-                            t.Text = "- " .. item.Name
-                            t.TextColor3 = Color3.fromRGB(200, 200, 200)
-                            t.BackgroundTransparency = 1
-                            t.TextSize = 10
-                            y += 12
+                            invText = invText .. "- " .. item.Name .. "\n"
                         end
                     end
+                    label.Text = invText
                 end
-                invScroll.CanvasSize = UDim2.new(0, 0, 0, y)
-                task.wait(3)
             end
-        end)
+            task.wait(2)
+        end
+    end)
+end
+
+-- Butona bağla
+createToggleButton("ESP Envanter", function(on)
+    _G.isESPInv = on
+    if on then
+        createPlayerESP()
+    else
+        -- Kapatıldığında tüm BillboardGui'leri sil
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local b = p.Character.HumanoidRootPart:FindFirstChild("InvDisplay")
+                if b then b:Destroy() end
+            end
+        end
     end
 end)
-
 -- ────────────────────────────────────────────────
 -- 3. FLY
 createToggleButton("Fly", function(on)
@@ -297,53 +302,6 @@ createToggleButton("Player ESP", function(on)
 	end
 end)
 
--- ────────────────────────────────────────────────
--- 6. AUTO AURA
-_G.isAura = false
-
-createToggleButton("Auto Aura", function(on)
-	_G.isAura = on
-	if on then
-		task.spawn(function()
-			while _G.isAura do
-				local char = player.Character
-				local root = char and char:FindFirstChild("HumanoidRootPart")
-				local hum = char and char:FindFirstChild("Humanoid")
-				if root and hum then
-					local nearest, nearDist = nil, math.huge
-					for _, p in pairs(Players:GetPlayers()) do
-						if p ~= player and p.Character then
-							local r2 = p.Character:FindFirstChild("HumanoidRootPart")
-							local h2 = p.Character:FindFirstChild("Humanoid")
-							if r2 and h2 and h2.Health > 0 then
-								local d = (root.Position - r2.Position).Magnitude
-								if d < nearDist then nearDist = d; nearest = p end
-							end
-						end
-					end
-					if nearest and nearDist < 20 then
-						local npcRoot = nearest.Character:FindFirstChild("HumanoidRootPart")
-						if npcRoot then
-							hum.PlatformStand = true
-							char:PivotTo(CFrame.new(npcRoot.Position + Vector3.new(0, 5, 3)))
-							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-							task.wait(0.1)
-							VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-							hum.PlatformStand = false
-						end
-					end
-				end
-				task.wait(0.2)
-			end
-			local h = player.Character and player.Character:FindFirstChild("Humanoid")
-			if h then h.PlatformStand = false end
-		end)
-	else
-		local h = player.Character and player.Character:FindFirstChild("Humanoid")
-		if h then h.PlatformStand = false end
-	end
-end)
 
 -- ────────────────────────────────────────────────
 -- SILENT AIM + FOV ÇEMBERİ
