@@ -217,7 +217,7 @@ RunService.Heartbeat:Connect(function()
 
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-			local roleColor = Color3.fromRGB(107, 50, 124) -- Varsayılan Masum (Mor)
+			local roleColor = Color3.fromRGB(0, 255, 0) -- Varsayılan Masum (Mor)
 			
 			-- Silah/Bıçak kontrolü ile rol analizi
 			local backpack = p:FindFirstChild("Backpack")
@@ -305,45 +305,73 @@ createToggleButton("Anti-Fling Kalkanı", function(on)
 	_G.isAntiFling = on
 end)
 
--- 5. FLING TROLL BUTONU (Asla Kendini Fırlatmayan Model)
+-- 5. FLING TROLL BUTONU (ASLA UÇURMAYAN YENİ NESİL MOTOR)
 createToggleButton("Fling", function(on)
 	_G.isFlingTroll = on
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChild("Humanoid")
 	
-	if on and root then
-		-- Mevcut fiziki çarpışmaları engelle
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
-			end
-		end
-
-		-- Kusursuz dönüş mekanizması: Karakterin dönme hızını vektörel düzeyde aşırı yükle
-		-- Havaya uçmaya sebep olan ek fizik nesnelerini (BodyPosition vb.) eklemiyoruz
+	if on and root and hum then
+		-- Karakterin animasyonlarını ve fiziksel dengesini dondur
+		hum.PlatformStand = true
+		
+		-- Karakter parçalarının birbirine çarpıp glitch yapmasını engelle
 		task.spawn(function()
-			while _G.isFlingTroll and root and root.Parent do
-				-- Sadece HRP üzerine saf, ekstrem rotasyonel hız veriyoruz. Kendi parçalarına basmıyoruz.
-				root.RotVelocity = Vector3.new(0, 99999, 0)
-				root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z) -- Y eksenindeki ani sıçramayı bloke et
-				
-				-- Etraftaki nesneleri algılayıp itmesi için sadece HRP'ye anlık momentum simülasyonu
-				root.Velocity = root.Velocity + Vector3.new(50, 0, 50)
-				task.wait()
-				root.Velocity = root.Velocity - Vector3.new(50, 0, 50)
-				
-				-- Parçaların birbirine çarparak sekmesini önlemek için döngüsel CanCollide kapatma
+			while _G.isFlingTroll and char and char.Parent do
 				for _, part in ipairs(char:GetDescendants()) do
 					if part:IsA("BasePart") then
 						part.CanCollide = false
 					end
 				end
-				task.wait()
+				RunService.Heartbeat:Wait()
+			end
+		end)
+
+		-- Eski BodyVelocity yerine modern AngularVelocity nesnesi kuruyoruz
+		local att = Instance.new("Attachment", root)
+		att.Name = "FlingAttachment"
+		
+		local angVel = Instance.new("AngularVelocity", root)
+		angVel.Name = "FlingSpin"
+		angVel.Attachment0 = att
+		-- Aşırı yüksek değerler (99999 gibi) motoru çökertir, kararlı maksimum devir:
+		angVel.AngularVelocity = Vector3.new(0, 25000, 0) 
+		angVel.MaxTorque = 9e9
+		angVel.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
+
+		-- Uçmanı kesin olarak engelleyen dikey kilit (LinearVelocity)
+		local linVel = Instance.new("LinearVelocity", root)
+		linVel.Name = "FlingAntiFly"
+		linVel.Attachment0 = att
+		-- Karakterin sadece X ve Z ekseninde yürümesini izin verir, Y eksenini (yukarı uçmayı) kilitler
+		linVel.MaxForce = 9e9
+		linVel.VectorVelocity = Vector3.new(0, 0, 0)
+		linVel.RelativeTo = Enum.ActuatorRelativeTo.World
+
+		-- Dönüş anında rakipleri algılayıp momentum transferi yapan itici güç
+		task.spawn(function()
+			while _G.isFlingTroll and root and root.Parent do
+				-- Sadece yatayda küçük sarsıntılar üreterek rakiplerin hit kutusuna çarpar
+				root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z) + Vector3.new(30, 0, 30)
+				RunService.Heartbeat:Wait()
+				if root and root.Parent then
+					root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z) - Vector3.new(30, 0, 30)
+				end
+				RunService.Heartbeat:Wait()
 			end
 		end)
 	else
+		-- Kapatıldığında her şeyi tamamen temizle
 		if root then
+			if root:FindFirstChild("FlingAttachment") then root.FlingAttachment:Destroy() end
+			if root:FindFirstChild("FlingSpin") then root.FlingSpin:Destroy() end
+			if root:FindFirstChild("FlingAntiFly") then root.FlingAntiFly:Destroy() end
+			root.Velocity = Vector3.new(0, 0, 0)
 			root.RotVelocity = Vector3.new(0, 0, 0)
+		end
+		if hum then
+			hum.PlatformStand = false
 		end
 		if char then
 			for _, part in ipairs(char:GetDescendants()) do
