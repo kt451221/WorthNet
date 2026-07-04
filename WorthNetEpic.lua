@@ -69,12 +69,27 @@ local function makeDraggable(frame)
 end
 
 ---------------------------------------------------------
--- MERKEZİ BİLDİRİM SİSTEMİ (NOTIFICATION)
+-- MERKEZİ BİLDİRİM SİSTEMİ (ALT ALTA SIRALAMA MOTORU)
 ---------------------------------------------------------
+local activeNotifications = {}
+
+local function rearrangeNotifications()
+	for index, notif in ipairs(activeNotifications) do
+		-- Her bildirim aralarında 10 piksel boşluk olacak şekilde alt alta hesaplanır
+		local targetY = 20 + ((index - 1) * 60)
+		TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(1, -240, 0, targetY)
+		}):Play()
+	end
+end
+
 local function showNotification(title, message, isSuccess)
 	local notifFrame = Instance.new("Frame")
 	notifFrame.Size = UDim2.new(0, 220, 0, 50)
-	notifFrame.Position = UDim2.new(1, 30, 0, 20)
+	
+	-- Giriş animasyonu için yine ekranın sağ dışından başlar
+	local initialY = 20 + (#activeNotifications * 60)
+	notifFrame.Position = UDim2.new(1, 30, 0, initialY)
 	notifFrame.BackgroundColor3 = THEME.Sidebar
 	notifFrame.BorderSizePixel = 0
 	notifFrame.Parent = screenGui
@@ -95,12 +110,31 @@ local function showNotification(title, message, isSuccess)
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = notifFrame
 	
-	TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -240, 0, 20)}):Play()
+	-- Listeye ekle ve konumları güncelle
+	table.insert(activeNotifications, notifFrame)
+	rearrangeNotifications()
 	
-	task.delay(2, function()
-		local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 30, 0, 20)})
+	-- Kapanış ve temizlik lojiği
+	task.delay(2.5, function()
+		-- Tablodan bu bildirimi kaldır
+		local foundIndex = table.find(activeNotifications, notifFrame)
+		if foundIndex then
+			table.remove(activeNotifications, foundIndex)
+		end
+		
+		-- Ekran dışına kayma animasyonu
+		local currentY = notifFrame.Position.Y.Offset
+		local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 30, 0, currentY)
+		})
 		closeTween:Play()
-		closeTween.Completed:Connect(function() notifFrame:Destroy() end)
+		
+		-- Diğer kalan bildirimleri yukarı kaydır
+		rearrangeNotifications()
+		
+		closeTween.Completed:Connect(function() 
+			notifFrame:Destroy() 
+		end)
 	end)
 end
 
@@ -109,7 +143,7 @@ end
 ---------------------------------------------------------
 local minLogo = Instance.new("TextButton")
 minLogo.Size = UDim2.new(0, 65, 0, 65)
-minLogo.Position = UDim2.new(1, -85, 1, -85)
+minLogo.Position = UDim2.new(1, -85, 0.5, -32)
 minLogo.BackgroundColor3 = THEME.Sidebar
 minLogo.Text = "👑\nWN"
 minLogo.Font = Enum.Font.GothamBold
@@ -215,7 +249,7 @@ local ytBtn = Instance.new("TextButton")
 ytBtn.Size = UDim2.new(1, -20, 0, 35)
 ytBtn.Position = UDim2.new(0, 10, 1, -45) -- Sidebar'ın en altında sabit durur
 ytBtn.BackgroundColor3 = Color3.fromRGB(45, 15, 15)
-ytBtn.Text = "❤️ YouTube Kanalım"
+ytBtn.Text = "❤️ YouTube"
 ytBtn.Font = Enum.Font.GothamBold
 ytBtn.TextSize = 12
 ytBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
@@ -231,7 +265,7 @@ ytStroke.Parent = ytBtn
 -- YouTube Linki Kopyalama / Tetikleme İşlemi
 ytBtn.MouseButton1Click:Connect(function()
 	-- Buraya kendi youtube linkini tırnak içine yaz reis
-	local myYoutubeLink = "https://www.youtube.com/@WorthNet" 
+	local myYoutubeLink = "https://www.youtube.com/@xAworth" 
 	
 	if setclipboard then
 		setclipboard(myYoutubeLink)
@@ -286,7 +320,7 @@ local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -40, 0, 10)
 closeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-closeBtn.Text = "✕"
+closeBtn.Text = "X"
 closeBtn.TextColor3 = THEME.TextDark
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
@@ -632,6 +666,67 @@ createModernToggle("Gun ESP", "Yerdeki silahı siyah renkli gösterir.", functio
 			end
 		end)
 	end
+end)
+
+-- 12. MM2 Auto-Aim (Otomatik Kilitleme)
+local autoAimActive = false
+createModernToggle("Auto-Aim", "Elinde bıçak veya silah varken otomatik kilitler.", function(state)
+    autoAimActive = state
+    task.spawn(function()
+        while autoAimActive do
+            task.wait(0.01) -- Çok hızlı çalışması için
+            local char = player.Character
+            if char and (char:FindFirstChild("Knife") or char:FindFirstChild("Gun")) then
+                local target = nil
+                local dist = 1000
+                -- En yakın oyuncuyu bul
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local d = (char.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                        if d < dist then
+                            dist = d
+                            target = p.Character.HumanoidRootPart
+                        end
+                    end
+                end
+                -- Kamerayı hedefe döndür
+                if target then
+                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+                end
+            end
+        end
+    end)
+end)
+
+-- 13. SpinBot
+local spinConn = nil
+createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(state)
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if state and root then
+        spinConn = RunService.RenderStepped:Connect(function()
+            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(45), 0) -- Hız ayarı (45 derece)
+        end)
+    else
+        if spinConn then spinConn:Disconnect() spinConn = nil end
+    end
+end)
+
+-- 14. Hitbox Expander
+local hitboxActive = false
+createModernToggle("Hitbox Expander", "Rakiplerin kafalarını büyütür.", function(state)
+    hitboxActive = state
+    task.spawn(function()
+        while hitboxActive do
+            task.wait(1)
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                    p.Character.Head.Size = Vector3.new(5, 5, 5)
+                    p.Character.Head.Transparency = 0.5
+                    p.Character.Head.CanCollide = false
+                end
+            end
+        end
+    end)
 end)
 
 -- Arka plan bypass sistemi
