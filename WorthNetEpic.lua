@@ -1,4 +1,4 @@
--- WorthNet UI System v4 - Premium Minimize & Single Page Architecture
+-- WorthNet UI System v4.1 - Fixed Drag & Premium Architecture
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -34,23 +34,44 @@ local function roundCorners(obj, radius)
 	return uiCorner
 end
 
--- SÜRÜKLENME MOTORU (Hem Logo hem Hub için ortak)
+---------------------------------------------------------
+-- KUSURSUZ SÜRÜKLENME MOTORU (BUG FIX)
+---------------------------------------------------------
 local function makeDraggable(frame)
-	local dragToggle, dragStart, startPos
+	local dragging = false
+	local dragInput
+	local dragStart
+	local startPos
+
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragToggle = true
+			dragging = true
 			dragStart = input.Position
 			startPos = frame.Position
+
 			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragToggle = false end
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
 			end)
 		end
 	end)
+
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
 	UserInputService.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch and dragToggle then
+		if input == dragInput and dragging then
 			local delta = input.Position - dragStart
-			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			frame.Position = UDim2.new(
+				startPos.X.Scale, 
+				startPos.X.Offset + delta.X, 
+				startPos.Y.Scale, 
+				startPos.Y.Offset + delta.Y
+			)
 		end
 	end)
 end
@@ -60,19 +81,18 @@ end
 ---------------------------------------------------------
 local minLogo = Instance.new("TextButton")
 minLogo.Size = UDim2.new(0, 65, 0, 65)
-minLogo.Position = UDim2.new(0.9, 0, 0.8, 0) -- Sağ altta başlar
+minLogo.Position = UDim2.new(0.9, 0, 0.8, 0)
 minLogo.BackgroundColor3 = THEME.Sidebar
 minLogo.Text = "👑\nWN"
 minLogo.Font = Enum.Font.GothamBold
 minLogo.TextSize = 14
 minLogo.TextColor3 = THEME.Accent
 minLogo.BorderSizePixel = 0
-minLogo.Visible = true -- İlk açılışta logo olarak gelir
+minLogo.Visible = true
 minLogo.Parent = screenGui
 roundCorners(minLogo, 16)
 makeDraggable(minLogo)
 
--- Parıltı Efekti (UIStroke)
 local logoStroke = Instance.new("UIStroke")
 logoStroke.Color = THEME.Accent
 logoStroke.Thickness = 1.5
@@ -86,12 +106,11 @@ hubFrame.Size = UDim2.new(0, 600, 0, 380)
 hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
 hubFrame.BorderSizePixel = 0
-hubFrame.Visible = false -- Başlangıçta gizli, logoya basınca açılır
+hubFrame.Visible = false
 hubFrame.Parent = screenGui
 roundCorners(hubFrame, 12)
 makeDraggable(hubFrame)
 
--- LOGO VE HUB GEÇİŞ TETİKLEYİCİSİ
 minLogo.MouseButton1Click:Connect(function()
 	minLogo.Visible = false
 	hubFrame.Visible = true
@@ -150,9 +169,8 @@ uiListLayout.Padding = UDim.new(0, 10)
 uiListLayout.Parent = contentArea
 
 ---------------------------------------------------------
--- ÜST KONTROL BUTONLARI (KÜÇÜLTME VE LOGOYA DÖNME)
+-- ÜST KONTROL BUTONLARI (— VE ✕ KÜÇÜLTME YAPISI)
 ---------------------------------------------------------
--- Kapatma Butonu (X) -> Küçültüp logoyu açar
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -40, 0, 10)
@@ -169,7 +187,6 @@ closeBtn.MouseButton1Click:Connect(function()
 	minLogo.Visible = true
 end)
 
--- Küçültme Butonu (-) -> Küçültüp logoyu açar
 local minimizeBtn = Instance.new("TextButton")
 minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
 minimizeBtn.Position = UDim2.new(1, -75, 0, 10)
@@ -248,7 +265,7 @@ local function createModernToggle(name, description, callback)
 end
 
 ---------------------------------------------------------
--- HİLE AKTİVASYON ALANI (DÜZELTİLMİŞ VE ENTEGRE)
+-- HİLE AKTİVASYON ALANI
 ---------------------------------------------------------
 local noclipConnection = nil
 local isFlying = false
@@ -291,7 +308,7 @@ createModernToggle("Fly Control", "Karakteri havada özgürce uçurur.", functio
 				if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
 				if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
 				if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+				if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir - camera.CFrame.RightVector end
 				bv.Velocity = moveDir * flySpeed
 				task.wait()
 			end
@@ -388,7 +405,7 @@ createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.",
 	end
 end)
 
--- 7. BHOP (BUNNY HOP)
+-- 7. BHOP
 createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop yaparsınız.", function(state)
 	if state then
 		bhopConn = RunService.RenderStepped:Connect(function()
@@ -404,7 +421,7 @@ createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop 
 	end
 end)
 
--- Arka planda executor kontrolü ile bypass korumasını yükle
+-- Arka plan bypass sistemi
 pcall(function()
 	local metatable = getrawmetatable(game)
 	local namecall = metatable.__namecall
