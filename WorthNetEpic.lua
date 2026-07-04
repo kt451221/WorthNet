@@ -122,7 +122,7 @@ local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -40, 0, 10)
 closeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-closeBtn.Text = "✕"
+closeBtn.Text = "X"
 closeBtn.TextColor3 = THEME.TextDark
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
@@ -286,25 +286,94 @@ createModernToggle("Anti-Fling", "Flinglenmeyi engeller.", function(state)
     end
 end)
 
---MM2 ESP
+-- 2. MM2 ESP (Rol Tabanlı)
 local mm2Highlights = {}
-createModernToggle("MM2 ESP", "Katili ve Şerifi gösterir.", function(state)
-    -- Hile kapandığında highlightları temizle
+createModernToggle("MM2 ESP", function(state)
     if not state then
         for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
         table.clear(mm2Highlights)
-    end
-    
-    -- Döngü (State true ise ESP çalışır)
-    task.spawn(function()
-        while state do
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    -- Rol kontrolü kodun burada (aynen yapıştır)
-                    -- ... (Highlight oluşturma kodların)
+    else
+        task.spawn(function()
+            while true do
+                task.wait(0.5)
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local char = p.Character
+                        local back = p:FindFirstChild("Backpack")
+                        local isMurderer = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
+                        local isSheriff = (char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun")))
+                        
+                        local color = isMurderer and Color3.fromRGB(255, 0, 0) or (isSheriff and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(0, 255, 0))
+                        
+                        if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= char then
+                            if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
+                            local hl = Instance.new("Highlight", char)
+                            hl.FillTransparency = 0.5; mm2Highlights[p.Name] = hl
+                        end
+                        mm2Highlights[p.Name].FillColor = color
+                    end
                 end
             end
-            task.wait(0.5) -- Performans için döngüye bekleme ekle
-        end
-    end)
+        end)
+    end
 end)
+
+--NEW 4 HACK
+-- 4. SpeedHack
+local originalSpeed = 16
+createModernToggle("SpeedHack", function(state)
+    local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+    if state then
+        originalSpeed = hum.WalkSpeed
+        hum.WalkSpeed = 50 -- Güvenli hız sınırı
+    else
+        hum.WalkSpeed = originalSpeed
+    end
+end)
+
+-- 5. Infinite Jump
+local infJumpConn = nil
+createModernToggle("Infinite Jump", function(state)
+    if state then
+        infJumpConn = UserInputService.JumpRequest:Connect(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if infJumpConn then infJumpConn:Disconnect() end
+    end
+end)
+
+-- 6. Bhop (Bunny Hop)
+local bhopConn = nil
+createModernToggle("Bhop", function(state)
+    if state then
+        bhopConn = RunService.RenderStepped:Connect(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                local hum = player.Character.Humanoid
+                if hum.FloorMaterial ~= Enum.Material.Air and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    hum.Jump = true
+                end
+            end
+        end)
+    else
+        if bhopConn then bhopConn:Disconnect() end
+    end
+end)
+
+--BYPASS
+-- Basit Anti-Cheat Bypass (Hız denetimlerini yumuşatır)
+local metatable = getrawmetatable(game)
+local namecall = metatable.__namecall
+setreadonly(metatable, false)
+
+metatable.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    -- Eğer oyun senin hızını kontrol etmeye çalışırsa bunu engelle
+    if getnamecallmethod() == "FireServer" and tostring(self) == "WalkSpeedCheck" then
+        return nil
+    end
+    return namecall(self, ...)
+end)
+setreadonly(metatable, true)
