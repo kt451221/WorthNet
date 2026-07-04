@@ -46,7 +46,7 @@ local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0, 12)
 
 local frameStroke = Instance.new("UIStroke", frame)
-frameStroke.Color = Color3.fromRGB(255, 0, 127)
+frameStroke.Color = Color3.fromRGB(161, 165, 162)
 frameStroke.Thickness = 1.5
 
 local titleBar = Instance.new("Frame", frame)
@@ -61,7 +61,7 @@ titleCorner.CornerRadius = UDim.new(0, 12)
 local titleFix = Instance.new("Frame", titleBar)
 titleFix.Size = UDim2.new(1, 0, 0.5, 0)
 titleFix.Position = UDim2.new(0, 0, 0.5, 0)
-titleFix.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
+titleFix.BackgroundColor3 = Color3.fromRGB(161, 165, 162)
 titleFix.BorderSizePixel = 0
 
 local titleLabel = Instance.new("TextLabel", titleBar)
