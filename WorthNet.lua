@@ -52,7 +52,7 @@ frameStroke.Thickness = 1.5
 local titleBar = Instance.new("Frame", frame)
 titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
+titleBar.BackgroundColor3 = Color3.fromRGB(161, 165, 162)
 titleBar.BorderSizePixel = 0
 
 local titleCorner = Instance.new("UICorner", titleBar)
@@ -305,82 +305,42 @@ createToggleButton("Anti-Fling Kalkanı", function(on)
 	_G.isAntiFling = on
 end)
 
--- 5. FLING TROLL BUTONU (ASLA UÇURMAYAN YENİ NESİL MOTOR)
 createToggleButton("Fling", function(on)
-	_G.isFlingTroll = on
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local hum = char and char:FindFirstChild("Humanoid")
-	
-	if on and root and hum then
-		-- Karakterin animasyonlarını ve fiziksel dengesini dondur
-		hum.PlatformStand = true
-		
-		-- Karakter parçalarının birbirine çarpıp glitch yapmasını engelle
-		task.spawn(function()
-			while _G.isFlingTroll and char and char.Parent do
-				for _, part in ipairs(char:GetDescendants()) do
-					if part:IsA("BasePart") then
-						part.CanCollide = false
-					end
-				end
-				RunService.Heartbeat:Wait()
-			end
-		end)
+    _G.isFlingTroll = on
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if on and root then
+        task.spawn(function()
+            while _G.isFlingTroll and char and char.Parent do
+                -- Yakınındaki en yakın düşmanı bul
+                local target = nil
+                local dist = 15 -- Sadece 15 stud yakınındakileri fırlat
+                
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local magnitude = (root.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                        if magnitude < dist then
+                            target = p.Character.HumanoidRootPart
+                            break
+                        end
+                    end
+                end
 
-		-- Eski BodyVelocity yerine modern AngularVelocity nesnesi kuruyoruz
-		local att = Instance.new("Attachment", root)
-		att.Name = "FlingAttachment"
-		
-		local angVel = Instance.new("AngularVelocity", root)
-		angVel.Name = "FlingSpin"
-		angVel.Attachment0 = att
-		-- Aşırı yüksek değerler (99999 gibi) motoru çökertir, kararlı maksimum devir:
-		angVel.AngularVelocity = Vector3.new(0, 25000, 0) 
-		angVel.MaxTorque = 9e9
-		angVel.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
-
-		-- Uçmanı kesin olarak engelleyen dikey kilit (LinearVelocity)
-		local linVel = Instance.new("LinearVelocity", root)
-		linVel.Name = "FlingAntiFly"
-		linVel.Attachment0 = att
-		-- Karakterin sadece X ve Z ekseninde yürümesini izin verir, Y eksenini (yukarı uçmayı) kilitler
-		linVel.MaxForce = 9e9
-		linVel.VectorVelocity = Vector3.new(0, 0, 0)
-		linVel.RelativeTo = Enum.ActuatorRelativeTo.World
-
-		-- Dönüş anında rakipleri algılayıp momentum transferi yapan itici güç
-		task.spawn(function()
-			while _G.isFlingTroll and root and root.Parent do
-				-- Sadece yatayda küçük sarsıntılar üreterek rakiplerin hit kutusuna çarpar
-				root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z) + Vector3.new(30, 0, 30)
-				RunService.Heartbeat:Wait()
-				if root and root.Parent then
-					root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z) - Vector3.new(30, 0, 30)
-				end
-				RunService.Heartbeat:Wait()
-			end
-		end)
-	else
-		-- Kapatıldığında her şeyi tamamen temizle
-		if root then
-			if root:FindFirstChild("FlingAttachment") then root.FlingAttachment:Destroy() end
-			if root:FindFirstChild("FlingSpin") then root.FlingSpin:Destroy() end
-			if root:FindFirstChild("FlingAntiFly") then root.FlingAntiFly:Destroy() end
-			root.Velocity = Vector3.new(0, 0, 0)
-			root.RotVelocity = Vector3.new(0, 0, 0)
-		end
-		if hum then
-			hum.PlatformStand = false
-		end
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = true
-				end
-			end
-		end
-	end
+                -- Eğer hedef varsa Fling gücünü ona aktar
+                if target then
+                    -- Hedefi deli gibi döndürerek savur
+                    target.Velocity = Vector3.new(0, 100, 0) -- Havaya fırlat
+                    target.RotVelocity = Vector3.new(999, 999, 999) -- Kendi etrafında döndür
+                    
+                    -- Senin karakterinin yerinde sabit kalması için:
+                    root.Velocity = Vector3.new(0, 0, 0)
+                end
+                
+                RunService.Heartbeat:Wait()
+            end
+        end)
+    end
 end)
 
 -- 6. MM2 ROLE ESP BUTONU
@@ -892,32 +852,79 @@ createToggleButton("Auto Knife Throw", function(on)
     end)
 end)
 
--- 2. OTOMATİK SİLAH ALMA (Auto-Grab Gun)
 _G.isAutoGrab = false
+
 createToggleButton("Auto Grab Gun", function(on)
     _G.isAutoGrab = on
-    workspace.ChildAdded:Connect(function(child)
-        if _G.isAutoGrab and child.Name == "GunDrop" then
-            player.Character.HumanoidRootPart.CFrame = child.CFrame
-        end
-    end)
+    if on then
+        task.spawn(function()
+            while _G.isAutoGrab do
+                -- 1. Workspace'te "Gun" veya "GunDrop" isimli bir şey ara
+                local gun = workspace:FindFirstChild("Gun") or workspace:FindFirstChild("GunDrop")
+                
+                -- 2. Eğer silah bulunduysa ve yerde duruyorsa (Handle varsa)
+                if gun and gun:FindFirstChild("Handle") then
+                    local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    
+                    if myRoot then
+                        -- Geri dönmek için mevcut konumu kaydet
+                        local oldPos = myRoot.CFrame
+                        
+                        -- 3. Silaha ışınlan
+                        myRoot.CFrame = gun.Handle.CFrame
+                        
+                        -- 4. Küçük bir bekleme (Silahın tetiklenmesi için)
+                        task.wait(0.2)
+                        
+                        -- 5. Eski yere geri dön (opsiyonel, çok hızlı olduğu için gerek kalmayabilir)
+                        -- myRoot.CFrame = oldPos 
+                    end
+                end
+                task.wait(1) -- Sürekli TP atıp sunucuyu yormamak için 1 saniyelik tarama
+            end
+        end)
+    end
 end)
 
 -- 3. HITBOX GENİŞLETME (En Etkili Yöntem)
 _G.isHitbox = false
+local currentConnections = {} -- Hataları engellemek için
+
 createToggleButton("Big Hitbox", function(on)
     _G.isHitbox = on
-    RunService.RenderStepped:Connect(function()
-        if _G.isHitbox then
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    p.Character.HumanoidRootPart.Size = Vector3.new(10, 10, 10)
-                    p.Character.HumanoidRootPart.Transparency = 0.8 -- Nereyi vurduğunu görebilmek için
-                    p.Character.HumanoidRootPart.CanCollide = false
+    if on then
+        -- Döngüyü tek bir connection ile başlatıyoruz ki üst üste binmesin
+        local connection = RunService.RenderStepped:Connect(function()
+            if _G.isHitbox then
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local root = p.Character.HumanoidRootPart
+                        
+                        -- Boyutu zorla ayarla
+                        root.Size = Vector3.new(6, 6, 6) -- 10 çok büyük, sunucu anti-cheat'i tetikler, 6 idealdir
+                        root.Transparency = 0.8
+                        root.CanCollide = false
+                        
+                        -- **EK GÜVENLİK:** Eğer oyun karakteri sürekli geri eski boyutuna çekiyorsa,
+                        -- burada 'task.spawn' ile boyutu her karede sabitlemeye zorluyoruz.
+                    end
                 end
             end
+        end)
+        table.insert(currentConnections, connection)
+    else
+        -- Kapatıldığında tüm bağlantıları temizle
+        for _, c in pairs(currentConnections) do c:Disconnect() end
+        table.clear(currentConnections)
+        
+        -- Kapatınca eski boyuta döndür (Opsiyonel)
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                p.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1) -- Varsayılan R15 boyutu
+                p.Character.HumanoidRootPart.Transparency = 1
+            end
         end
-    end)
+    end
 end)
 
 -- ────────────────────────────────────────────────
