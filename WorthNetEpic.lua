@@ -1,8 +1,9 @@
--- WorthNet UI System v4.1 - Fixed Drag & Premium Architecture
+-- WorthNet UI System v4.3 - Search Engine, Notifications & Premium Expand
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 
 -- Ekrandaki eski yapıları temizle
@@ -35,13 +36,11 @@ local function roundCorners(obj, radius)
 end
 
 ---------------------------------------------------------
--- KUSURSUZ SÜRÜKLENME MOTORU (BUG FIX)
+-- KUSURSUZ SÜRÜKLENME MOTORU
 ---------------------------------------------------------
 local function makeDraggable(frame)
 	local dragging = false
-	local dragInput
-	local dragStart
-	local startPos
+	local dragInput, dragStart, startPos
 
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -50,9 +49,7 @@ local function makeDraggable(frame)
 			startPos = frame.Position
 
 			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
 			end)
 		end
 	end)
@@ -66,28 +63,60 @@ local function makeDraggable(frame)
 	UserInputService.InputChanged:Connect(function(input)
 		if input == dragInput and dragging then
 			local delta = input.Position - dragStart
-			frame.Position = UDim2.new(
-				startPos.X.Scale, 
-				startPos.X.Offset + delta.X, 
-				startPos.Y.Scale, 
-				startPos.Y.Offset + delta.Y
-			)
+			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end)
 end
 
 ---------------------------------------------------------
--- KÜÇÜK LOGO (MINIMIZE WINDOW) OLUŞTURMA
+-- MERKEZİ BİLDİRİM SİSTEMİ (NOTIFICATION)
+---------------------------------------------------------
+local function showNotification(title, message, isSuccess)
+	local notifFrame = Instance.new("Frame")
+	notifFrame.Size = UDim2.new(0, 220, 0, 50)
+	notifFrame.Position = UDim2.new(1, 30, 0, 20)
+	notifFrame.BackgroundColor3 = THEME.Sidebar
+	notifFrame.BorderSizePixel = 0
+	notifFrame.Parent = screenGui
+	roundCorners(notifFrame, 8)
+	
+	local stroke = Instance.new("UIStroke", notifFrame)
+	stroke.Color = isSuccess and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+	stroke.Thickness = 1.5
+	
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -20, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = "🔔 [" .. title .. "]\n" .. message
+	label.TextColor3 = THEME.TextMain
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 11
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = notifFrame
+	
+	TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -240, 0, 20)}):Play()
+	
+	task.delay(2, function()
+		local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 30, 0, 20)})
+		closeTween:Play()
+		closeTween.Completed:Connect(function() notifFrame:Destroy() end)
+	end)
+end
+
+---------------------------------------------------------
+-- KÜÇÜK LOGO (MINIMIZE WINDOW)
 ---------------------------------------------------------
 local minLogo = Instance.new("TextButton")
 minLogo.Size = UDim2.new(0, 65, 0, 65)
-minLogo.Position = UDim2.new(0.9, 0, 0.8, 0)
+minLogo.Position = UDim2.new(1, -85, 1, -85)
 minLogo.BackgroundColor3 = THEME.Sidebar
 minLogo.Text = "👑\nWN"
 minLogo.Font = Enum.Font.GothamBold
 minLogo.TextSize = 14
 minLogo.TextColor3 = THEME.Accent
 minLogo.BorderSizePixel = 0
+minLogo.ZIndex = 10
 minLogo.Visible = true
 minLogo.Parent = screenGui
 roundCorners(minLogo, 16)
@@ -106,6 +135,7 @@ hubFrame.Size = UDim2.new(0, 600, 0, 380)
 hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
 hubFrame.BorderSizePixel = 0
+hubFrame.ZIndex = 5
 hubFrame.Visible = false
 hubFrame.Parent = screenGui
 roundCorners(hubFrame, 12)
@@ -121,6 +151,7 @@ local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 160, 1, 0)
 sidebar.BackgroundColor3 = THEME.Sidebar
 sidebar.BorderSizePixel = 0
+sidebar.ZIndex = 6
 sidebar.Parent = hubFrame
 roundCorners(sidebar, 12)
 
@@ -131,12 +162,15 @@ logoLabel.Text = "👑 WorthNet"
 logoLabel.TextColor3 = THEME.Accent
 logoLabel.Font = Enum.Font.GothamBold
 logoLabel.TextSize = 18
+logoLabel.ZIndex = 7
 logoLabel.Parent = sidebar
 
+-- "All Hacks" Sekme Çerçevesi
 local allHacksBtn = Instance.new("Frame")
 allHacksBtn.Size = UDim2.new(1, -20, 0, 40)
 allHacksBtn.Position = UDim2.new(0, 10, 0, 60)
 allHacksBtn.BackgroundColor3 = THEME.Card
+allHacksBtn.ZIndex = 7
 allHacksBtn.Parent = sidebar
 roundCorners(allHacksBtn, 8)
 
@@ -149,7 +183,63 @@ allHacksLabel.TextColor3 = THEME.TextMain
 allHacksLabel.Font = Enum.Font.GothamSemibold
 allHacksLabel.TextSize = 13
 allHacksLabel.TextXAlignment = Enum.TextXAlignment.Left
+allHacksLabel.ZIndex = 8
 allHacksLabel.Parent = allHacksBtn
+
+---------------------------------------------------------
+-- YENİ: ARAMA KUTUSU (SEARCH BAR)
+---------------------------------------------------------
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -20, 0, 32)
+searchBox.Position = UDim2.new(0, 10, 0, 110)
+searchBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+searchBox.Text = ""
+searchBox.PlaceholderText = "🔍 Hile Ara..."
+searchBox.TextColor3 = THEME.TextMain
+searchBox.PlaceholderColor3 = THEME.TextDark
+searchBox.Font = Enum.Font.Gotham
+searchBox.TextSize = 12
+searchBox.ZIndex = 8
+searchBox.Parent = sidebar
+roundCorners(searchBox, 6)
+
+local searchStroke = Instance.new("UIStroke")
+searchStroke.Color = Color3.fromRGB(50, 50, 55)
+searchStroke.Thickness = 1
+searchStroke.Parent = searchBox
+
+---------------------------------------------------------
+-- YENİ: YOUTUBE SOSYAL MEDYA BUTONU
+---------------------------------------------------------
+local ytBtn = Instance.new("TextButton")
+ytBtn.Size = UDim2.new(1, -20, 0, 35)
+ytBtn.Position = UDim2.new(0, 10, 1, -45) -- Sidebar'ın en altında sabit durur
+ytBtn.BackgroundColor3 = Color3.fromRGB(45, 15, 15)
+ytBtn.Text = "❤️ YouTube Kanalım"
+ytBtn.Font = Enum.Font.GothamBold
+ytBtn.TextSize = 12
+ytBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+ytBtn.ZIndex = 8
+ytBtn.Parent = sidebar
+roundCorners(ytBtn, 8)
+
+local ytStroke = Instance.new("UIStroke")
+ytStroke.Color = Color3.fromRGB(200, 50, 50)
+ytStroke.Thickness = 1
+ytStroke.Parent = ytBtn
+
+-- YouTube Linki Kopyalama / Tetikleme İşlemi
+ytBtn.MouseButton1Click:Connect(function()
+	-- Buraya kendi youtube linkini tırnak içine yaz reis
+	local myYoutubeLink = "https://www.youtube.com/@WorthNet" 
+	
+	if setclipboard then
+		setclipboard(myYoutubeLink)
+		showNotification("YouTube", "Kanal linki panoya kopyalandı!", true)
+	else
+		showNotification("YouTube", "Link: worthnet.youtube", true)
+	end
+end)
 
 -- SAĞ İÇERİK ALANI
 local contentArea = Instance.new("ScrollingFrame")
@@ -161,6 +251,7 @@ contentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
 contentArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
 contentArea.ScrollBarThickness = 4
 contentArea.ScrollBarImageColor3 = THEME.Accent
+contentArea.ZIndex = 6
 contentArea.Parent = hubFrame
 
 local uiListLayout = Instance.new("UIListLayout")
@@ -169,7 +260,27 @@ uiListLayout.Padding = UDim.new(0, 10)
 uiListLayout.Parent = contentArea
 
 ---------------------------------------------------------
--- ÜST KONTROL BUTONLARI (— VE ✕ KÜÇÜLTME YAPISI)
+-- ARAMA MOTORU LOJİĞİ (SEARCH FUNCTIONAL)
+---------------------------------------------------------
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	local searchText = string.lower(searchBox.Text)
+	for _, card in ipairs(contentArea:GetChildren()) do
+		if card:IsA("Frame") then
+			local titleLabel = card:FindFirstChild("HackyTitle")
+			if titleLabel then
+				local name = string.lower(titleLabel.Text)
+				if string.find(name, searchText) then
+					card.Visible = true
+				else
+					card.Visible = false
+				end
+			end
+		end
+	end
+end)
+
+---------------------------------------------------------
+-- ÜST KONTROL BUTONLARI (— VE ✕)
 ---------------------------------------------------------
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
@@ -179,6 +290,7 @@ closeBtn.Text = "✕"
 closeBtn.TextColor3 = THEME.TextDark
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
+closeBtn.ZIndex = 7
 closeBtn.Parent = hubFrame
 roundCorners(closeBtn, 6)
 
@@ -195,6 +307,7 @@ minimizeBtn.Text = "—"
 minimizeBtn.TextColor3 = THEME.TextDark
 minimizeBtn.Font = Enum.Font.GothamBold
 minimizeBtn.TextSize = 14
+minimizeBtn.ZIndex = 7
 minimizeBtn.Parent = hubFrame
 roundCorners(minimizeBtn, 6)
 
@@ -204,17 +317,19 @@ minimizeBtn.MouseButton1Click:Connect(function()
 end)
 
 ---------------------------------------------------------
--- DINAMIK TOGGLE MOTORU
+-- DINAMIK TOGGLE MOTORU (OTOMATİK BİLDİRİM ENTEGRELİ)
 ---------------------------------------------------------
 local function createModernToggle(name, description, callback)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Size = UDim2.new(1, -10, 0, 55)
 	cardFrame.BackgroundColor3 = THEME.Card
 	cardFrame.BorderSizePixel = 0
+	cardFrame.ZIndex = 7
 	cardFrame.Parent = contentArea
 	roundCorners(cardFrame, 8)
 	
 	local title = Instance.new("TextLabel")
+	title.Name = "HackyTitle" -- Arama motorunun bulabilmesi için özel isim tagı
 	title.Size = UDim2.new(0, 200, 0, 25)
 	title.Position = UDim2.new(0, 15, 0, 5)
 	title.BackgroundTransparency = 1
@@ -223,6 +338,7 @@ local function createModernToggle(name, description, callback)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 14
 	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 8
 	title.Parent = cardFrame
 	
 	local desc = Instance.new("TextLabel")
@@ -234,6 +350,7 @@ local function createModernToggle(name, description, callback)
 	desc.Font = Enum.Font.Gotham
 	desc.TextSize = 11
 	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.ZIndex = 8
 	desc.Parent = cardFrame
 	
 	local switch = Instance.new("TextButton")
@@ -241,6 +358,7 @@ local function createModernToggle(name, description, callback)
 	switch.Position = UDim2.new(1, -60, 0.5, -11)
 	switch.BackgroundColor3 = THEME.ToggleOff
 	switch.Text = ""
+	switch.ZIndex = 8
 	switch.Parent = cardFrame
 	roundCorners(switch, 11)
 	
@@ -248,6 +366,7 @@ local function createModernToggle(name, description, callback)
 	pin.Size = UDim2.new(0, 16, 0, 16)
 	pin.Position = UDim2.new(0, 3, 0.5, -8)
 	pin.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	pin.ZIndex = 9
 	pin.Parent = switch
 	roundCorners(pin, 8)
 	
@@ -260,12 +379,19 @@ local function createModernToggle(name, description, callback)
 		TweenService:Create(pin, TweenInfo.new(0.18), {Position = targetPos}):Play()
 		TweenService:Create(switch, TweenInfo.new(0.18), {BackgroundColor3 = targetColor}):Play()
 		
+		-- MERKEZİ BİLDİRİM TETİKLEYİCİSİ
+		if isOn then
+			showNotification(name, "Aktif edildi!", true)
+		else
+			showNotification(name, "Devre dışı bırakıldı.", false)
+		end
+		
 		callback(isOn)
 	end)
 end
 
 ---------------------------------------------------------
--- HİLE AKTİVASYON ALANI
+-- HİLE AKTİVASYON ALANI (YENİLENMİŞ LİSTE)
 ---------------------------------------------------------
 local noclipConnection = nil
 local isFlying = false
@@ -308,7 +434,7 @@ createModernToggle("Fly Control", "Karakteri havada özgürce uçurur.", functio
 				if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
 				if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
 				if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir - camera.CFrame.RightVector end
+				if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
 				bv.Velocity = moveDir * flySpeed
 				task.wait()
 			end
@@ -385,7 +511,7 @@ createModernToggle("SpeedHack", "Yürüme hızınızı büyük ölçüde arttır
 	if hum then
 		if state then
 			originalSpeed = hum.WalkSpeed
-			hum.WalkSpeed = 50
+			hum.WalkSpeed = 75
 		else
 			hum.WalkSpeed = originalSpeed
 		end
@@ -418,6 +544,93 @@ createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop 
 		end)
 	else
 		if bhopConn then bhopConn:Disconnect() bhopConn = nil end
+	end
+end)
+
+-- 8. YENİ: FULLBRIGHT
+local origAmbient, origColorShift, brightLoop = nil, nil, nil
+createModernToggle("FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
+	if state then
+		origAmbient = Lighting.Ambient
+		origColorShift = Lighting.ColorShift_Top
+		brightLoop = RunService.RenderStepped:Connect(function()
+			Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+			Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255)
+		end)
+	else
+		if brightLoop then brightLoop:Disconnect() brightLoop = nil end
+		if origAmbient then Lighting.Ambient = origAmbient Lighting.ColorShift_Top = origColorShift end
+	end
+end)
+
+-- 9. YENİ: NO FOG
+local origFogStart, origFogEnd = nil, nil
+createModernToggle("No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
+	if state then
+		origFogStart = Lighting.FogStart
+		origFogEnd = Lighting.FogEnd
+		Lighting.FogStart = 9e9
+		Lighting.FogEnd = 9e9
+	else
+		if origFogStart then Lighting.FogStart = origFogStart Lighting.FogEnd = origFogEnd end
+	end
+end)
+
+-- 10. ANTI-VOID
+local antiVoidConn = nil
+createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", function(state)
+	if state then
+		antiVoidConn = RunService.Heartbeat:Connect(function()
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if root then
+				-- Eğer oyuncu Y ekseninde -50'den aşağı düşerse tetiklenir
+				if root.Position.Y < -50 then
+					root.Velocity = Vector3.new(0, 0, 0)
+					-- Karakteri tekrar yukarıda güvenli bir koordinata taşır
+					root.CFrame = root.CFrame + Vector3.new(0, 80, 0)
+				end
+			end
+		end)
+	else
+		if antiVoidConn then antiVoidConn:Disconnect() antiVoidConn = nil end
+	end
+end)
+
+-- 11. GUN ESP
+local gunESPActive = false
+local gunHighlight = nil
+
+createModernToggle("Gun ESP", "Yerdeki silahı siyah renkli gösterir.", function(state)
+	gunESPActive = state
+	if not gunESPActive then
+		if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
+	else
+		task.spawn(function()
+			while gunESPActive do
+				task.wait(0.5) -- Sunucuyu yormamak için yarım saniyede bir tarar
+				if not gunESPActive then break end
+				
+				-- Workspace içinde "Gun" isimli bir Tool arar
+				local droppedGun = workspace:FindFirstChild("Gun", true)
+				
+				-- Bulunan nesne gerçekten bir Tool mu ve bir oyuncunun içinde değil mi kontrolü
+				if droppedGun and droppedGun:IsA("Tool") and not droppedGun:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+					if not gunHighlight or gunHighlight.Parent ~= droppedGun then
+						if gunHighlight then gunHighlight:Destroy() end
+						
+						-- Siyah renkli ESP efekti oluşturma
+						gunHighlight = Instance.new("Highlight")
+						gunHighlight.FillColor = Color3.fromRGB(0, 0, 0)      -- İç dolgu siyah
+						gunHighlight.OutlineColor = Color3.fromRGB(50, 50, 50) -- Dış çizgi koyu gri
+						gunHighlight.FillTransparency = 0.4
+						gunHighlight.Parent = droppedGun
+					end
+				else
+					if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
+				end
+			end
+		end)
 	end
 end)
 
