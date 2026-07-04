@@ -861,6 +861,66 @@ createToggleButton("Teleport Listesi", function(on)
 end)
 
 -- ────────────────────────────────────────────────
+-- YENİ MM2 & TROLL ÖZELLİKLERİ
+-- ────────────────────────────────────────────────
+
+-- 1. OTOMATİK BIÇAK FIRLATMA (Silent Throw)
+_G.isAutoThrow = false
+createToggleButton("Auto Knife Throw", function(on)
+    _G.isAutoThrow = on
+    task.spawn(function()
+        while _G.isAutoThrow do
+            local target = nil
+            -- En yakın düşmanı bul
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    target = p.Character.HumanoidRootPart
+                    break
+                end
+            end
+            
+            if target then
+                local knife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+                if knife then
+                    -- Sunucuya fırlatma isteği gönder (MM2 RemoteEvent)
+                    local args = { [1] = target.Position, [2] = target }
+                    game:GetService("ReplicatedStorage").Remotes.ThrowKnife:FireServer(unpack(args))
+                end
+            end
+            task.wait(0.5) -- Spam yememek için
+        end
+    end)
+end)
+
+-- 2. OTOMATİK SİLAH ALMA (Auto-Grab Gun)
+_G.isAutoGrab = false
+createToggleButton("Auto Grab Gun", function(on)
+    _G.isAutoGrab = on
+    workspace.ChildAdded:Connect(function(child)
+        if _G.isAutoGrab and child.Name == "GunDrop" then
+            player.Character.HumanoidRootPart.CFrame = child.CFrame
+        end
+    end)
+end)
+
+-- 3. HITBOX GENİŞLETME (En Etkili Yöntem)
+_G.isHitbox = false
+createToggleButton("Big Hitbox", function(on)
+    _G.isHitbox = on
+    RunService.RenderStepped:Connect(function()
+        if _G.isHitbox then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    p.Character.HumanoidRootPart.Size = Vector3.new(10, 10, 10)
+                    p.Character.HumanoidRootPart.Transparency = 0.8 -- Nereyi vurduğunu görebilmek için
+                    p.Character.HumanoidRootPart.CanCollide = false
+                end
+            end
+        end
+    end)
+end)
+
+-- ────────────────────────────────────────────────
 -- 13. ANTI-AFK
 _G.isAntiAfk = false
 
