@@ -1,4 +1,4 @@
--- WORTHNET CLIENT V0.3 | FULL FEATURES WITH FLING & ANTI-FLING
+-- WORTHNET CLIENT V0.6 | FULL FEATURES WITH FLING & MM2 ESP
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -11,13 +11,12 @@ local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera = workspace.CurrentCamera
 
--- VirtualInputManager güvenli yükleme (kick önleme)
+-- VirtualInputManager güvenli yükleme
 local VirtualInputManager
 pcall(function()
 	VirtualInputManager = game:GetService("VirtualInputManager")
 end)
 
--- PlayerGui fallback (CoreGui kick ederse)
 local guiParent
 pcall(function() guiParent = game:GetService("CoreGui") end)
 if not guiParent then guiParent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
@@ -165,12 +164,9 @@ end
 -- ────────────────────────────────────────────────
 -- GLOBALS
 _G.isAntiFling = false
-local flingSpeed = 99999
 _G.isFlingTroll = false
 _G.isNoclip = false
-_G.isFly    = false
-_G.isGod    = false
-local bv, bg
+_G.isMM2ESP = false
 local mouse = player:GetMouse()
 
 -- ────────────────────────────────────────────────
@@ -195,7 +191,6 @@ RunService.Heartbeat:Connect(function()
 			if p ~= player and p.Character then
 				local enemyRoot = p.Character:FindFirstChild("HumanoidRootPart")
 				if enemyRoot then
-					-- Fling yapan trollerin aşırı hız limitini yakala
 					if enemyRoot.Velocity.Magnitude > 75 or enemyRoot.RotVelocity.Magnitude > 75 then
 						for _, part in ipairs(p.Character:GetDescendants()) do
 							if part:IsA("BasePart") then
@@ -211,7 +206,47 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+-- MM2 Rol Bulucu & ESP Döngüsü
+local mm2Highlights = {}
+RunService.Heartbeat:Connect(function()
+	if not _G.isMM2ESP then
+		for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
+		table.clear(mm2Highlights)
+		return
+	end
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local roleColor = Color3.fromRGB(107, 50, 124) -- Varsayılan Masum (Mor)
+			
+			-- Silah/Bıçak kontrolü ile rol analizi
+			local backpack = p:FindFirstChild("Backpack")
+			local character = p.Character
+			
+			if (backpack and backpack:FindFirstChild("Knife")) or (character and character:FindFirstChild("Knife")) then
+				roleColor = Color3.fromRGB(255, 0, 0) -- Katil (Kırmızı)
+			elseif (backpack and backpack:FindFirstChild("Gun")) or (character and character:FindFirstChild("Gun")) then
+				roleColor = Color3.fromRGB(0, 100, 255) -- Şerif (Koyu Mavi)
+			end
+
+			if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= character then
+				if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
+				local hl = Instance.new("Highlight", character)
+				hl.FillTransparency = 0.5
+				hl.OutlineTransparency = 0.2
+				mm2Highlights[p.Name] = hl
+			end
+			
+			mm2Highlights[p.Name].FillColor = roleColor
+			mm2Highlights[p.Name].OutlineColor = roleColor
+		end
+	end
+end)
+
 -- ────────────────────────────────────────────────
+-- BUTONLAR VE İŞLEVLER
+-- ────────────────────────────────────────────────
+
 -- 1. HIZ UYGULA
 createButton("⚡ Hızı Uygula", function()
 	local hum = player.Character and player.Character:FindFirstChild("Humanoid")
@@ -220,20 +255,15 @@ createButton("⚡ Hızı Uygula", function()
 	end
 end)
 
--- ────────────────────────────────────────────────
 -- 2. NOCLIP
 createToggleButton("Noclip", function(on)
 	_G.isNoclip = on
 end)
 
--- ────────────────────────────────────────────────
--- FAKE CHAT SYSTEM TROLL
--- ────────────────────────────────────────────────
-
--- Fake mesaj için input kutusu
+-- 3. FAKE CHAT SYSTEM TROLL
 local fakeChatBox = Instance.new("TextBox", frame)
 fakeChatBox.Size = UDim2.new(0.88, 0, 0, 36)
-fakeChatBox.Position = UDim2.new(0.06, 0, 0, 92) -- Diğer objelerin pozisyonuna göre aşağı kaydırdım
+fakeChatBox.Position = UDim2.new(0.06, 0, 0, 92)
 fakeChatBox.PlaceholderText = "Korkutulacak Oyuncu Adı"
 fakeChatBox.Text = ""
 fakeChatBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -246,31 +276,22 @@ fakeChatBox.ClearTextOnFocus = false
 local fakeChatBoxCorner = Instance.new("UICorner", fakeChatBox)
 fakeChatBoxCorner.CornerRadius = UDim.new(0, 8)
 local fakeChatBoxStroke = Instance.new("UIStroke", fakeChatBox)
-fakeChatBoxStroke.Color = Color3.fromRGB(107, 50, 124) -- Mor Tema Çizgisi
+fakeChatBoxStroke.Color = Color3.fromRGB(107, 50, 124)
 fakeChatBoxStroke.Thickness = 1
 
--- Tetikleme Butonu
 createButton("🚨 Sahte Ban Uyarısı Geç", function()
 	local targetName = fakeChatBox.Text
 	if targetName == "" then targetName = "UnknownPlayer" end
 	
-	-- Sistem kanalı üzerinden sunucuya fake mesajı basıyoruz
+	local fakeMessage = "                                                                                \n[SYSTEM]: " .. targetName .. " has been flagged for cheating and will be banned shortly."
+	
 	local TextChatService = game:GetService("TextChatService")
-	
-	-- Kırmızı renkli, kalın fontlu orijinal sistem uyarısı formatı
-	local fakeMessage = string.format(
-		'<font color="rgb(255, 0, 50)"><b>[SYSTEM]: %s has been flagged for cheating and will be banned shortly.</b></font>',
-		targetName
-	)
-	
-	-- Sunucudaki genel sohbet kanalını bul ve manipüle et
 	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 		local generalChannel = TextChatService:FindFirstChild("RBXGeneral", true) or TextChatService:FindFirstChild("TextChannels", true):FindFirstChild("RBXGeneral")
 		if generalChannel then
 			generalChannel:SendAsync(fakeMessage)
 		end
 	else
-		-- Eski chat sistemi kullanan oyunlar için fallback (ReplicatedStorage Remote yardımıyla)
 		local SayMessageRequest = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents") 
 			and game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
 		if SayMessageRequest then
@@ -279,26 +300,39 @@ createButton("🚨 Sahte Ban Uyarısı Geç", function()
 	end
 end)
 
--- ────────────────────────────────────────────────
--- YENİ BUTONLAR: ANTI-FLING VE FLING TROLL
--- ────────────────────────────────────────────────
-
--- 1. ANTI-FLING BUTONU
+-- 4. ANTI-FLING KANAL BUTONU
 createToggleButton("Anti-Fling Kalkanı", function(on)
 	_G.isAntiFling = on
 end)
 
--- 2. FLING TROLL BUTONU (Çarp Uçur - Bugsuz/Stabil Sürüm)
+-- 5. FLING TROLL BUTONU (Asla Kendini Fırlatmayan Model)
 createToggleButton("Fling", function(on)
 	_G.isFlingTroll = on
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local hum = char and char:FindFirstChild("Humanoid")
 	
-	if on and root and hum then
-		-- Kendini gökyüzüne fırlatmamak için karakterin kendi parçalarının çarpışmasını KAPA
+	if on and root then
+		-- Mevcut fiziki çarpışmaları engelle
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+
+		-- Kusursuz dönüş mekanizması: Karakterin dönme hızını vektörel düzeyde aşırı yükle
+		-- Havaya uçmaya sebep olan ek fizik nesnelerini (BodyPosition vb.) eklemiyoruz
 		task.spawn(function()
-			while _G.isFlingTroll and char and char.Parent do
+			while _G.isFlingTroll and root and root.Parent do
+				-- Sadece HRP üzerine saf, ekstrem rotasyonel hız veriyoruz. Kendi parçalarına basmıyoruz.
+				root.RotVelocity = Vector3.new(0, 99999, 0)
+				root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z) -- Y eksenindeki ani sıçramayı bloke et
+				
+				-- Etraftaki nesneleri algılayıp itmesi için sadece HRP'ye anlık momentum simülasyonu
+				root.Velocity = root.Velocity + Vector3.new(50, 0, 50)
+				task.wait()
+				root.Velocity = root.Velocity - Vector3.new(50, 0, 50)
+				
+				-- Parçaların birbirine çarparak sekmesini önlemek için döngüsel CanCollide kapatma
 				for _, part in ipairs(char:GetDescendants()) do
 					if part:IsA("BasePart") then
 						part.CanCollide = false
@@ -307,53 +341,10 @@ createToggleButton("Fling", function(on)
 				task.wait()
 			end
 		end)
-
-		-- Karakterin dik durması ve saçma sapan savrulmaması için stabil gyro
-		local bgFling = Instance.new("BodyGyro", root)
-		bgFling.Name = "FlingGyro"
-		bgFling.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-		bgFling.CFrame = root.CFrame
-		
-		-- Karakteri sadece Y ekseninde (kendi etrafında) kusursuz döndüren yeni nesil motor
-		local avFling = Instance.new("AngularVelocity", root)
-		avFling.Name = "FlingSpin"
-		avFling.MaxTorque = 9e9
-		avFling.AngularVelocity = Vector3.new(0, 95000, 0) -- Kontrollü ama ölümcül hız
-		
-		-- Havaya uçmanı engelleyen, seni zemine yakın tutan sabitleyici kuvvet
-		local bpFling = Instance.new("BodyPosition", root)
-		bpFling.Name = "FlingPosition"
-		bpFling.MaxForce = Vector3.new(0, 9e9, 0) -- Sadece dikey eksende seni kilitler
-		bpFling.Position = root.Position
-		
-		hum.PlatformStand = true
-		
-		-- Çarpışma anında karşı tarafı fırlatacak hız vektör simülasyonu
-		task.spawn(function()
-			while _G.isFlingTroll and root and root.Parent do
-				-- Sürekli olarak anlık pozisyonunu dikeyde koru ki göğe yükselme
-				if bpFling then bpFling.Position = Vector3.new(0, root.Position.Y, 0) end
-				
-				for _, part in ipairs(char:GetDescendants()) do
-					if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-						-- Karşı tarafa aktarılacak olan devasa momentum
-						part.Velocity = Vector3.new(800, 0, 800)
-					end
-				end
-				task.wait()
-			end
-		end)
 	else
-		-- Kapatıldığında temizlik yap ve karakteri serbest bırak
 		if root then
-			if root:FindFirstChild("FlingGyro") then root.FlingGyro:Destroy() end
-			if root:FindFirstChild("FlingSpin") then root.FlingSpin:Destroy() end
-			if root:FindFirstChild("FlingPosition") then root.FlingPosition:Destroy() end
+			root.RotVelocity = Vector3.new(0, 0, 0)
 		end
-		if hum then
-			hum.PlatformStand = false
-		end
-		-- Karakter parçalarını tekrar normal haline getir
 		if char then
 			for _, part in ipairs(char:GetDescendants()) do
 				if part:IsA("BasePart") then
@@ -364,6 +355,10 @@ createToggleButton("Fling", function(on)
 	end
 end)
 
+-- 6. MM2 ROLE ESP BUTONU
+createToggleButton("MM2 Rol ESP", function(on)
+	_G.isMM2ESP = on
+end)
 -- ────────────────────────────────────────────────
 -- DİĞER FONKSİYONLAR (ESP, FLY, GOD)
 -- ────────────────────────────────────────────────
