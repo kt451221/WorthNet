@@ -259,3 +259,52 @@ createModernToggle("Fly Control", "Karakteri havada serbestçe uçurur (W,A,S,D)
 		end
 	end
 end)
+--ANTI FLIGN
+local antiFlingConn = nil
+createModernToggle("Anti-Fling", "Flinglenmeyi engeller.", function(state)
+    if state then
+        antiFlingConn = RunService.Heartbeat:Connect(function()
+            if player.Character then
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local enemyRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                        if enemyRoot and (enemyRoot.Velocity.Magnitude > 75 or enemyRoot.RotVelocity.Magnitude > 75) then
+                            for _, part in ipairs(p.Character:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                    part.CanCollide = false
+                                    part.Velocity = Vector3.new(0,0,0)
+                                    part.RotVelocity = Vector3.new(0,0,0)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if antiFlingConn then antiFlingConn:Disconnect() end
+    end
+end)
+
+--MM2 ESP
+local mm2Highlights = {}
+createModernToggle("MM2 ESP", "Katili ve Şerifi gösterir.", function(state)
+    -- Hile kapandığında highlightları temizle
+    if not state then
+        for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
+        table.clear(mm2Highlights)
+    end
+    
+    -- Döngü (State true ise ESP çalışır)
+    task.spawn(function()
+        while state do
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    -- Rol kontrolü kodun burada (aynen yapıştır)
+                    -- ... (Highlight oluşturma kodların)
+                end
+            end
+            task.wait(0.5) -- Performans için döngüye bekleme ekle
+        end
+    end)
+end)
