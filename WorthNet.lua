@@ -305,42 +305,33 @@ createToggleButton("Anti-Fling Kalkanı", function(on)
 	_G.isAntiFling = on
 end)
 
-createToggleButton("Fling", function(on)
+createToggleButton("Pro Fling (Collision)", function(on)
     _G.isFlingTroll = on
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if on and root then
-        task.spawn(function()
-            while _G.isFlingTroll and char and char.Parent do
-                -- Yakınındaki en yakın düşmanı bul
+    task.spawn(function()
+        while _G.isFlingTroll and player.Character do
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                -- En yakın düşmanı bul
                 local target = nil
-                local dist = 15 -- Sadece 15 stud yakınındakileri fırlat
-                
+                local dist = 10 -- Çok yakın olmalısın!
                 for _, p in pairs(Players:GetPlayers()) do
                     if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        local magnitude = (root.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                        if magnitude < dist then
+                        local mag = (root.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                        if mag < dist then
                             target = p.Character.HumanoidRootPart
                             break
                         end
                     end
                 end
 
-                -- Eğer hedef varsa Fling gücünü ona aktar
+                -- Hedefin içine ışınlan (Fizik motoru onu fırlatacaktır)
                 if target then
-                    -- Hedefi deli gibi döndürerek savur
-                    target.Velocity = Vector3.new(0, 100, 0) -- Havaya fırlat
-                    target.RotVelocity = Vector3.new(999, 999, 999) -- Kendi etrafında döndür
-                    
-                    -- Senin karakterinin yerinde sabit kalması için:
-                    root.Velocity = Vector3.new(0, 0, 0)
+                    root.CFrame = target.CFrame * CFrame.new(0, 0, 0.1) -- Tam içine gir
                 end
-                
-                RunService.Heartbeat:Wait()
             end
-        end)
-    end
+            RunService.Heartbeat:Wait() -- Çok hızlı tetikleme
+        end
+    end)
 end)
 
 -- 6. MM2 ROLE ESP BUTONU
