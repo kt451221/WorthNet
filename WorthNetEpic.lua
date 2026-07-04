@@ -1,64 +1,80 @@
+-- WORTHNET HACK SYSTEM - PRO UI V2.0
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "WorthNet"
-
--- Ana Frame
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 500, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
+MainFrame.Size = UDim2.new(0, 600, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Active = true; MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
--- Title Bar (Kapatma Tuşu Dahil)
-local TitleBar = Instance.new("Frame", MainFrame)
-TitleBar.Size = UDim2.new(1, 0, 0, 30)
-TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+-- Sol Menü (Tablar)
+local TabContainer = Instance.new("Frame", MainFrame)
+TabContainer.Size = UDim2.new(0, 120, 1, 0)
+TabContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", TabContainer).CornerRadius = UDim.new(0, 10)
 
-local TitleLabel = Instance.new("TextLabel", TitleBar)
-TitleLabel.Size = UDim2.new(1, -30, 1, 0)
+-- Orta Ekran (Oyunlar / Hileler)
+local ContentFrame = Instance.new("Frame", MainFrame)
+ContentFrame.Size = UDim2.new(1, -130, 1, -10)
+ContentFrame.Position = UDim2.new(0, 125, 0, 5)
+ContentFrame.BackgroundTransparency = 1
+
+local TitleLabel = Instance.new("TextLabel", ContentFrame)
 TitleLabel.Text = "WorthNet | Game Selection"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
 TitleLabel.BackgroundTransparency = 1
 
-local CloseBtn = Instance.new("TextButton", TitleBar)
-CloseBtn.Size = UDim2.new(0, 30, 1, 0)
-CloseBtn.Position = UDim2.new(1, -30, 0, 0)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+-- Sayfa ve Oyun Yönetimi
+local CurrentPage = 1
+local PageData = {
+    ["Page1"] = {"BrookHaven", "MM2", "Blox Fruits", "BedWars", "Da Hood", "Adopt Me", "Tower of Hell", "Pet Sim 99", "Doors", "Arsenal"},
+    ["Page2"] = {"Diğer Oyun 1", "Oyun 2"} -- Burayı 10'a kadar doldurabilirsin
+}
 
--- Oyun Listesi (Page 1)
-local GameList = Instance.new("ScrollingFrame", MainFrame)
-GameList.Size = UDim2.new(1, -10, 1, -40)
-GameList.Position = UDim2.new(0, 5, 0, 35)
-GameList.BackgroundTransparency = 1
-GameList.CanvasSize = UDim2.new(0, 0, 0, 400)
-
-local UIGrid = Instance.new("UIGridLayout", GameList)
-UIGrid.CellSize = UDim2.new(0, 150, 0, 50)
-UIGrid.CellPadding = UDim2.new(0, 10, 0, 10)
-
--- Oyun Butonu Oluşturucu
-local function createGameBtn(gameName)
-    local btn = Instance.new("TextButton", GameList)
-    btn.Text = gameName
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.Gotham
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 6)
+local function loadGames(pageName)
+    ContentFrame:ClearAllChildren()
+    TitleLabel.Parent = ContentFrame
     
-    btn.MouseButton1Click:Connect(function()
-        -- Burası oyun seçilince açılacak olan menü
-        TitleLabel.Text = gameName .. " WorthNet"
-        GameList.Visible = false
-        -- Burada hilelerin olduğu sayfayı (Page2+) oluşturacağız
-        print(gameName .. " menüsüne geçildi.")
+    local Grid = Instance.new("UIGridLayout", ContentFrame)
+    Grid.CellSize = UDim2.new(0, 100, 0, 40)
+    Grid.Padding = UDim2.new(0, 10, 0, 10)
+    
+    for _, gameName in pairs(PageData[pageName]) do
+        local btn = Instance.new("TextButton", ContentFrame)
+        btn.Text = gameName
+        btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Instance.new("UICorner", btn)
+        
+        btn.MouseButton1Click:Connect(function()
+            -- OYUN HİLE MENÜSÜ AÇILIŞI
+            TitleLabel.Text = gameName .. " | WorthNet"
+            ContentFrame:ClearAllChildren()
+            
+            -- Örnek Hileler
+            local fly = Instance.new("TextButton", ContentFrame)
+            fly.Text = "Fly (Aç/Kapa)"
+            fly.BackgroundColor3 = Color3.fromRGB(0, 80, 30)
+            -- Fly fonksiyonu buraya...
+        end)
+    end
+end
+
+-- Tab Butonları Oluşturma
+for i = 1, 5 do
+    local tabBtn = Instance.new("TextButton", TabContainer)
+    tabBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    tabBtn.Position = UDim2.new(0.05, 0, 0, 10 + (i-1)*40)
+    tabBtn.Text = "Page " .. i
+    tabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Instance.new("UICorner", tabBtn)
+    
+    tabBtn.MouseButton1Click:Connect(function()
+        loadGames("Page" .. i)
     end)
 end
 
-local games = {"BrookHaven", "MM2", "Blox Fruits", "BedWars", "Da Hood"}
-for _, name in pairs(games) do createGameBtn(name) end
+loadGames("Page1") -- Başlangıç sayfası
