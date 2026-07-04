@@ -47,13 +47,13 @@ local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0, 12)
 
 local frameStroke = Instance.new("UIStroke", frame)
-frameStroke.Color = Color3.fromRGB(0, 255, 80)
+frameStroke.Color = Color3.fromRGB(255, 0, 127)
 frameStroke.Thickness = 1.5
 
 local titleBar = Instance.new("Frame", frame)
 titleBar.Size = UDim2.new(1, 0, 0, 45)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = Color3.fromRGB(0, 200, 60)
+titleBar.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
 titleBar.BorderSizePixel = 0
 
 local titleCorner = Instance.new("UICorner", titleBar)
@@ -62,14 +62,14 @@ titleCorner.CornerRadius = UDim.new(0, 12)
 local titleFix = Instance.new("Frame", titleBar)
 titleFix.Size = UDim2.new(1, 0, 0.5, 0)
 titleFix.Position = UDim2.new(0, 0, 0.5, 0)
-titleFix.BackgroundColor3 = Color3.fromRGB(0, 200, 60)
+titleFix.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
 titleFix.BorderSizePixel = 0
 
 local titleLabel = Instance.new("TextLabel", titleBar)
 titleLabel.Size = UDim2.new(1, 0, 1, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "⚡ WORTHNET V0.3"
-titleLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+titleLabel.Text = "⚡ WORTHNET V0.6"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextScaled = true
 titleLabel.Font = Enum.Font.GothamBold
 
@@ -165,7 +165,6 @@ end
 -- ────────────────────────────────────────────────
 -- GLOBALS
 _G.isAntiFling = false
--- Fling loop için hız sabitleyici bağımsız değişken
 local flingSpeed = 99999
 _G.isFlingTroll = false
 _G.isNoclip = false
@@ -228,6 +227,59 @@ createToggleButton("Noclip", function(on)
 end)
 
 -- ────────────────────────────────────────────────
+-- FAKE CHAT SYSTEM TROLL
+-- ────────────────────────────────────────────────
+
+-- Fake mesaj için input kutusu
+local fakeChatBox = Instance.new("TextBox", frame)
+fakeChatBox.Size = UDim2.new(0.88, 0, 0, 36)
+fakeChatBox.Position = UDim2.new(0.06, 0, 0, 92) -- Diğer objelerin pozisyonuna göre aşağı kaydırdım
+fakeChatBox.PlaceholderText = "Korkutulacak Oyuncu Adı"
+fakeChatBox.Text = ""
+fakeChatBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+fakeChatBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+fakeChatBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+fakeChatBox.Font = Enum.Font.Gotham
+fakeChatBox.TextSize = 14
+fakeChatBox.ClearTextOnFocus = false
+
+local fakeChatBoxCorner = Instance.new("UICorner", fakeChatBox)
+fakeChatBoxCorner.CornerRadius = UDim.new(0, 8)
+local fakeChatBoxStroke = Instance.new("UIStroke", fakeChatBox)
+fakeChatBoxStroke.Color = Color3.fromRGB(107, 50, 124) -- Mor Tema Çizgisi
+fakeChatBoxStroke.Thickness = 1
+
+-- Tetikleme Butonu
+createButton("🚨 Sahte Ban Uyarısı Geç", function()
+	local targetName = fakeChatBox.Text
+	if targetName == "" then targetName = "UnknownPlayer" end
+	
+	-- Sistem kanalı üzerinden sunucuya fake mesajı basıyoruz
+	local TextChatService = game:GetService("TextChatService")
+	
+	-- Kırmızı renkli, kalın fontlu orijinal sistem uyarısı formatı
+	local fakeMessage = string.format(
+		'<font color="rgb(255, 0, 50)"><b>[SYSTEM]: %s has been flagged for cheating and will be banned shortly.</b></font>',
+		targetName
+	)
+	
+	-- Sunucudaki genel sohbet kanalını bul ve manipüle et
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local generalChannel = TextChatService:FindFirstChild("RBXGeneral", true) or TextChatService:FindFirstChild("TextChannels", true):FindFirstChild("RBXGeneral")
+		if generalChannel then
+			generalChannel:SendAsync(fakeMessage)
+		end
+	else
+		-- Eski chat sistemi kullanan oyunlar için fallback (ReplicatedStorage Remote yardımıyla)
+		local SayMessageRequest = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents") 
+			and game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
+		if SayMessageRequest then
+			SayMessageRequest:FireServer(fakeMessage, "All")
+		end
+	end
+end)
+
+-- ────────────────────────────────────────────────
 -- YENİ BUTONLAR: ANTI-FLING VE FLING TROLL
 -- ────────────────────────────────────────────────
 
@@ -236,51 +288,78 @@ createToggleButton("Anti-Fling Kalkanı", function(on)
 	_G.isAntiFling = on
 end)
 
--- 2. FLING TROLL BUTONU (Çarp Uçur)
-createToggleButton("Fling Troll (Çarp Uçur)", function(on)
+-- 2. FLING TROLL BUTONU (Çarp Uçur - Bugsuz/Stabil Sürüm)
+createToggleButton("Fling", function(on)
 	_G.isFlingTroll = on
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChild("Humanoid")
 	
 	if on and root and hum then
-		-- Karakterin dengede kalması için
+		-- Kendini gökyüzüne fırlatmamak için karakterin kendi parçalarının çarpışmasını KAPA
+		task.spawn(function()
+			while _G.isFlingTroll and char and char.Parent do
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+				task.wait()
+			end
+		end)
+
+		-- Karakterin dik durması ve saçma sapan savrulmaması için stabil gyro
 		local bgFling = Instance.new("BodyGyro", root)
 		bgFling.Name = "FlingGyro"
 		bgFling.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
 		bgFling.CFrame = root.CFrame
 		
-		-- Yüksek dönüş hızı sağlayan motor
+		-- Karakteri sadece Y ekseninde (kendi etrafında) kusursuz döndüren yeni nesil motor
 		local avFling = Instance.new("AngularVelocity", root)
 		avFling.Name = "FlingSpin"
 		avFling.MaxTorque = 9e9
-		avFling.AngularVelocity = Vector3.new(0, flingSpeed, 0)
+		avFling.AngularVelocity = Vector3.new(0, 95000, 0) -- Kontrollü ama ölümcül hız
 		
-		-- İtme gücü artırıcı
-		local thrustFling = Instance.new("BodyThrust", root)
-		thrustFling.Name = "FlingThrust"
-		thrustFling.Force = Vector3.new(9999, 0, 9999)
+		-- Havaya uçmanı engelleyen, seni zemine yakın tutan sabitleyici kuvvet
+		local bpFling = Instance.new("BodyPosition", root)
+		bpFling.Name = "FlingPosition"
+		bpFling.MaxForce = Vector3.new(0, 9e9, 0) -- Sadece dikey eksende seni kilitler
+		bpFling.Position = root.Position
 		
 		hum.PlatformStand = true
 		
+		-- Çarpışma anında karşı tarafı fırlatacak hız vektör simülasyonu
 		task.spawn(function()
 			while _G.isFlingTroll and root and root.Parent do
+				-- Sürekli olarak anlık pozisyonunu dikeyde koru ki göğe yükselme
+				if bpFling then bpFling.Position = Vector3.new(0, root.Position.Y, 0) end
+				
 				for _, part in ipairs(char:GetDescendants()) do
 					if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-						part.Velocity = Vector3.new(999, 999, 999)
+						-- Karşı tarafa aktarılacak olan devasa momentum
+						part.Velocity = Vector3.new(800, 0, 800)
 					end
 				end
 				task.wait()
 			end
 		end)
 	else
+		-- Kapatıldığında temizlik yap ve karakteri serbest bırak
 		if root then
 			if root:FindFirstChild("FlingGyro") then root.FlingGyro:Destroy() end
 			if root:FindFirstChild("FlingSpin") then root.FlingSpin:Destroy() end
-			if root:FindFirstChild("FlingThrust") then root.FlingThrust:Destroy() end
+			if root:FindFirstChild("FlingPosition") then root.FlingPosition:Destroy() end
 		end
 		if hum then
 			hum.PlatformStand = false
+		end
+		-- Karakter parçalarını tekrar normal haline getir
+		if char then
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
+				end
+			end
 		end
 	end
 end)
