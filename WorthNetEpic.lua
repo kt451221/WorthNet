@@ -729,6 +729,91 @@ createModernToggle("Hitbox Expander", "Rakiplerin kafalarını büyütür.", fun
     end)
 end)
 
+-- 14. Inventory ESP (Envanter Tarayıcı)
+local invESPActive = false
+local invTags = {}
+
+createModernToggle("Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri listeler.", function(state)
+    invESPActive = state
+    if not invESPActive then
+        for _, tag in pairs(invTags) do if tag then tag:Destroy() end end
+        table.clear(invTags)
+    else
+        task.spawn(function()
+            while invESPActive do
+                task.wait(1) -- Sunucuyu yormamak için 1 saniyelik tarama
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local items = {}
+                        -- 1. Elde tutulanı kontrol et
+                        local tool = p.Character:FindFirstChildOfClass("Tool")
+                        if tool then table.insert(items, tool.Name) end
+                        
+                        -- 2. Backpack (Sırt çantası) kontrol et
+                        local back = p:FindFirstChild("Backpack")
+                        if back then
+                            for _, item in ipairs(back:GetChildren()) do
+                                if item:IsA("Tool") then table.insert(items, item.Name) end
+                            end
+                        end
+                        
+                        -- ESP Tag oluştur/güncelle
+                        local head = p.Character:FindFirstChild("Head")
+                        if head then
+                            if not invTags[p.Name] then
+                                local bb = Instance.new("BillboardGui", head)
+                                bb.Size = UDim2.new(0, 200, 0, 50)
+                                bb.StudsOffset = Vector3.new(0, 3, 0)
+                                local label = Instance.new("TextLabel", bb)
+                                label.Size = UDim2.new(1,0,1,0)
+                                label.BackgroundTransparency = 1
+                                label.TextColor3 = Color3.fromRGB(255, 255, 0)
+                                label.TextScaled = true
+                                invTags[p.Name] = label
+                            end
+                            invTags[p.Name].Text = table.concat(items, ", ")
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- 15. Teleport To Nearest Player
+createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
+    if state then
+        local target = nil
+        local dist = 1000
+        
+        -- En yakın oyuncuyu bul
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if myRoot then
+                    local d = (myRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                    if d < dist then
+                        dist = d
+                        target = p.Character.HumanoidRootPart
+                    end
+                end
+            end
+        end
+        
+        -- Işınlanma işlemi
+        if target then
+            player.Character.HumanoidRootPart.CFrame = target.CFrame * CFrame.new(0, 0, 2)
+            showNotification("Teleport", "Oyuncuya ışınlanıldı!", true)
+        else
+            showNotification("Teleport", "Yakında oyuncu bulunamadı.", false)
+        end
+        
+        -- Butonu otomatik kapat (sadece tıklandığında çalışması için)
+        task.wait(0.5)
+        -- Not: Burada butonun 'isOn' durumunu false yapacak logic ekleyebilirsin
+    end
+end)
+
 -- Arka plan bypass sistemi
 pcall(function()
 	local metatable = getrawmetatable(game)
