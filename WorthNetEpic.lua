@@ -1024,7 +1024,7 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Mouse & Camera Toggle (Ctrl Tuşu ile)
+-- Mouse & Camera Toggle (G Tuşu ile)
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
@@ -1033,7 +1033,7 @@ local mouseLocked = true
 local toggleLoop = nil
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.Ctrl then
+    if input.KeyCode == Enum.KeyCode.G then
         if mouseLocked then
             -- KİLİDİ AÇMA DÖNGÜSÜ
             toggleLoop = RunService.RenderStepped:Connect(function()
