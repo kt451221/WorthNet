@@ -851,28 +851,36 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
 end)
 
 -- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
+-- 15. Fling System (Ghost Mode - Sarsıntısız ve Sabit)
 createModernToggle("Fling System", "Hedefi sessizce haritadan atar.", function(state)
     _G.FlingEnabled = state
     task.spawn(function()
         while _G.FlingEnabled do
             task.wait(0.1)
             local char = player.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if hrp then
                 for _, p in ipairs(Players:GetPlayers()) do
                     if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        local hrp = p.Character.HumanoidRootPart
-                        local dist = (char.HumanoidRootPart.Position - hrp.Position).Magnitude
+                        local targetHrp = p.Character.HumanoidRootPart
+                        local dist = (hrp.Position - targetHrp.Position).Magnitude
                         
-                        -- Sadece 15 stud mesafeye girince tetiklen
                         if dist < 15 then
-                            -- Fizik patlamasını sadece hedef oyuncu üzerinde tetikle
-                            local bf = Instance.new("BodyForce", hrp)
-                            bf.Force = Vector3.new(9e9, 9e9, 9e9) -- Hedefi anlık patlat
-                            task.wait(0.1)
-                            bf:Destroy()
+                            -- GÜVENLİ Fırlatma: Kendini hedefle birleştir, sonra hemen geri dön
+                            local originalCFrame = hrp.CFrame
                             
-                            -- Sen sarsılma diye küçük bir bekleme
-                            task.wait(0.5) 
+                            -- Hızlıca hedefin içine gir (Bu hamle onları fırlatır)
+                            hrp.CFrame = targetHrp.CFrame
+                            
+                            -- Fizik motorunun sapıtması için milisaniyelik bir bekletme
+                            task.wait(0.05)
+                            
+                            -- Hemen eski yerine dön
+                            hrp.CFrame = originalCFrame
+                            
+                            -- Kısa bir mola
+                            task.wait(0.3)
                         end
                     end
                 end
@@ -880,7 +888,6 @@ createModernToggle("Fling System", "Hedefi sessizce haritadan atar.", function(s
         end
     end)
 end)
-
 -- 16. Anti-AFK
 local afkConn = nil
 createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
@@ -937,6 +944,72 @@ createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitl
             end
         end
     end)
+end)
+
+-- 19. Silent Aim & FOV Circle
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local FOV_RADIUS = 150 -- Çemberin büyüklüğü
+
+-- Çemberi oluştur
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 2
+fovCircle.NumSides = 100
+fovCircle.Radius = FOV_RADIUS
+fovCircle.Filled = false
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Visible = false
+fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+-- Ayarları yönet
+local silentAimActive = false
+
+-- En yakın düşmanı bul
+local function getClosest()
+    local closest, dist = nil, FOV_RADIUS
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
+            if onScreen then
+                local mouseDist = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                if mouseDist < dist then
+                    closest = p.Character.Head
+                    dist = mouseDist
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- Silent Aim (Mermi yönlendirme)
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    
+    if silentAimActive and (method == "FireServer" or method == "InvokeServer") and (self.Name == "Fire" or self.Name == "Shoot") then
+        local target = getClosest()
+        if target then
+            args[1] = target.Position -- Mermiyi kafaya yönlendir
+        end
+    end
+    return oldNamecall(self, unpack(args))
+end)
+
+-- Menü Toggle
+createModernToggle("Silent Aim", "Ekranda FOV çemberi ile hedefleme.", function(state)
+    silentAimActive = state
+    fovCircle.Visible = state
+end)
+
+-- Çemberi ekranın ortasında tut
+RunService.RenderStepped:Connect(function()
+    fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 end)
 
 -- Arka plan bypass sistemi
