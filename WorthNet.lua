@@ -1006,34 +1006,34 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
 end)
 
 -- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
--- DESTROYER FLING (Etkili ve Hızlı)
-local flingEnabled = false
-
-createModernToggle("Fling All", "Yakındaki oyuncuları fırlatır.", function(state)
+-- DESTROYER FLING (Optimize Edilmiş)
+createModernToggle("Fling All", "Düşmanları fırlatır.", function(state)
     flingEnabled = state
     if flingEnabled then
         task.spawn(function()
+            local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not myHrp then return end
+            
+            -- Kendi fiziğimizi geçici olarak kapatıyoruz
+            myHrp.CanCollide = false 
+            
             while flingEnabled do
                 for _, p in pairs(game.Players:GetPlayers()) do
                     if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                         local targetHrp = p.Character.HumanoidRootPart
-                        local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                         
-                        if myHrp then
-                            -- Rakibe yapış (Snap to target)
-                            myHrp.CFrame = targetHrp.CFrame
-                            -- Fizik motorunu tetiklemek için hızı uçur
-                            myHrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
-                            myHrp.RotVelocity = Vector3.new(9e9, 9e9, 9e9)
-                        end
+                        -- Tam üzerine değil, 1 stud önüne ışınla (Daha az çarpışma)
+                        myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 1)
+                        myHrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
                     end
                 end
-                task.wait(0.1) -- Sunucu hızını ayarlamak için
+                task.wait(0.05)
             end
+            -- Kapatınca eski haline getir
+            myHrp.CanCollide = true
         end)
     end
 end)
-
 -- AUTO FOLLOW & LOCK SYSTEM
 local followEnabled = false
 local RunService = game:GetService("RunService")
