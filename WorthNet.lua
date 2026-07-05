@@ -452,60 +452,87 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- 2. FLY CONTROL
-createModernToggle("Fly Control", "Karakteri havada özgürce uçurur.", function(state)
-	isFlying = state
-	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	if isFlying and root then
-		local bv = Instance.new("BodyVelocity")
-		bv.Name = "WorthNetVelocity"
-		bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-		bv.Parent = root
-		task.spawn(function()
-			while isFlying and root and root.Parent do
-				local camera = workspace.CurrentCamera
-				local moveDir = Vector3.new(0,0,0)
-				if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
-				bv.Velocity = moveDir * flySpeed
-				task.wait()
-			end
-			if bv then bv:Destroy() end
-		end)
-	else
-		if root and root:FindFirstChild("WorthNetVelocity") then root.WorthNetVelocity:Destroy() end
-	end
+-- 2. FLY CONTROL (Gerçekçi & Hızlı)
+createModernToggle("Fly Control", "Yumuşak ve hızlı uçuş.", function(state)
+    isFlying = state
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if isFlying and root then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "WorthNetVelocity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Parent = root
+        
+        local currentVelocity = Vector3.new(0,0,0)
+        local flySpeed = 150 -- Burayı artırırsan çok daha hızlı uçar (örneğin 300)
+        
+        task.spawn(function()
+            while isFlying and root and root.Parent do
+                local camera = workspace.CurrentCamera
+                local targetDir = Vector3.new(0,0,0)
+                
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then targetDir = targetDir + camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then targetDir = targetDir - camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then targetDir = targetDir - camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then targetDir = targetDir + camera.CFrame.RightVector end
+                
+                -- Yumuşak uçuş hissi (Lerp)
+                -- 0.1 değeri ne kadar küçükse o kadar yumuşak (daha "ağır" hissettirir)
+                currentVelocity = currentVelocity:Lerp(targetDir * flySpeed, 0.1)
+                
+                bv.Velocity = currentVelocity
+                task.wait()
+            end
+            if bv then bv:Destroy() end
+        end)
+    else
+        if root and root:FindFirstChild("WorthNetVelocity") then root.WorthNetVelocity:Destroy() end
+    end
 end)
 
--- ProximityPrompt Sürelerini Sıfırla (Instant Interaction)
-local function setInstantInteraction(state)
-    _G.InstantInteraction = state
+-- Proximity Prompt (Mesafe Bazlı 0 Saniye)
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+local proximityEnabled = false
+
+createModernToggle("Instant Interact", "50 stud içindeki etkileşimleri 0 saniye yapar.", function(state)
+    proximityEnabled = state
+end)
+
+-- Çökme yapmayan, optimize edilmiş tarama döngüsü
+RunService.RenderStepped:Connect(function()
+    if not proximityEnabled then return end
     
-    -- Mevcut olanları ayarla
-    for _, obj in pairs(game:GetDescendants()) do
+    local character = localPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local myPos = character.HumanoidRootPart.Position
+    
+    -- Sadece Workspace'i tara, her saniye değil, her karede (performanslı)
+    for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("ProximityPrompt") then
-            if state then
-                obj.HoldDuration = 0 -- Süreyi sıfırla
-            else
-                obj.HoldDuration = 0.5 -- Orijinal değere döndür (genelde 0.5'tir)
+            -- Parent'ının (nesnenin) pozisyonunu kontrol et
+            local parentPart = obj.Parent
+            if parentPart and parentPart:IsA("BasePart") then
+                local dist = (myPos - parentPart.Position).Magnitude
+                
+                -- Eğer 50 stud içindeyse süreyi 0 yap
+                if dist <= 50 then
+                    if obj.HoldDuration ~= 0 then
+                        obj.HoldDuration = 0
+                    end
+                else
+                    -- 50 stud dışındaysa orijinal değerine (0.5) döndür
+                    if obj.HoldDuration ~= 0.5 then
+                        obj.HoldDuration = 0.5
+                    end
+                end
             end
         end
     end
-    
-    -- Yeni oluşanları takip et
-    if state then
-        game.DescendantAdded:Connect(function(obj)
-            if obj:IsA("ProximityPrompt") and _G.InstantInteraction then
-                obj.HoldDuration = 0
-            end
-        end)
-    end
-end
-
-createModernToggle("Instant Interact", "Tüm etkileşimleri anında tamamlar.", function(state)
-    setInstantInteraction(state)
 end)
 
 -- Auto-Clicker (Extreme Speed)
