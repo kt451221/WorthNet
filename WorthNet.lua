@@ -1006,31 +1006,34 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
 end)
 
 -- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
--- DESTROYER FLING (Optimize Edilmiş)
-createModernToggle("Fling All", "Düşmanları fırlatır.", function(state)
+-- NETLESS FLING (Sen uçmazsın, rakip uçar)
+local flingEnabled = false
+
+createModernToggle("Fling All", "Düşmanları fırlatır (Güvenli).", function(state)
     flingEnabled = state
     if flingEnabled then
         task.spawn(function()
-            local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if not myHrp then return end
-            
-            -- Kendi fiziğimizi geçici olarak kapatıyoruz
-            myHrp.CanCollide = false 
-            
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            -- Fling'in sırrı: RootPart'ı saniyede 100 kere ışınlamak ama 
+            -- CanCollide'ı kapatıp sunucuyu şaşırtmak
             while flingEnabled do
                 for _, p in pairs(game.Players:GetPlayers()) do
                     if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                         local targetHrp = p.Character.HumanoidRootPart
                         
-                        -- Tam üzerine değil, 1 stud önüne ışınla (Daha az çarpışma)
-                        myHrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 1)
-                        myHrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
+                        -- Karakterin fiziğini "öldür"
+                        hrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
+                        hrp.RotVelocity = Vector3.new(9e9, 9e9, 9e9)
+                        
+                        -- Hedefin etrafında çok hızlı dön (Fizik motorunu tetikler)
+                        hrp.CFrame = targetHrp.CFrame * CFrame.Angles(0, math.rad(tick() * 500), 0)
                     end
                 end
-                task.wait(0.05)
+                task.wait(0.01)
             end
-            -- Kapatınca eski haline getir
-            myHrp.CanCollide = true
         end)
     end
 end)
