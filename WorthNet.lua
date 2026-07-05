@@ -535,6 +535,21 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Aimbot (Kamerayı düşmana çevirir)
+local aimActive = false
+createModernToggle("Auto Aim", "Kamerayı en yakın düşmana kilitler.", function(state)
+    aimActive = state
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if aimActive then
+        local target = getClosestPlayer()
+        if target and target.Character:FindFirstChild("Head") then
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.Head.Position)
+        end
+    end
+end)
+
 -- Auto-Clicker (Extreme Speed)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local autoClickEnabled = false
