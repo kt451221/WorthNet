@@ -539,6 +539,13 @@ createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni old
     end
 end)
 
+-- Etkileşim Bekleme Süresini Sıfırla
+local InteractionHandler = game:GetService("Players").LocalPlayer.PlayerScripts:FindFirstChild("InteractionHandler", true)
+if InteractionHandler then
+    -- Etkileşim süresini 0.001'e çek
+    hookfunction(InteractionHandler.GetWaitTime, function() return 0.001 end)
+end
+
 
 -- 3. ANTI-FLING
 createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
@@ -564,6 +571,39 @@ createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engel
 	else
 		if antiFlingConn then antiFlingConn:Disconnect() antiFlingConn = nil end
 	end
+end)
+
+-- Map Bypass & No Collide System
+local workspace = game:GetService("Workspace")
+
+local function bypassMap(state)
+    _G.BypassEnabled = state
+    
+    if state then
+        -- Haritadaki tüm objeleri tara
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                -- Görünmez duvarları bul (Transparency 1 ve CanCollide true olanlar genelde duvardır)
+                if obj.Transparency == 1 and obj.CanCollide == true then
+                    obj.CanCollide = false
+                end
+                -- Alternatif olarak 'Barrier' isimli her şeyi etkisiz kıl
+                if obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") then
+                    obj.CanCollide = false
+                end
+            end
+        end
+        showNotification("Map Bypass", "Görünmez duvarlar kaldırıldı!", true)
+    else
+        -- Geri döndürmek istersen (Burada oyunun orijinal haline dönmesi zor olabilir, 
+        -- bu yüzden oyun yenilenene kadar açık kalması daha sağlıklıdır.)
+        showNotification("Map Bypass", "Kapatıldı. Harita yenilenmesi gerekebilir.", false)
+    end
+end
+
+-- Menüye Buton Olarak Ekle
+createModernToggle("Map Bypass", "Görünmez duvarları yok et.", function(state)
+    bypassMap(state)
 end)
 
 -- 4. MM2 ESP
