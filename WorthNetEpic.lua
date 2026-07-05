@@ -1053,7 +1053,7 @@ end
 -- 1. Ctrl Tuşu Kontrolü
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     -- gameProcessed kontrolünü kaldırdım ki oyun içinde çömelirken bile çalışsın
-    if input.KeyCode == Enum.KeyCode.LeftControl then
+    if input.KeyCode == Enum.KeyCode.G then
         setMouseMode(not isFree)
     end
 end)
