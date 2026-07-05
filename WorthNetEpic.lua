@@ -864,6 +864,41 @@ createModernToggle("Rejoin", "Aynı sunucuya tekrar bağlanır.", function(state
     end
 end)
 
+-- 18. Smooth Aim (FPS Oyunları İçin Güvenli Auto-Aim)
+local smoothAimActive = false
+local aimSpeed = 0.1 -- Bu değeri düşürürsen daha yavaş (daha güvenli) kilitlenir
+
+createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
+    smoothAimActive = state
+    task.spawn(function()
+        while smoothAimActive do
+            task.wait()
+            local closestPlayer = nil
+            local shortestDist = math.huge
+            
+            -- En yakındaki düşmanı bul
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                    local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.Head.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                        if dist < shortestDist then
+                            closestPlayer = p.Character.Head
+                            shortestDist = dist
+                        end
+                    end
+                end
+            end
+            
+            -- Yumuşak kilitlenme
+            if closestPlayer and shortestDist < 200 then -- 200 piksel mesafe sınırı
+                local targetCFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closestPlayer.Position)
+                workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(targetCFrame, aimSpeed)
+            end
+        end
+    end)
+end)
+
 -- Arka plan bypass sistemi
 pcall(function()
 	local metatable = getrawmetatable(game)
