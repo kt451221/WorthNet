@@ -1033,7 +1033,7 @@ local mouseLocked = true
 local toggleLoop = nil
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.LeftControl then
+    if input.KeyCode == Enum.KeyCode.Ctrl then
         if mouseLocked then
             -- KİLİDİ AÇMA DÖNGÜSÜ
             toggleLoop = RunService.RenderStepped:Connect(function()
