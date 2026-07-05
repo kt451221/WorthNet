@@ -1024,7 +1024,7 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Kesin Çözüm: Kamera Kilitlenme Fix
+-- Kamera ve Fare Kontrolcüsü (Button + P Tuşu)
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
@@ -1032,21 +1032,37 @@ local player = game:GetService("Players").LocalPlayer
 local isFree = false
 local loop = nil
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then -- P tuşu
-        isFree = not isFree
-        
-        if isFree then
-            -- Fareyi serbest bırak ama kamera sistemini bozma
-            loop = RunService.RenderStepped:Connect(function()
-                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-            end)
-            showNotification("System", "Fare serbest bırakıldı!", true)
-        else
-            -- Döngüyü temizle ve kontrolü oyuna geri ver
-            if loop then loop:Disconnect() end
-            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-            showNotification("System", "Kamera normal modda.", false)
+-- Kontrolü yöneten ana fonksiyon
+local function toggleMouse(state)
+    isFree = state
+    if isFree then
+        -- KİLİDİ AÇ
+        loop = RunService.RenderStepped:Connect(function()
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            UserInputService.MouseIconEnabled = true
+        end)
+        player.CameraMode = Enum.CameraMode.Classic -- First person'dan çıkarır
+        showNotification("System", "Fare Serbest (Mod: FREE)", true)
+    else
+        -- KİLİTLE
+        if loop then 
+            loop:Disconnect() 
+            loop = nil 
         end
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        player.CameraMode = Enum.CameraMode.LockFirstPerson -- Tekrar kilitler
+        showNotification("System", "Kamera Kilitli (Mod: LOCK)", false)
     end
+end
+
+-- 1. P Tuşu ile kontrol
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
+        toggleMouse(not isFree)
+    end
+end)
+
+-- 2. Menü Butonu olarak ekleme (createModernToggle içine bunu koy)
+createModernToggle("Unlock Camera", "Fareyi P tuşu ile serbest bırak.", function(state)
+    toggleMouse(state)
 end)
