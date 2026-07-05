@@ -814,6 +814,56 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
     end
 end)
 
+-- 15. Fling System
+createModernToggle("Fling System", "Yakındaki oyuncuları uçurur.", function(state)
+    _G.FlingEnabled = state
+    task.spawn(function()
+        while _G.FlingEnabled do
+            task.wait()
+            local target = nil
+            local dist = 15
+            -- En yakındaki oyuncuyu bul
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local d = (player.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                    if d < dist then target = p.Character.HumanoidRootPart end
+                end
+            end
+            -- Fling logic
+            if target then
+                local bv = Instance.new("BodyVelocity", player.Character.HumanoidRootPart)
+                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                bv.Velocity = Vector3.new(math.random(-500,500), 500, math.random(-500,500))
+                task.wait(0.1)
+                bv:Destroy()
+            end
+        end
+    end)
+end)
+
+-- 16. Anti-AFK
+local afkConn = nil
+createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
+    if state then
+        afkConn = Players.LocalPlayer.Idled:Connect(function()
+            game:GetService("VirtualUser"):CaptureController()
+            game:GetService("VirtualUser"):ClickButton1(Vector2.new(0,0))
+        end)
+    else
+        if afkConn then afkConn:Disconnect() end
+    end
+end)
+
+-- 17. Rejoin Button (Tek tıkla çıkıp tekrar girer)
+local TeleportService = game:GetService("TeleportService")
+
+createModernToggle("Rejoin", "Aynı sunucuya tekrar bağlanır.", function(state)
+    if state then
+        local jobId = game.JobId
+        TeleportService:Teleport(game.PlaceId, player)
+    end
+end)
+
 -- Arka plan bypass sistemi
 pcall(function()
 	local metatable = getrawmetatable(game)
@@ -824,4 +874,28 @@ pcall(function()
 		return namecall(self, ...)
 	end)
 	setreadonly(metatable, true)
+end)
+
+-- Mouse & Camera Toggle (G Tuşu ile)
+local UserInputService = game:GetService("UserInputService")
+local player = game:GetService("Players").LocalPlayer
+
+local mouseLocked = true
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.G then -- G tuşuna atadık
+        if mouseLocked then
+            -- Fareyi serbest bırak ve kamera kilidini aç
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            player.CameraMode = Enum.CameraMode.Classic
+            mouseLocked = false
+            showNotification("System", "Fare serbest bırakıldı!", true)
+        else
+            -- Fareyi tekrar kilitle ve 1. person'a dön
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+            player.CameraMode = Enum.CameraMode.LockFirstPerson
+            mouseLocked = true
+            showNotification("System", "Kamera kilitlendi (1st Person).", true)
+        end
+    end
 end)
