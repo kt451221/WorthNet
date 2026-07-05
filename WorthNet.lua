@@ -479,32 +479,30 @@ createModernToggle("Fly Control", "Karakteri havada özgürce uçurur.", functio
 	end
 end)
 
--- Görünmez Kalkan / Anti-Kill Sistemi
-local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
+-- Auto-Clicker (Extreme Speed)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local autoClickEnabled = false
 
-createModernToggle("Invisible Shield", "Mermileri senin etrafındaki bir kalkan partına çarptırır.", function(state)
-    _G.ShieldEnabled = state
-    if state then
-        -- Kalkanı oluştur
-        local shield = Instance.new("Part", hrp)
-        shield.Name = "ProtectionShield"
-        shield.Size = Vector3.new(10, 10, 10) -- Etrafındaki kare alan
-        shield.Transparency = 1 -- Görünmez
-        shield.CanCollide = false
-        shield.Anchored = false
-        
-        -- Kalkanı oyuncuya sabitle
-        local weld = Instance.new("WeldConstraint", shield)
-        weld.Part0 = hrp
-        weld.Part1 = shield
-    else
-        -- Kalkanı yok et
-        if hrp:FindFirstChild("ProtectionShield") then
-            hrp.ProtectionShield:Destroy()
+-- Oyunun tıklama eventini bul (İsmini 'Click', 'Attack' veya 'Use' olarak değiştirebilirsin)
+local clickEvent = ReplicatedStorage:FindFirstChild("Click", true) 
+
+createModernToggle("Auto Clicker", "Saniyede 1000+ tıklama gönderir.", function(state)
+    autoClickEnabled = state
+    task.spawn(function()
+        while autoClickEnabled do
+            if clickEvent then
+                -- Bir döngüde 50 kere ateşle, task.wait() koyma ki hız tavan yapsın
+                for i = 1, 50 do 
+                    clickEvent:FireServer() 
+                end
+                task.wait() -- Sunucunun nefes alması için minik bir boşluk
+            else
+                -- Eğer RemoteEvent yoksa, standart tıklama simülasyonu
+                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
+            end
         end
-    end
+    end)
 end)
 
 -- Basit ve Etkili Highlight ESP
