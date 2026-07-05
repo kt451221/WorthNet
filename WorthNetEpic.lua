@@ -1024,45 +1024,41 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Kamera ve Fare Kontrolcüsü (Button + G Tuşu)
+-- Kamera ve Fare Kontrolcüsü (Ctrl Tuşu ile)
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local RunService = game:GetService("RenderStepped") -- Hızlandırdım
 local player = game:GetService("Players").LocalPlayer
 
 local isFree = false
 local loop = nil
 
--- Kontrolü yöneten ana fonksiyon
-local function toggleMouse(state)
-    isFree = state
+local function setMouseMode(mode)
+    isFree = mode
     if isFree then
-        -- KİLİDİ AÇ
-        loop = RunService.RenderStepped:Connect(function()
+        if loop then loop:Disconnect() end
+        loop = RunService:Connect(function()
             UserInputService.MouseBehavior = Enum.MouseBehavior.Default
             UserInputService.MouseIconEnabled = true
         end)
-        player.CameraMode = Enum.CameraMode.Classic -- First person'dan çıkarır
-        showNotification("System", "Fare Serbest (Mod: FREE)", true)
+        player.CameraMode = Enum.CameraMode.Classic
+        showNotification("System", "Fare Serbest (Ctrl)", true)
     else
-        -- KİLİTLE
-        if loop then 
-            loop:Disconnect() 
-            loop = nil 
-        end
+        if loop then loop:Disconnect() loop = nil end
         UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-        player.CameraMode = Enum.CameraMode.LockFirstPerson -- Tekrar kilitler
-        showNotification("System", "Kamera Kilitli (Mod: LOCK)", false)
+        player.CameraMode = Enum.CameraMode.LockFirstPerson
+        showNotification("System", "Kamera Kilitli", false)
     end
 end
 
--- 1. G Tuşu ile kontrol
+-- 1. Ctrl Tuşu Kontrolü
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.G then
-        toggleMouse(not isFree)
+    -- gameProcessed kontrolünü kaldırdım ki oyun içinde çömelirken bile çalışsın
+    if input.KeyCode == Enum.KeyCode.LeftControl then
+        setMouseMode(not isFree)
     end
 end)
 
--- 2. Menü Butonu olarak ekleme (createModernToggle içine bunu koy)
-createModernToggle("Unlock Camera", "Fareyi G tuşu ile serbest bırak.", function(state)
-    toggleMouse(state)
+-- 2. Menü Butonu (WorthNet.lua içindeki buton)
+createModernToggle("Unlock Camera", "Ctrl tuşu ile fareyi serbest bırak.", function(state)
+    setMouseMode(state)
 end)
