@@ -521,30 +521,22 @@ createModernToggle("Name ESP", "Düşmanları ve isimlerini parlatır.", functio
     end
 end)
 
--- Auto-Clicker (Extreme Speed)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local autoClickEnabled = false
+-- Fake Lag / Lag Switch Mantığı
+local RunService = game:GetService("RunService")
+local Network = game:GetService("NetworkSettings") -- Bazı oyunlarda engelli olabilir
 
--- Oyunun tıklama eventini bul (İsmini 'Click', 'Attack' veya 'Use' olarak değiştirebilirsin)
-local clickEvent = ReplicatedStorage:FindFirstChild("Click", true) 
+local lagActive = false
 
-createModernToggle("Auto Clicker", "Saniyede 1000+ tıklama gönderir.", function(state)
-    autoClickEnabled = state
-    task.spawn(function()
-        while autoClickEnabled do
-            if clickEvent then
-                -- Bir döngüde 50 kere ateşle, task.wait() koyma ki hız tavan yapsın
-                for i = 1, 50 do 
-                    clickEvent:FireServer() 
-                end
-                task.wait() -- Sunucunun nefes alması için minik bir boşluk
-            else
-                -- Eğer RemoteEvent yoksa, standart tıklama simülasyonu
-                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            end
-        end
-    end)
+createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni olduğun yerde görür.", function(state)
+    lagActive = state
+    if lagActive then
+        -- Network paket gönderimini yavaşlat veya durdur
+        settings().Network.IncomingReplicationLag = 1000 -- Milisaniye cinsinden gecikme
+        showNotification("Fake Lag", "Diğerleri seni sabit görecek!", true)
+    else
+        settings().Network.IncomingReplicationLag = 0
+        showNotification("Fake Lag", "Normal moda dönüldü.", false)
+    end
 end)
 
 -- 3. ANTI-FLING
