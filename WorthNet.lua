@@ -1077,6 +1077,41 @@ hrp.Touched:Connect(function(hit)
         end
     end
 end)
+
+-- GOD MODE (Health Reset Loop)
+local godEnabled = false
+
+createModernToggle("God Mode", "Canını sürekli 100'de tutar.", function(state)
+    godEnabled = state
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if godEnabled then
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            -- Canını sürekli full'e çek
+            char.Humanoid.Health = char.Humanoid.MaxHealth
+        end
+    end
+end)
+
+-- CLICK TP
+local mouse = game.Players.LocalPlayer:GetMouse()
+
+createModernToggle("Click TP", "Tıkladığın yere ışınlar.", function(state)
+    _G.ClickTP = state
+end)
+
+mouse.Button1Down:Connect(function()
+    if _G.ClickTP and mouse.Hit then
+        local targetPos = mouse.Hit.p
+        local char = game.Players.LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+        end
+    end
+end)
 -- AUTO FOLLOW & LOCK SYSTEM
 local followEnabled = false
 local RunService = game:GetService("RunService")
