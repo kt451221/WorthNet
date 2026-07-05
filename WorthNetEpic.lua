@@ -635,7 +635,7 @@ end)
 local gunESPActive = false
 local gunHighlight = nil
 
-createModernToggle("Gun ESP", "Yerdeki silahı siyah renkli gösterir.", function(state)
+createModernToggle("Gun ESP", "Yerdeki silahı mor renkli gösterir.", function(state)
 	gunESPActive = state
 	if not gunESPActive then
 		if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
@@ -655,8 +655,8 @@ createModernToggle("Gun ESP", "Yerdeki silahı siyah renkli gösterir.", functio
 						
 						-- Siyah renkli ESP efekti oluşturma
 						gunHighlight = Instance.new("Highlight")
-						gunHighlight.FillColor = Color3.fromRGB(0, 0, 0)      -- İç dolgu siyah
-						gunHighlight.OutlineColor = Color3.fromRGB(50, 50, 50) -- Dış çizgi koyu gri
+						gunHighlight.FillColor = Color3.fromRGB(150, 0, 255)      -- İç dolgu siyah
+						gunHighlight.OutlineColor = Color3.fromRGB(80, 0, 150) -- Dış çizgi koyu gri
 						gunHighlight.FillTransparency = 0.4
 						gunHighlight.Parent = droppedGun
 					end
