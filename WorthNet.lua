@@ -1055,6 +1055,24 @@ RunService.RenderStepped:Connect(function()
     fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 end)
 
+-- 20. Fake Lag / Lag Switch Mantığı
+local RunService = game:GetService("RunService")
+local Network = game:GetService("NetworkSettings") -- Bazı oyunlarda engelli olabilir
+
+local lagActive = false
+
+createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni olduğun yerde görür.", function(state)
+    lagActive = state
+    if lagActive then
+        -- Network paket gönderimini yavaşlat veya durdur
+        settings().Network.IncomingReplicationLag = 1000 -- Milisaniye cinsinden gecikme
+        showNotification("Fake Lag", "Diğerleri seni sabit görecek!", true)
+    else
+        settings().Network.IncomingReplicationLag = 0
+        showNotification("Fake Lag", "Normal moda dönüldü.", false)
+    end
+end)
+
 -- Arka plan bypass sistemi
 pcall(function()
 	local metatable = getrawmetatable(game)
