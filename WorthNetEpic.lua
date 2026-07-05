@@ -850,28 +850,64 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
     end
 end)
 
--- 15. Fling System
-createModernToggle("Fling System", "Yakındaki oyuncuları uçurur.", function(state)
+-- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
+createModernToggle("Fling System", "Yaklaştığın oyuncuları anında haritadan siler.", function(state)
     _G.FlingEnabled = state
     task.spawn(function()
         while _G.FlingEnabled do
-            task.wait()
-            local target = nil
-            local dist = 15
-            -- En yakındaki oyuncuyu bul
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local d = (player.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < dist then target = p.Character.HumanoidRootPart end
+            task.wait(0.1) -- Sunucuyu yormamak için kısa bekleme
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            
+            if hrp and hum and hum.Health > 0 then
+                local target = nil
+                local dist = 20 -- Algılama mesafesi (Bu mesafeye girince tetiklenir)
+                
+                -- En yakındaki canlı oyuncuyu bul
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local tHum = p.Character:FindFirstChildOfClass("Humanoid")
+                        if tHum and tHum.Health > 0 then
+                            local d = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                            if d < dist then
+                                target = p.Character.HumanoidRootPart
+                                break
+                            end
+                        end
+                    end
                 end
-            end
-            -- Fling logic
-            if target then
-                local bv = Instance.new("BodyVelocity", player.Character.HumanoidRootPart)
-                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-                bv.Velocity = Vector3.new(math.random(-500,500), 500, math.random(-500,500))
-                task.wait(0.1)
-                bv:Destroy()
+                
+                -- Eğer hedef bulunduysa Fling mekanizmasını çalıştır
+                if target then
+                    -- 1. Kendi orijinal yerimizi güvene alalım
+                    local oldCFrame = hrp.CFrame
+                    
+                    -- 2. Seni deli gibi dönen bir fizik canavarına çevirelim
+                    local bav = Instance.new("BodyAngularVelocity")
+                    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                    bav.AngularVelocity = Vector3.new(0, 999999, 0) -- Muazzam dönüş hızı
+                    bav.Parent = hrp
+                    
+                    -- 3. Milisaniyeler içinde hedefin içine girip onu glitchleyelim
+                    for i = 1, 8 do
+                        if not _G.FlingEnabled or not target or not target.Parent then break end
+                        
+                        -- Hedefin tam ortasına ve hafif yanlarına çok hızlı geçiş yapıyoruz
+                        hrp.CFrame = target.CFrame * CFrame.new(math.random(-1, 1), 0, math.random(-1, 1))
+                        hrp.Velocity = Vector3.new(99999, 99999, 99999) -- Fizik motorunu patlatma hızı
+                        task.wait(0.01)
+                    end
+                    
+                    -- 4. Temizlik: Fizik objelerini sil ve eski yerine ŞAK diye geri dön
+                    bav:Destroy()
+                    hrp.Velocity = Vector3.new(0, 0, 0)
+                    hrp.RotVelocity = Vector3.new(0, 0, 0)
+                    hrp.CFrame = oldCFrame
+                    
+                    -- Aynı adama sürekli spam yapmamak için kısa bir cooldown
+                    task.wait(0.5)
+                end
             end
         end
     end)
