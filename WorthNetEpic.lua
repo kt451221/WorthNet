@@ -539,17 +539,40 @@ createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gös
 	end
 end)
 
--- 5. SPEEDHACK
-createModernToggle("SpeedHack", "Yürüme hızınızı büyük ölçüde arttırır.", function(state)
-	local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-	if hum then
-		if state then
-			originalSpeed = hum.WalkSpeed
-			hum.WalkSpeed = 75
-		else
-			hum.WalkSpeed = originalSpeed
-		end
-	end
+-- 5. SpeedHack (Otomatik Yenilenen & Agresif)
+local speedHackActive = false
+local originalSpeed = 16 -- Varsayılan hız
+
+createModernToggle("SpeedHack", "Hızını 75 yapar ve 30s'de bir günceller.", function(state)
+    speedHackActive = state
+    
+    if speedHackActive then
+        task.spawn(function()
+            while speedHackActive do
+                local char = player.Character
+                local hum = char and char:FindFirstChild("Humanoid")
+                
+                if hum then
+                    -- Hızı her zaman 75'e zorla
+                    if hum.WalkSpeed ~= 75 then
+                        hum.WalkSpeed = 75
+                    end
+                end
+                
+                -- 30 saniye bekle ve döngüyü tazele
+                task.wait(30)
+                
+                -- Eğer kapatıldıysa döngüden çık
+                if not speedHackActive then break end
+            end
+        end)
+    else
+        -- Kapatıldığında hızı normale döndür
+        local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = originalSpeed
+        end
+    end
 end)
 
 -- 6. INFINITE JUMP
@@ -924,33 +947,32 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Mouse & Camera Toggle (G Tuşu ile)
+-- Mouse & Camera Toggle (Ğ Tuşu - Kesin Çözüm)
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
+local camera = workspace.CurrentCamera
 
-local mouseLocked = true
+local isFree = false
 local toggleLoop = nil
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.G then
-        if mouseLocked then
-            -- KİLİDİ AÇMA DÖNGÜSÜ
+    -- Ğ tuşu için Enum.KeyCode.RightBracket kullanıyoruz (TR klavyede Ğ tuşu)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightBracket then
+        isFree = not isFree
+        
+        if isFree then
+            -- MOD: FİRE SERBEST
             toggleLoop = RunService.RenderStepped:Connect(function()
                 UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+                UserInputService.MouseIconEnabled = true
             end)
-            
-            player.CameraMode = Enum.CameraMode.Classic
-            mouseLocked = false
-            showNotification("System", "Fare serbest bırakıldı!", true)
+            showNotification("System", "Fare serbest (Ğ modu)", true)
         else
-            -- DÖNGÜYÜ DURDUR VE KİLİTLE
+            -- MOD: NORMAL OYUN
             if toggleLoop then toggleLoop:Disconnect() end
-            
             UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-            player.CameraMode = Enum.CameraMode.LockFirstPerson
-            mouseLocked = true
-            showNotification("System", "Kamera kilitlendi (1st Person).", true)
+            showNotification("System", "Kamera kilitlendi", false)
         end
     end
 end)
