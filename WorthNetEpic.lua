@@ -878,20 +878,27 @@ end)
 
 -- Mouse & Camera Toggle (G Tuşu ile)
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
 
 local mouseLocked = true
+local toggleLoop = nil
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.G then -- G tuşuna atadık
+    if input.KeyCode == Enum.KeyCode.G then
         if mouseLocked then
-            -- Fareyi serbest bırak ve kamera kilidini aç
-            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            -- KİLİDİ AÇMA DÖNGÜSÜ
+            toggleLoop = RunService.RenderStepped:Connect(function()
+                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            end)
+            
             player.CameraMode = Enum.CameraMode.Classic
             mouseLocked = false
             showNotification("System", "Fare serbest bırakıldı!", true)
         else
-            -- Fareyi tekrar kilitle ve 1. person'a dön
+            -- DÖNGÜYÜ DURDUR VE KİLİTLE
+            if toggleLoop then toggleLoop:Disconnect() end
+            
             UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
             player.CameraMode = Enum.CameraMode.LockFirstPerson
             mouseLocked = true
