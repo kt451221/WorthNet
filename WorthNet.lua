@@ -521,23 +521,6 @@ createModernToggle("Name ESP", "Düşmanları ve isimlerini parlatır.", functio
     end
 end)
 
--- Fake Lag / Lag Switch Mantığı
-local RunService = game:GetService("RunService")
-local Network = game:GetService("NetworkSettings") -- Bazı oyunlarda engelli olabilir
-
-local lagActive = false
-
-createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni olduğun yerde görür.", function(state)
-    lagActive = state
-    if lagActive then
-        -- Network paket gönderimini yavaşlat veya durdur
-        settings().Network.IncomingReplicationLag = 1000 -- Milisaniye cinsinden gecikme
-        showNotification("Fake Lag", "Diğerleri seni sabit görecek!", true)
-    else
-        settings().Network.IncomingReplicationLag = 0
-        showNotification("Fake Lag", "Normal moda dönüldü.", false)
-    end
-end)
 
 -- Etkileşim Bekleme Süresini Sıfırla
 local InteractionHandler = game:GetService("Players").LocalPlayer.PlayerScripts:FindFirstChild("InteractionHandler", true)
