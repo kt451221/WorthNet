@@ -947,32 +947,29 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Mouse & Camera Toggle (Ğ Tuşu - Kesin Çözüm)
+-- Kesin Çözüm: Kamera Kilitlenme Fix
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
-local camera = workspace.CurrentCamera
 
 local isFree = false
-local toggleLoop = nil
+local loop = nil
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- Ğ tuşu için Enum.KeyCode.RightBracket kullanıyoruz (TR klavyede Ğ tuşu)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightBracket then
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then -- P tuşu
         isFree = not isFree
         
         if isFree then
-            -- MOD: FİRE SERBEST
-            toggleLoop = RunService.RenderStepped:Connect(function()
+            -- Fareyi serbest bırak ama kamera sistemini bozma
+            loop = RunService.RenderStepped:Connect(function()
                 UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-                UserInputService.MouseIconEnabled = true
             end)
-            showNotification("System", "Fare serbest (Ğ modu)", true)
+            showNotification("System", "Fare serbest bırakıldı!", true)
         else
-            -- MOD: NORMAL OYUN
-            if toggleLoop then toggleLoop:Disconnect() end
+            -- Döngüyü temizle ve kontrolü oyuna geri ver
+            if loop then loop:Disconnect() end
             UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-            showNotification("System", "Kamera kilitlendi", false)
+            showNotification("System", "Kamera normal modda.", false)
         end
     end
 end)
