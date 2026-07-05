@@ -1006,42 +1006,71 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
 end)
 
 -- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
--- 15. Fling System (Ghost Mode - Sarsıntısız ve Sabit)
-createModernToggle("Fling System", "Hedefi sessizce haritadan atar.", function(state)
-    _G.FlingEnabled = state
-    task.spawn(function()
-        while _G.FlingEnabled do
-            task.wait(0.1)
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            if hrp then
-                for _, p in ipairs(Players:GetPlayers()) do
+-- DESTROYER FLING (Etkili ve Hızlı)
+local flingEnabled = false
+
+createModernToggle("Fling All", "Yakındaki oyuncuları fırlatır.", function(state)
+    flingEnabled = state
+    if flingEnabled then
+        task.spawn(function()
+            while flingEnabled do
+                for _, p in pairs(game.Players:GetPlayers()) do
                     if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                         local targetHrp = p.Character.HumanoidRootPart
-                        local dist = (hrp.Position - targetHrp.Position).Magnitude
+                        local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                         
-                        if dist < 15 then
-                            -- GÜVENLİ Fırlatma: Kendini hedefle birleştir, sonra hemen geri dön
-                            local originalCFrame = hrp.CFrame
-                            
-                            -- Hızlıca hedefin içine gir (Bu hamle onları fırlatır)
-                            hrp.CFrame = targetHrp.CFrame
-                            
-                            -- Fizik motorunun sapıtması için milisaniyelik bir bekletme
-                            task.wait(0.05)
-                            
-                            -- Hemen eski yerine dön
-                            hrp.CFrame = originalCFrame
-                            
-                            -- Kısa bir mola
-                            task.wait(0.3)
+                        if myHrp then
+                            -- Rakibe yapış (Snap to target)
+                            myHrp.CFrame = targetHrp.CFrame
+                            -- Fizik motorunu tetiklemek için hızı uçur
+                            myHrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
+                            myHrp.RotVelocity = Vector3.new(9e9, 9e9, 9e9)
                         end
                     end
                 end
+                task.wait(0.1) -- Sunucu hızını ayarlamak için
+            end
+        end)
+    end
+end)
+
+-- AUTO FOLLOW & LOCK SYSTEM
+local followEnabled = false
+local RunService = game:GetService("RunService")
+
+createModernToggle("Auto Follow/Lock", "En yakın oyuncunun içine girer ve takip eder.", function(state)
+    followEnabled = state
+end)
+
+RunService.RenderStepped:Connect(function()
+    if followEnabled then
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        
+        if hrp then
+            local closestPlayer = nil
+            local shortestDist = math.huge
+            
+            -- Etraftaki en yakın oyuncuyu bul
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local targetHrp = p.Character.HumanoidRootPart
+                    local dist = (hrp.Position - targetHrp.Position).Magnitude
+                    
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closestPlayer = p
+                    end
+                end
+            end
+            
+            -- Eğer biri bulunduysa, içine ışınlan
+            if closestPlayer and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = closestPlayer.Character.HumanoidRootPart.CFrame
             end
         end
-    end)
+    end
 end)
 -- 16. Anti-AFK
 local afkConn = nil
