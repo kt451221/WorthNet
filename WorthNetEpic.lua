@@ -1024,7 +1024,7 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Kamera ve Fare Kontrolcüsü (Button + P Tuşu)
+-- Kamera ve Fare Kontrolcüsü (Button + G Tuşu)
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
@@ -1055,14 +1055,14 @@ local function toggleMouse(state)
     end
 end
 
--- 1. P Tuşu ile kontrol
+-- 1. G Tuşu ile kontrol
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.G then
         toggleMouse(not isFree)
     end
 end)
 
 -- 2. Menü Butonu olarak ekleme (createModernToggle içine bunu koy)
-createModernToggle("Unlock Camera", "Fareyi P tuşu ile serbest bırak.", function(state)
+createModernToggle("Unlock Camera", "Fareyi G tuşu ile serbest bırak.", function(state)
     toggleMouse(state)
 end)
