@@ -1024,41 +1024,33 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Kamera ve Fare Kontrolcüsü (Ctrl Tuşu ile)
+-- Mouse & Camera Toggle (Ctrl Tuşu ile)
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RenderStepped") -- Hızlandırdım
+local RunService = game:GetService("RunService")
 local player = game:GetService("Players").LocalPlayer
 
-local isFree = false
-local loop = nil
+local mouseLocked = true
+local toggleLoop = nil
 
-local function setMouseMode(mode)
-    isFree = mode
-    if isFree then
-        if loop then loop:Disconnect() end
-        loop = RunService:Connect(function()
-            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-            UserInputService.MouseIconEnabled = true
-        end)
-        player.CameraMode = Enum.CameraMode.Classic
-        showNotification("System", "Fare Serbest (Ctrl)", true)
-    else
-        if loop then loop:Disconnect() loop = nil end
-        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-        player.CameraMode = Enum.CameraMode.LockFirstPerson
-        showNotification("System", "Kamera Kilitli", false)
-    end
-end
-
--- 1. Ctrl Tuşu Kontrolü
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- gameProcessed kontrolünü kaldırdım ki oyun içinde çömelirken bile çalışsın
-    if input.KeyCode == Enum.KeyCode.G then
-        setMouseMode(not isFree)
+    if input.KeyCode == Enum.KeyCode.LeftControl then
+        if mouseLocked then
+            -- KİLİDİ AÇMA DÖNGÜSÜ
+            toggleLoop = RunService.RenderStepped:Connect(function()
+                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            end)
+            
+            player.CameraMode = Enum.CameraMode.Classic
+            mouseLocked = false
+            showNotification("System", "Fare serbest bırakıldı!", true)
+        else
+            -- DÖNGÜYÜ DURDUR VE KİLİTLE
+            if toggleLoop then toggleLoop:Disconnect() end
+            
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+            player.CameraMode = Enum.CameraMode.LockFirstPerson
+            mouseLocked = true
+            showNotification("System", "Kamera kilitlendi (1st Person).", true)
+        end
     end
-end)
-
--- 2. Menü Butonu (WorthNet.lua içindeki buton)
-createModernToggle("Unlock Camera", "Ctrl tuşu ile fareyi serbest bırak.", function(state)
-    setMouseMode(state)
 end)
