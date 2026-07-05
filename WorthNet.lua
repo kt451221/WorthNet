@@ -479,6 +479,35 @@ createModernToggle("Fly Control", "Karakteri havada özgürce uçurur.", functio
 	end
 end)
 
+-- ProximityPrompt Sürelerini Sıfırla (Instant Interaction)
+local function setInstantInteraction(state)
+    _G.InstantInteraction = state
+    
+    -- Mevcut olanları ayarla
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            if state then
+                obj.HoldDuration = 0 -- Süreyi sıfırla
+            else
+                obj.HoldDuration = 0.5 -- Orijinal değere döndür (genelde 0.5'tir)
+            end
+        end
+    end
+    
+    -- Yeni oluşanları takip et
+    if state then
+        game.DescendantAdded:Connect(function(obj)
+            if obj:IsA("ProximityPrompt") and _G.InstantInteraction then
+                obj.HoldDuration = 0
+            end
+        end)
+    end
+end
+
+createModernToggle("Instant Interact", "Tüm etkileşimleri anında tamamlar.", function(state)
+    setInstantInteraction(state)
+end)
+
 -- Auto-Clicker (Extreme Speed)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local autoClickEnabled = false
