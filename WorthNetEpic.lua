@@ -668,34 +668,52 @@ createModernToggle("Gun ESP", "Yerdeki silahı mor renkli gösterir.", function(
 	end
 end)
 
--- 12. MM2 Auto-Aim (Otomatik Kilitleme)
+-- 12. MM2 Auto-Aim (GUI + H Tuşu Kontrollü)
 local autoAimActive = false
-createModernToggle("Auto-Aim", "Elinde bıçak veya silah varken otomatik kilitler.", function(state)
+
+-- Hile fonksiyonunu bir değişkene atıyoruz ki hem tuştan hem GUI'den çağırabilelim
+local function toggleAutoAim(state)
     autoAimActive = state
-    task.spawn(function()
-        while autoAimActive do
-            task.wait(0.01) -- Çok hızlı çalışması için
-            local char = player.Character
-            if char and (char:FindFirstChild("Knife") or char:FindFirstChild("Gun")) then
-                local target = nil
-                local dist = 1000
-                -- En yakın oyuncuyu bul
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        local d = (char.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                        if d < dist then
-                            dist = d
-                            target = p.Character.HumanoidRootPart
+    if state then
+        showNotification("Auto-Aim", "Aktif edildi!", true)
+        task.spawn(function()
+            while autoAimActive do
+                task.wait(0.01)
+                local char = player.Character
+                if char and (char:FindFirstChild("Knife") or char:FindFirstChild("Gun")) then
+                    local target = nil
+                    local dist = 1000
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                            local d = (char.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                            if d < dist then
+                                dist = d
+                                target = p.Character.HumanoidRootPart
+                            end
                         end
                     end
-                end
-                -- Kamerayı hedefe döndür
-                if target then
-                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+                    if target then
+                        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+                    end
                 end
             end
-        end
-    end)
+        end)
+    else
+        showNotification("Auto-Aim", "Devre dışı bırakıldı.", false)
+    end
+end
+
+-- GUI için toggle
+createModernToggle("Auto-Aim", "H tuşu ile aç/kapa yapılabilir.", function(state)
+    toggleAutoAim(state)
+end)
+
+-- H tuşu ataması
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.H then
+        autoAimActive = not autoAimActive
+        toggleAutoAim(autoAimActive)
+    end
 end)
 
 -- 13. SpinBot
