@@ -1,67 +1,72 @@
--- 1. PANEL VE GÜVENLİ KURULUM
+-- WORTHNET REMOTE SPY - PROFESYONEL SÜRÜM
 local player = game:GetService("Players").LocalPlayer
 local spyGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-spyGui.Name = "RemoteSpyPanel"
+spyGui.Name = "WorthSpyPanel"
 
+-- PANEL TASARIMI
 local frame = Instance.new("Frame", spyGui)
-frame.Size = UDim2.new(0, 350, 0, 450)
-frame.Position = UDim2.new(0.5, -175, 0.5, -225)
-frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frame.Size = UDim2.new(0, 400, 0, 500)
+frame.Position = UDim2.new(0.5, -200, 0.5, -250)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
 frame.Active = true
-frame.Draggable = true -- Sürükleme aktif
+frame.Draggable = true
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Text = "Remote Spy v1.0 (Event & Function)"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Text = "WorthSpy | Event & Function"
 title.TextColor3 = Color3.new(1, 1, 1)
-title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+title.BorderSizePixel = 0
 
 local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -10, 1, -40)
-scroll.Position = UDim2.new(0, 5, 0, 35)
+scroll.Size = UDim2.new(1, -10, 1, -50)
+scroll.Position = UDim2.new(0, 5, 0, 45)
 scroll.BackgroundTransparency = 1
-scroll.ScrollBarThickness = 6
+scroll.ScrollBarThickness = 4
 
--- Liste düzeni (Yazıların üst üste binmemesi için ŞART)
 local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = UDim.new(0, 4)
+layout.Padding = UDim.new(0, 5)
 
--- 2. LOGLAMA FONKSİYONU
+-- LOGLAMA FONKSİYONU (Gelişmiş)
 local function addLog(type, name, args)
     local text = Instance.new("TextLabel", scroll)
-    text.Size = UDim2.new(1, -5, 0, 25)
-    text.Text = "[" .. type .. "] " .. name .. " | Args: " .. (#args > 0 and tostring(args[1]) or "None")
-    text.TextColor3 = (type == "EVENT" and Color3.new(0.6, 1, 0.6) or Color3.new(1, 0.6, 0.6))
-    text.BackgroundTransparency = 0.3
-    text.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    text.Size = UDim2.new(1, 0, 0, 30)
+    text.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    text.BorderSizePixel = 0
+    text.Font = Enum.Font.Code
+    text.TextSize = 12
+    text.TextColor3 = (type == "EVENT" and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100))
+    
+    local argString = ""
+    for i, v in pairs(args) do argString = argString .. tostring(v) .. (i < #args and ", " or "") end
+    text.Text = "  [" .. type .. "] " .. name .. ": (" .. argString .. ")"
     text.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Canvas boyutunu güncelle
-    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    -- UIListLayout boyutu güncelleme
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    end)
 end
 
--- 3. HOOK İŞLEMLERİ
--- RemoteEvent (FireServer) Hook
-local oldFire
-oldFire = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
-    local args = {...}
-    addLog("EVENT", self.Name, args)
-    return oldFire(self, ...)
-end))
+-- HOOK İŞLEMİ (En Sağlam Yöntem: Namecall)
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
 
--- RemoteFunction (InvokeServer) Hook
-local oldInvoke
-oldInvoke = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
     local args = {...}
-    addLog("FUNC", self.Name, args)
-    return oldInvoke(self, ...)
-end))
+    
+    if method == "FireServer" then
+        addLog("EVENT", self.Name, args)
+    elseif method == "InvokeServer" then
+        addLog("FUNC", self.Name, args)
+    end
+    
+    return oldNamecall(self, ...)
+end)
 
--- 4. KAPATMA
-local close = Instance.new("TextButton", frame)
-close.Size = UDim2.new(0, 30, 0, 30)
-close.Position = UDim2.new(1, -30, 0, 0)
-close.Text = "X"
-close.TextColor3 = Color3.new(1, 1, 1)
-close.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-close.MouseButton1Click:Connect(function() spyGui:Destroy() end)
+setreadonly(mt, true)
