@@ -632,35 +632,38 @@ RunService.RenderStepped:Connect(function()
 end)
 
 local aimActive = false
-local fovRadius = 150 -- Çemberin yarıçapı (istediğin gibi değiştirebilirsin)
+local fovRadius = 150
+local camera = workspace.CurrentCamera
+local player = game.Players.LocalPlayer
 
--- FOV Çemberini Oluştur
+-- FOV Çemberini Görünür Yap (Test Etmek İçin)
 local circle = Drawing.new("Circle")
 circle.Visible = false
 circle.Radius = fovRadius
-circle.Color = Color3.fromRGB(255, 255, 255)
+circle.Color = Color3.fromRGB(255, 0, 0) -- Kırmızı olsun ki gör
 circle.Thickness = 1
 circle.Filled = false
-circle.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+circle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-createModernToggle("Auto Aim", "FOV içindeki hedefe kilitlenir.", function(state)
+createModernToggle("Auto Aim", "En yakın kafaya kitlenir.", function(state)
     aimActive = state
     circle.Visible = state
 end)
 
-local function getClosestPlayerInFOV()
+-- En yakın oyuncuyu bulan ana fonksiyon
+local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = fovRadius
 
-    for _, player in pairs(game.Players:GetPlayers()) do
-        if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            local headPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(player.Character.Head.Position)
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local pos, onScreen = camera:WorldToViewportPoint(p.Character.Head.Position)
             
             if onScreen then
-                local distance = (Vector2.new(headPos.X, headPos.Y) - circle.Position).Magnitude
+                local distance = (Vector2.new(pos.X, pos.Y) - circle.Position).Magnitude
                 if distance < shortestDistance then
                     shortestDistance = distance
-                    closestPlayer = player
+                    closestPlayer = p
                 end
             end
         end
@@ -668,17 +671,16 @@ local function getClosestPlayerInFOV()
     return closestPlayer
 end
 
+-- RenderStepped ile sürekli takip
 game:GetService("RunService").RenderStepped:Connect(function()
     if aimActive then
-        local target = getClosestPlayerInFOV()
+        local target = getClosestPlayer()
         if target and target.Character:FindFirstChild("Head") then
-            -- Kamerayı yumuşak bir şekilde kilitle (Smoothing eklemek istersen CFrame.Lerp kullanılabilir)
-            local targetPos = target.Character.Head.Position
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetPos)
+            -- Kitlenme (CFrame.new ile direkt kilitlenir)
+            camera.CFrame = CFrame.new(camera.CFrame.Position, target.Character.Head.Position)
         end
     end
 end)
-
 -- Auto-Clicker (Extreme Speed)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local autoClickEnabled = false
@@ -1394,23 +1396,7 @@ RunService.RenderStepped:Connect(function()
     fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 end)
 
--- 20. Fake Lag / Lag Switch Mantığı
-local RunService = game:GetService("RunService")
-local Network = game:GetService("NetworkSettings") -- Bazı oyunlarda engelli olabilir
 
-local lagActive = false
-
-createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni olduğun yerde görür.", function(state)
-    lagActive = state
-    if lagActive then
-        -- Network paket gönderimini yavaşlat veya durdur
-        settings().Network.IncomingReplicationLag = 1000 -- Milisaniye cinsinden gecikme
-        showNotification("Fake Lag", "Diğerleri seni sabit görecek!", true)
-    else
-        settings().Network.IncomingReplicationLag = 0
-        showNotification("Fake Lag", "Normal moda dönüldü.", false)
-    end
-end)
 
 -- Arka plan bypass sistemi
 pcall(function()
