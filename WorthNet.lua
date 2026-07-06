@@ -664,6 +664,17 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- Sınırsız Silah Alma (Güvenli)
+local buyRemote = game:GetService("ReplicatedStorage").BuyGunRemote 
+
+createModernToggle("Auto Buy Gun", "Sürekli silah satın alır.", function(state)
+    _G.AutoBuy = state
+    while _G.AutoBuy do
+        buyRemote:FireServer() -- Buraya gerekirse argüman ekleriz
+        task.wait(2) -- Ban yememek için yavaş
+    end
+end)
+
 -- Aimbot (Kamerayı düşmana çevirir)
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
