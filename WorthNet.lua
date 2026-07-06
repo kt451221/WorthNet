@@ -588,6 +588,48 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+local isGhosting = false
+
+local function toggleGhostMode(state)
+    isGhosting = state
+    local char = game.Players.LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if state then
+        -- 1. ADIM: Görünmezlik (Transparency = 1)
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("BasePart") or obj:IsA("Decal") then
+                obj.Transparency = 1
+            end
+        end
+        
+        -- 2. ADIM: Ghosting (Hitbox'ı başka yere taşıma)
+        -- Karakteri olduğu yerde bırakıp sadece görünmezlik efektini koruyalım
+        -- Veya Hitbox'ı haritanın altına alalım:
+        if hrp then
+            hrp.CFrame = hrp.CFrame * CFrame.new(0, -500, 0) -- Hitbox'ı 500 stud aşağı al
+        end
+        showNotification("Ghost Mode", "Aktif: Görünmez ve Hayalet!", true)
+    else
+        -- Kapatıldığında eski haline döndür
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("BasePart") or obj:IsA("Decal") then
+                obj.Transparency = 0
+            end
+        end
+        if hrp then
+            hrp.CFrame = hrp.CFrame * CFrame.new(0, 500, 0) -- Yukarı geri al
+        end
+        showNotification("Ghost Mode", "Devre dışı.", false)
+    end
+end
+
+-- Menüye Buton Olarak Ekle
+createModernToggle("Ghost Mode", "Görünmez ol ve Hitbox'ı gizle.", function(state)
+    toggleGhostMode(state)
+end)
+
 -- Proximity Prompt (Mesafe Bazlı 0 Saniye)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
