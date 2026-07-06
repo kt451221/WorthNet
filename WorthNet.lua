@@ -589,46 +589,60 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 local isGhosting = false
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local Player = game.Players.LocalPlayer
 
 local function toggleGhostMode(state)
     isGhosting = state
-    local char = game.Players.LocalPlayer.Character
+    local char = Player.Character
     if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if state then
-        -- 1. ADIM: Görünmezlik (Transparency = 1)
+        -- 1. ADIM: Görünmezlik
         for _, obj in pairs(char:GetDescendants()) do
             if obj:IsA("BasePart") or obj:IsA("Decal") then
                 obj.Transparency = 1
             end
         end
-        
-        -- 2. ADIM: Ghosting (Hitbox'ı başka yere taşıma)
-        -- Karakteri olduğu yerde bırakıp sadece görünmezlik efektini koruyalım
-        -- Veya Hitbox'ı haritanın altına alalım:
+
+        -- 2. ADIM: Ghosting (Hitbox'ı uzağa gönder ama kamerayı sabitle)
+        local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            hrp.CFrame = hrp.CFrame * CFrame.new(0, -500, 0) -- Hitbox'ı 500 stud aşağı al
+            -- Karakterin gerçek pozisyonunu sakla
+            local realPos = hrp.CFrame
+            
+            -- Hitbox'ı uzak bir yere ışınla
+            hrp.CFrame = CFrame.new(0, 10000, 0)
+            
+            -- Kamera "Kamera Modu" ile karakteri takip etmeyi bıraksın
+            -- Kamera pozisyonunu orijinal yerinde sabitlemek için render loop
+            isGhosting = true
+            task.spawn(function()
+                while isGhosting do
+                    -- Kamerayı eski pozisyonda zorla tut
+                    Camera.CFrame = CFrame.new(realPos.Position + Vector3.new(0, 5, 0))
+                    task.wait()
+                end
+            end)
         end
-        showNotification("Ghost Mode", "Aktif: Görünmez ve Hayalet!", true)
+        showNotification("Ghost Mode", "Aktif: Hayalet modu!", true)
     else
-        -- Kapatıldığında eski haline döndür
+        isGhosting = false
+        -- Karakteri geri getir
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(0, 5, 0) -- Veya karakterin en son olduğu koordinat
+        end
+        -- Görünürlüğü aç
         for _, obj in pairs(char:GetDescendants()) do
             if obj:IsA("BasePart") or obj:IsA("Decal") then
                 obj.Transparency = 0
             end
         end
-        if hrp then
-            hrp.CFrame = hrp.CFrame * CFrame.new(0, 500, 0) -- Yukarı geri al
-        end
         showNotification("Ghost Mode", "Devre dışı.", false)
     end
 end
-
--- Menüye Buton Olarak Ekle
-createModernToggle("Ghost Mode", "Görünmez ol ve Hitbox'ı gizle.", function(state)
-    toggleGhostMode(state)
-end)
 
 -- Proximity Prompt (Mesafe Bazlı 0 Saniye)
 local RunService = game:GetService("RunService")
