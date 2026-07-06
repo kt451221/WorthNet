@@ -665,7 +665,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- Sınırsız Silah Alma (Güvenli)
-local buyRemote = game:GetService("ReplicatedStorage").BuyGunRemote 
+local buyRemote = game:GetService("ReplicatedStorage").RemoteEvents.BuyGunRemote 
 
 createModernToggle("Auto Buy Gun", "Sürekli silah satın alır.", function(state)
     _G.AutoBuy = state
