@@ -1006,76 +1006,31 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
 end)
 
 -- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
--- TARGETED FLING (Sadece Hedef Seçili Kişi)
-local flingEnabled = false
-local targetPlayer = nil -- Hedefimiz
-
-createModernToggle("Fling Target", "Fare ile seçtiğin veya en yakındaki kişiyi fırlatır.", function(state)
-    flingEnabled = state
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
-
-    if flingEnabled then
-        -- Kendi fiziğimizi tamamen kapatıyoruz (Artık sen uçmayacaksın)
-        hum.PlatformStand = true
-        
-        task.spawn(function()
-            while flingEnabled do
-                -- En yakındaki oyuncuyu bul (veya mouse ile seç)
-                local closest = nil
-                local dist = 50 -- Sadece 50 stud içindekileri hedefler
-                
-                for _, p in pairs(game.Players:GetPlayers()) do
+-- Güncellenmiş Fling Mantığı
+createModernToggle("Fling System", "Hedefi yüksek hızla fırlatır.", function(state)
+    _G.FlingEnabled = state
+    task.spawn(function()
+        while _G.FlingEnabled do
+            task.wait(0.05)
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if hrp then
+                for _, p in ipairs(Players:GetPlayers()) do
                     if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        local d = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                        if d < dist then
-                            closest = p
-                            dist = d
+                        local targetHrp = p.Character.HumanoidRootPart
+                        local dist = (hrp.Position - targetHrp.Position).Magnitude
+                        
+                        if dist < 12 then
+                            -- Fizik motorunu tetiklemek için agresif hız ver
+                            hrp.Velocity = Vector3.new(9e9, 9e9, 9e9) 
+                            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0)
                         end
                     end
                 end
-                
-                -- Hedef varsa fırlat
-                if closest and closest.Character:FindFirstChild("HumanoidRootPart") then
-                    local targetHrp = closest.Character.HumanoidRootPart
-                    hrp.CFrame = targetHrp.CFrame
-                    hrp.Velocity = Vector3.new(9e9, 9e9, 9e9)
-                end
-                task.wait(0.01)
             end
-        end)
-    else
-        -- Hileyi kapatınca karakteri eski haline getir
-        hum.PlatformStand = false
-    end
-end)
-
--- TOUCH FLING (Sadece çarptığın kişi uçar)
-local flingEnabled = false
-local char = player.Character or player.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
-
-createModernToggle("Touch Fling", "Çarptığın kişi uzaya uçar.", function(state)
-    flingEnabled = state
-end)
-
--- Çarpışma algılayıcı
-hrp.Touched:Connect(function(hit)
-    if flingEnabled then
-        local humanoid = hit.Parent:FindFirstChild("Humanoid")
-        local targetRoot = hit.Parent:FindFirstChild("HumanoidRootPart")
-        
-        -- Eğer çarptığın şey bir oyuncunun parçasıysa
-        if humanoid and targetRoot and hit.Parent ~= char then
-            -- Rakibi fırlat
-            targetRoot.Velocity = Vector3.new(0, 5000, 0) -- Havaya dik fırlatır
-            targetRoot.RotVelocity = Vector3.new(9e9, 9e9, 9e9) -- Dönerek uçsun
-            
-            -- Hızına biraz da ileri itme ekle (Sana göre öne doğru)
-            targetRoot.Velocity = targetRoot.Velocity + (char.HumanoidRootPart.CFrame.LookVector * 2000)
         end
-    end
+    end)
 end)
 
 -- GOD MODE (Health Reset Loop)
