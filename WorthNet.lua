@@ -958,6 +958,10 @@ end)
 -- Auto-Aim & Auto-TP (Güncellenmiş)
 local autoAimActive = false
 
+createModernToggle("Auto Aim", "Kamerayı otomatik hedefe kilitler.", function(state)
+    toggleAutoAim(state) 
+end)
+
 local function toggleAutoAim(state)
     autoAimActive = state
     if state then
@@ -1287,6 +1291,10 @@ local LocalPlayer = Players.LocalPlayer
 
 local FOV_RADIUS = 150
 local silentAimActive = false
+
+createModernToggle("Silent Aim", "Mermileri hedefe yönlendirir.", function(state)
+    silentAimActive = state
+end)
 
 -- Çemberi oluştur
 local fovCircle = Drawing.new("Circle")
