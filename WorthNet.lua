@@ -631,56 +631,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-local aimActive = false
-local fovRadius = 150
-local camera = workspace.CurrentCamera
-local player = game.Players.LocalPlayer
-
--- FOV Çemberini Görünür Yap (Test Etmek İçin)
-local circle = Drawing.new("Circle")
-circle.Visible = false
-circle.Radius = fovRadius
-circle.Color = Color3.fromRGB(255, 0, 0) -- Kırmızı olsun ki gör
-circle.Thickness = 1
-circle.Filled = false
-circle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-
-createModernToggle("Auto Aim", "En yakın kafaya kitlenir.", function(state)
-    aimActive = state
-    circle.Visible = state
-end)
-
--- En yakın oyuncuyu bulan ana fonksiyon
-local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = fovRadius
-
-    for _, p in pairs(game.Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local pos, onScreen = camera:WorldToViewportPoint(p.Character.Head.Position)
-            
-            if onScreen then
-                local distance = (Vector2.new(pos.X, pos.Y) - circle.Position).Magnitude
-                if distance < shortestDistance then
-                    shortestDistance = distance
-                    closestPlayer = p
-                end
-            end
-        end
-    end
-    return closestPlayer
-end
-
--- RenderStepped ile sürekli takip
-game:GetService("RunService").RenderStepped:Connect(function()
-    if aimActive then
-        local target = getClosestPlayer()
-        if target and target.Character:FindFirstChild("Head") then
-            -- Kitlenme (CFrame.new ile direkt kilitlenir)
-            camera.CFrame = CFrame.new(camera.CFrame.Position, target.Character.Head.Position)
-        end
-    end
-end)
 -- Auto-Clicker (Extreme Speed)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local autoClickEnabled = false
