@@ -502,7 +502,7 @@ end
 ---------------------------------------------------------
 local noclipConnection = nil
 local isFlying = false
-local flySpeed = 75
+local flySpeed = 50
 local antiFlingConn = nil
 local mm2ESPActive = false
 local mm2Highlights = {}
@@ -525,9 +525,9 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- FLY CONTROL (Güncellenmiş: P tuşu + Sabit Uçuş)
+-- 2. FLY CONTROL (Güncellenmiş: P tuşu + Sabit Uçuş)
 local flyingEnabled = false
-local flySpeed = 75
+local flySpeed = 50
 local bv, bg
 
 local function toggleFly()
@@ -587,6 +587,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         toggleFly()
     end
 end)
+
 -- Proximity Prompt (Mesafe Bazlı 0 Saniye)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -627,6 +628,21 @@ RunService.RenderStepped:Connect(function()
                     end
                 end
             end
+        end
+    end
+end)
+
+-- Aimbot (Kamerayı düşmana çevirir)
+local aimActive = false
+createModernToggle("Auto Aim", "Kamerayı en yakın düşmana kilitler.", function(state)
+    aimActive = state
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if aimActive then
+        local target = getClosestPlayer()
+        if target and target.Character:FindFirstChild("Head") then
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.Head.Position)
         end
     end
 end)
@@ -983,52 +999,22 @@ createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(stat
     end
 end)
 
+-- 14. Hitbox Expander
 local hitboxActive = false
-local hitboxSize = 5 -- İstediğin boyutu buraya yaz
-local hitboxTransparency = 0.8 -- Görünmezlik (1 = tam görünmez)
-
-createModernToggle("Hitbox Expander", "Rakiplerin vuruş alanını genişletir.", function(state)
+createModernToggle("Hitbox Expander", "Rakiplerin kafalarını büyütür.", function(state)
     hitboxActive = state
-    
-    if not hitboxActive then
-        -- Kapatıldığında tüm genişletilmiş kutuları temizle
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("HitboxPart") then
-                p.Character.HitboxPart:Destroy()
-            end
-        end
-    end
-end)
-
-game:GetService("RunService").RenderStepped:Connect(function()
-    if hitboxActive then
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= game.Players.LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                local head = p.Character.Head
-                
-                -- Eğer daha önce oluşturulmamışsa yeni bir parça ekle
-                if not p.Character:FindFirstChild("HitboxPart") then
-                    local hitbox = Instance.new("Part")
-                    hitbox.Name = "HitboxPart"
-                    hitbox.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-                    hitbox.Transparency = hitboxTransparency
-                    hitbox.BrickColor = BrickColor.new("Bright red")
-                    hitbox.Material = Enum.Material.Neon
-                    hitbox.CanCollide = false
-                    hitbox.Parent = p.Character
-                    
-                    -- Weldi ile kafaya sabitle
-                    local weld = Instance.new("WeldConstraint")
-                    weld.Part0 = hitbox
-                    weld.Part1 = head
-                    weld.Parent = hitbox
+    task.spawn(function()
+        while hitboxActive do
+            task.wait(1)
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                    p.Character.Head.Size = Vector3.new(5, 5, 5)
+                    p.Character.Head.Transparency = 0.5
+                    p.Character.Head.CanCollide = false
                 end
-                
-                -- Pozisyonu kafayla senkronize et
-                p.Character.HitboxPart.CFrame = head.CFrame
             end
         end
-    end
+    end)
 end)
 
 -- 14. Inventory ESP (Envanter Tarayıcı)
@@ -1346,7 +1332,23 @@ RunService.RenderStepped:Connect(function()
     fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 end)
 
+-- 20. Fake Lag / Lag Switch Mantığı
+local RunService = game:GetService("RunService")
+local Network = game:GetService("NetworkSettings") -- Bazı oyunlarda engelli olabilir
 
+local lagActive = false
+
+createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni olduğun yerde görür.", function(state)
+    lagActive = state
+    if lagActive then
+        -- Network paket gönderimini yavaşlat veya durdur
+        settings().Network.IncomingReplicationLag = 1000 -- Milisaniye cinsinden gecikme
+        showNotification("Fake Lag", "Diğerleri seni sabit görecek!", true)
+    else
+        settings().Network.IncomingReplicationLag = 0
+        showNotification("Fake Lag", "Normal moda dönüldü.", false)
+    end
+end)
 
 -- Arka plan bypass sistemi
 pcall(function()
