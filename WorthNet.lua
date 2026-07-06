@@ -588,61 +588,37 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-local isGhosting = false
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local Player = game.Players.LocalPlayer
+local isInvisible = false
 
-local function toggleGhostMode(state)
-    isGhosting = state
-    local char = Player.Character
+local function toggleInvisibility(state)
+    isInvisible = state
+    local char = game.Players.LocalPlayer.Character
     if not char then return end
 
-    if state then
-        -- 1. ADIM: Görünmezlik
-        for _, obj in pairs(char:GetDescendants()) do
-            if obj:IsA("BasePart") or obj:IsA("Decal") then
-                obj.Transparency = 1
-            end
+    -- Karakterin içindeki her parçayı tara
+    for _, obj in pairs(char:GetDescendants()) do
+        -- Sadece görsel parçaları (Part, MeshPart, Decal) gizle
+        if obj:IsA("BasePart") or obj:IsA("Decal") then
+            -- Eğer görünmez yapıyorsak 1, kapatıyorsak 0 yap
+            obj.Transparency = state and 1 or 0
         end
-
-        -- 2. ADIM: Ghosting (Hitbox'ı uzağa gönder ama kamerayı sabitle)
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            -- Karakterin gerçek pozisyonunu sakla
-            local realPos = hrp.CFrame
-            
-            -- Hitbox'ı uzak bir yere ışınla
-            hrp.CFrame = CFrame.new(0, 10000, 0)
-            
-            -- Kamera "Kamera Modu" ile karakteri takip etmeyi bıraksın
-            -- Kamera pozisyonunu orijinal yerinde sabitlemek için render loop
-            isGhosting = true
-            task.spawn(function()
-                while isGhosting do
-                    -- Kamerayı eski pozisyonda zorla tut
-                    Camera.CFrame = CFrame.new(realPos.Position + Vector3.new(0, 5, 0))
-                    task.wait()
+        -- Aksesuarları (şapka, gözlük vs.) da gizlemek için
+        if obj:IsA("Accessory") then
+            for _, child in pairs(obj:GetChildren()) do
+                if child:IsA("BasePart") then
+                    child.Transparency = state and 1 or 0
                 end
-            end)
-        end
-        showNotification("Ghost Mode", "Aktif: Hayalet modu!", true)
-    else
-        isGhosting = false
-        -- Karakteri geri getir
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = CFrame.new(0, 5, 0) -- Veya karakterin en son olduğu koordinat
-        end
-        -- Görünürlüğü aç
-        for _, obj in pairs(char:GetDescendants()) do
-            if obj:IsA("BasePart") or obj:IsA("Decal") then
-                obj.Transparency = 0
             end
         end
-        showNotification("Ghost Mode", "Devre dışı.", false)
     end
+    
+    showNotification("Invisibility", state and "Görünmezlik Aktif!" or "Görünmezlik Kapalı!", true)
 end
+
+-- Menüye Buton Olarak Ekle
+createModernToggle("Invisible", "Karakterini görünmez yap.", function(state)
+    toggleInvisibility(state)
+end)
 
 -- Proximity Prompt (Mesafe Bazlı 0 Saniye)
 local RunService = game:GetService("RunService")
