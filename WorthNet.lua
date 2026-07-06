@@ -1006,12 +1006,11 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
 end)
 
 -- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
--- Güncellenmiş Fling Mantığı
-createModernToggle("Fling System", "Hedefi yüksek hızla fırlatır.", function(state)
+createModernToggle("Fling System", "Hedefi sessizce fırlatır (Güvenli).", function(state)
     _G.FlingEnabled = state
     task.spawn(function()
         while _G.FlingEnabled do
-            task.wait(0.05)
+            task.wait(0.1)
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             
@@ -1021,10 +1020,17 @@ createModernToggle("Fling System", "Hedefi yüksek hızla fırlatır.", function
                         local targetHrp = p.Character.HumanoidRootPart
                         local dist = (hrp.Position - targetHrp.Position).Magnitude
                         
-                        if dist < 12 then
-                            -- Fizik motorunu tetiklemek için agresif hız ver
-                            hrp.Velocity = Vector3.new(9e9, 9e9, 9e9) 
-                            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0)
+                        -- Sadece yakınındakine uygula
+                        if dist < 10 then
+                            -- Fiziksel çakışma (Collision) yaratmak için 
+                            -- Karakterin Hızını/Pozisyonunu sabitleyip hedefin içine itiyoruz
+                            local vel = hrp.Velocity -- Mevcut hızını sakla
+                            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0.5) 
+                            
+                            -- Hız patlaması yaratmadan sadece fiziksel çarpmayı tetiklemek için:
+                            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                            task.wait(0.05)
+                            hrp.AssemblyLinearVelocity = vel
                         end
                     end
                 end
