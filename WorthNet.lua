@@ -502,7 +502,7 @@ end
 ---------------------------------------------------------
 local noclipConnection = nil
 local isFlying = false
-local flySpeed = 100
+local flySpeed = 75
 local antiFlingConn = nil
 local mm2ESPActive = false
 local mm2Highlights = {}
@@ -525,45 +525,68 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- 2. FLY CONTROL (Gerçekçi & Hızlı)
-createModernToggle("Fly Control", "Yumuşak ve hızlı uçuş.", function(state)
-    isFlying = state
+-- FLY CONTROL (Güncellenmiş: P tuşu + Sabit Uçuş)
+local flyingEnabled = false
+local flySpeed = 75
+local bv, bg
+
+local function toggleFly()
+    flyingEnabled = not flyingEnabled
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if isFlying and root then
-        local bv = Instance.new("BodyVelocity")
+    local hum = char and char:FindFirstChild("Humanoid")
+
+    if flyingEnabled and root and hum then
+        hum.PlatformStand = true -- Karakterin yürüyüş animasyonlarını ve fiziklerini kapatır
+        
+        bv = Instance.new("BodyVelocity")
         bv.Name = "WorthNetVelocity"
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.MaxForce = Vector3.new(1/0, 1/0, 1/0)
+        bv.Velocity = Vector3.new(0, 0, 0)
         bv.Parent = root
         
-        local currentVelocity = Vector3.new(0,0,0)
-        local flySpeed = 150 -- Burayı artırırsan çok daha hızlı uçar (örneğin 300)
-        
+        bg = Instance.new("BodyGyro")
+        bg.Name = "WorthNetGyro"
+        bg.MaxTorque = Vector3.new(1/0, 1/0, 1/0)
+        bg.P = 10000
+        bg.D = 100
+        bg.CFrame = root.CFrame
+        bg.Parent = root
+
         task.spawn(function()
-            while isFlying and root and root.Parent do
+            local currentVelocity = Vector3.new(0, 0, 0)
+            while flyingEnabled and root and root.Parent do
                 local camera = workspace.CurrentCamera
-                local targetDir = Vector3.new(0,0,0)
-                
+                local targetDir = Vector3.new(0, 0, 0)
+
+                -- Hareket Yönleri
                 if UserInputService:IsKeyDown(Enum.KeyCode.W) then targetDir = targetDir + camera.CFrame.LookVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.S) then targetDir = targetDir - camera.CFrame.LookVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.A) then targetDir = targetDir - camera.CFrame.RightVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.D) then targetDir = targetDir + camera.CFrame.RightVector end
-                
-                -- Yumuşak uçuş hissi (Lerp)
-                -- 0.1 değeri ne kadar küçükse o kadar yumuşak (daha "ağır" hissettirir)
+                -- Space (Yukarı) ve LeftControl/Shift (Aşağı) eklendi
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then targetDir = targetDir + Vector3.new(0, 1, 0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then targetDir = targetDir - Vector3.new(0, 1, 0) end
+
                 currentVelocity = currentVelocity:Lerp(targetDir * flySpeed, 0.1)
-                
                 bv.Velocity = currentVelocity
+                bg.CFrame = camera.CFrame -- Kamera nereye bakarsa karakter oraya döner
                 task.wait()
             end
-            if bv then bv:Destroy() end
         end)
     else
-        if root and root:FindFirstChild("WorthNetVelocity") then root.WorthNetVelocity:Destroy() end
+        if hum then hum.PlatformStand = false end
+        if bv then bv:Destroy() end
+        if bg then bg:Destroy() end
+    end
+end
+
+-- P Tuşu Ataması
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
+        toggleFly()
     end
 end)
-
 -- Proximity Prompt (Mesafe Bazlı 0 Saniye)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -608,17 +631,50 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Aimbot (Kamerayı düşmana çevirir)
 local aimActive = false
-createModernToggle("Auto Aim", "Kamerayı en yakın düşmana kilitler.", function(state)
+local fovRadius = 150 -- Çemberin yarıçapı (istediğin gibi değiştirebilirsin)
+
+-- FOV Çemberini Oluştur
+local circle = Drawing.new("Circle")
+circle.Visible = false
+circle.Radius = fovRadius
+circle.Color = Color3.fromRGB(255, 255, 255)
+circle.Thickness = 1
+circle.Filled = false
+circle.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+
+createModernToggle("Auto Aim", "FOV içindeki hedefe kilitlenir.", function(state)
     aimActive = state
+    circle.Visible = state
 end)
+
+local function getClosestPlayerInFOV()
+    local closestPlayer = nil
+    local shortestDistance = fovRadius
+
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local headPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(player.Character.Head.Position)
+            
+            if onScreen then
+                local distance = (Vector2.new(headPos.X, headPos.Y) - circle.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closestPlayer = player
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
 
 game:GetService("RunService").RenderStepped:Connect(function()
     if aimActive then
-        local target = getClosestPlayer()
+        local target = getClosestPlayerInFOV()
         if target and target.Character:FindFirstChild("Head") then
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.Head.Position)
+            -- Kamerayı yumuşak bir şekilde kilitle (Smoothing eklemek istersen CFrame.Lerp kullanılabilir)
+            local targetPos = target.Character.Head.Position
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetPos)
         end
     end
 end)
@@ -975,22 +1031,52 @@ createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(stat
     end
 end)
 
--- 14. Hitbox Expander
 local hitboxActive = false
-createModernToggle("Hitbox Expander", "Rakiplerin kafalarını büyütür.", function(state)
+local hitboxSize = 5 -- İstediğin boyutu buraya yaz
+local hitboxTransparency = 0.8 -- Görünmezlik (1 = tam görünmez)
+
+createModernToggle("Hitbox Expander", "Rakiplerin vuruş alanını genişletir.", function(state)
     hitboxActive = state
-    task.spawn(function()
-        while hitboxActive do
-            task.wait(1)
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-                    p.Character.Head.Size = Vector3.new(5, 5, 5)
-                    p.Character.Head.Transparency = 0.5
-                    p.Character.Head.CanCollide = false
-                end
+    
+    if not hitboxActive then
+        -- Kapatıldığında tüm genişletilmiş kutuları temizle
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("HitboxPart") then
+                p.Character.HitboxPart:Destroy()
             end
         end
-    end)
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if hitboxActive then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                local head = p.Character.Head
+                
+                -- Eğer daha önce oluşturulmamışsa yeni bir parça ekle
+                if not p.Character:FindFirstChild("HitboxPart") then
+                    local hitbox = Instance.new("Part")
+                    hitbox.Name = "HitboxPart"
+                    hitbox.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+                    hitbox.Transparency = hitboxTransparency
+                    hitbox.BrickColor = BrickColor.new("Bright red")
+                    hitbox.Material = Enum.Material.Neon
+                    hitbox.CanCollide = false
+                    hitbox.Parent = p.Character
+                    
+                    -- Weldi ile kafaya sabitle
+                    local weld = Instance.new("WeldConstraint")
+                    weld.Part0 = hitbox
+                    weld.Part1 = head
+                    weld.Parent = hitbox
+                end
+                
+                -- Pozisyonu kafayla senkronize et
+                p.Character.HitboxPart.CFrame = head.CFrame
+            end
+        end
+    end
 end)
 
 -- 14. Inventory ESP (Envanter Tarayıcı)
