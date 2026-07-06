@@ -243,65 +243,6 @@ searchStroke.Thickness = 1
 searchStroke.Parent = searchBox
 
 ---------------------------------------------------------
--- YENİ: TOPLU KONTROL BUTONLARI (OPEN ALL / CLOSE ALL)
----------------------------------------------------------
-local controlContainer = Instance.new("Frame")
-controlContainer.Size = UDim2.new(1, -20, 0, 30)
-controlContainer.Position = UDim2.new(0, 10, 0, 150) -- Arama kutusunun hemen altına hizalı
-controlContainer.BackgroundTransparency = 1
-controlContainer.ZIndex = 8
-controlContainer.Parent = sidebar
-
-local openAllBtn = Instance.new("TextButton")
-openAllBtn.Size = UDim2.new(0.5, -5, 1, 0)
-openAllBtn.Position = UDim2.new(0, 0, 0, 0)
-openAllBtn.BackgroundColor3 = Color3.fromRGB(30, 45, 35) -- Hafif yeşil tonlu premium admin teması
-openAllBtn.Text = "Open All"
-openAllBtn.Font = Enum.Font.GothamBold
-openAllBtn.TextSize = 11
-openAllBtn.TextColor3 = Color3.fromRGB(100, 220, 120)
-openAllBtn.ZIndex = 9
-openAllBtn.Parent = controlContainer
-roundCorners(openAllBtn, 6)
-
-local openStroke = Instance.new("UIStroke")
-openStroke.Color = Color3.fromRGB(50, 120, 70)
-openStroke.Thickness = 1
-openStroke.Parent = openAllBtn
-
-local closeAllBtn = Instance.new("TextButton")
-closeAllBtn.Size = UDim2.new(0.5, -5, 1, 0)
-closeAllBtn.Position = UDim2.new(0.5, 5, 0, 0)
-closeAllBtn.BackgroundColor3 = Color3.fromRGB(45, 25, 25) -- Hafif kırmızı tonlu tehlike teması
-closeAllBtn.Text = "Close All"
-closeAllBtn.Font = Enum.Font.GothamBold
-closeAllBtn.TextSize = 11
-closeAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-closeAllBtn.ZIndex = 9
-closeAllBtn.Parent = controlContainer
-roundCorners(closeAllBtn, 6)
-
-local closeStroke = Instance.new("UIStroke")
-closeStroke.Color = Color3.fromRGB(150, 50, 50)
-closeStroke.Thickness = 1
-closeStroke.Parent = closeAllBtn
-
--- TOPLU TETİKLEME İŞLEMLERİ
-openAllBtn.MouseButton1Click:Connect(function()
-	showNotification("System", "Tüm modüller aktif ediliyor...", true)
-	for name, setToggle in pairs(_G.toggleRegistry) do
-		pcall(function() setToggle(true, true) end) -- suppressNotification=true ile bildirim yağmurunu engeller
-	end
-end)
-
-closeAllBtn.MouseButton1Click:Connect(function()
-	showNotification("System", "Tüm modüller kapatılıyor...", false)
-	for name, setToggle in pairs(_G.toggleRegistry) do
-		pcall(function() setToggle(false, true) end)
-	end
-end)
-
----------------------------------------------------------
 -- YENİ: YOUTUBE SOSYAL MEDYA BUTONU
 ---------------------------------------------------------
 local ytBtn = Instance.new("TextButton")
@@ -412,8 +353,6 @@ end)
 ---------------------------------------------------------
 -- DINAMIK TOGGLE MOTORU (OTOMATİK BİLDİRİM ENTEGRELİ)
 ---------------------------------------------------------
-_G.toggleRegistry = _G.toggleRegistry or {}
-
 local function createModernToggle(name, description, callback)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Size = UDim2.new(1, -10, 0, 55)
@@ -424,7 +363,7 @@ local function createModernToggle(name, description, callback)
 	roundCorners(cardFrame, 8)
 	
 	local title = Instance.new("TextLabel")
-	title.Name = "HackyTitle"
+	title.Name = "HackyTitle" -- Arama motorunun bulabilmesi için özel isim tagı
 	title.Size = UDim2.new(0, 200, 0, 25)
 	title.Position = UDim2.new(0, 15, 0, 5)
 	title.BackgroundTransparency = 1
@@ -466,35 +405,23 @@ local function createModernToggle(name, description, callback)
 	roundCorners(pin, 8)
 	
 	local isOn = false
-	
-	-- Dışarıdan tetiklenebilecek fonksiyonu tanımlıyoruz
-	local function updateState(targetState, suppressNotification)
-		if isOn == targetState then return end
-		isOn = targetState
-		
+	switch.MouseButton1Click:Connect(function()
+		isOn = not isOn
 		local targetPos = isOn and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
 		local targetColor = isOn and THEME.ToggleOn or THEME.ToggleOff
 		
 		TweenService:Create(pin, TweenInfo.new(0.18), {Position = targetPos}):Play()
 		TweenService:Create(switch, TweenInfo.new(0.18), {BackgroundColor3 = targetColor}):Play()
 		
-		if not suppressNotification then
-			if isOn then
-				showNotification(name, "Aktif edildi!", true)
-			else
-				showNotification(name, "Devre dışı bırakıldı.", false)
-			end
+		-- MERKEZİ BİLDİRİM TETİKLEYİCİSİ
+		if isOn then
+			showNotification(name, "Aktif edildi!", true)
+		else
+			showNotification(name, "Devre dışı bırakıldı.", false)
 		end
 		
 		callback(isOn)
-	end
-	
-	switch.MouseButton1Click:Connect(function()
-		updateState(not isOn)
 	end)
-	
-	-- Havuza kaydet
-	_G.toggleRegistry[name] = updateState
 end
 
 ---------------------------------------------------------
@@ -502,7 +429,7 @@ end
 ---------------------------------------------------------
 local noclipConnection = nil
 local isFlying = false
-local flySpeed = 100
+local flySpeed = 50
 local antiFlingConn = nil
 local mm2ESPActive = false
 local mm2Highlights = {}
