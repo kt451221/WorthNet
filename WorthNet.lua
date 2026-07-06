@@ -633,16 +633,28 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- Aimbot (Kamerayı düşmana çevirir)
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local aimActive = false
-createModernToggle("Auto Aim", "Kamerayı en yakın düşmana kilitler.", function(state)
+
+-- Aimbot'u aktif et
+createModernToggle("Aimbot", "Kamerayı en yakın düşmana kilitler.", function(state)
     aimActive = state
 end)
 
-game:GetService("RunService").RenderStepped:Connect(function()
+-- RenderStepped yerine Camera.CFrame'i sürekli güncelle
+RunService.RenderStepped:Connect(function()
     if aimActive then
-        local target = getClosestPlayer()
-        if target and target.Character:FindFirstChild("Head") then
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.Head.Position)
+        local target = getClosest() -- Senin tanımladığın fonksiyon
+        if target and target:FindFirstChild("Head") then
+            -- Kameranın mevcut pozisyonunu al ve hedefe çevir
+            local targetPosition = target.Head.Position
+            local cameraPosition = Camera.CFrame.Position
+            
+            -- Kamerayı doğrudan hedefe odakla
+            Camera.CFrame = CFrame.lookAt(cameraPosition, targetPosition)
         end
     end
 end)
@@ -1269,32 +1281,35 @@ end)
 -- 19. Silent Aim & FOV Circle
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players") -- Eksik servis eklendi
 local Camera = workspace.CurrentCamera
-local FOV_RADIUS = 150 -- Çemberin büyüklüğü
+local LocalPlayer = Players.LocalPlayer
+
+local FOV_RADIUS = 150
+local silentAimActive = false
 
 -- Çemberi oluştur
 local fovCircle = Drawing.new("Circle")
-fovCircle.Thickness = 2
-fovCircle.NumSides = 100
+fovCircle.Thickness = 1
+fovCircle.NumSides = 30
 fovCircle.Radius = FOV_RADIUS
 fovCircle.Filled = false
 fovCircle.Color = Color3.fromRGB(255, 255, 255)
 fovCircle.Visible = false
 fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 
--- Ayarları yönet
-local silentAimActive = false
-
--- En yakın düşmanı bul
+-- En yakın düşmanı bul (Güvenli)
 local function getClosest()
     local closest, dist = nil, FOV_RADIUS
+    local mousePos = UserInputService:GetMouseLocation()
+    
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
             if onScreen then
-                local mouseDist = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                local mouseDist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
                 if mouseDist < dist then
-                    closest = p.Character.Head
+                    closest = p.Character.HumanoidRootPart
                     dist = mouseDist
                 end
             end
@@ -1303,7 +1318,7 @@ local function getClosest()
     return closest
 end
 
--- Silent Aim (Mermi yönlendirme)
+-- Hook işlemleri
 local mt = getrawmetatable(game)
 local oldNamecall = mt.__namecall
 setreadonly(mt, false)
@@ -1312,43 +1327,27 @@ mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     local method = getnamecallmethod()
     
-    if silentAimActive and (method == "FireServer" or method == "InvokeServer") and (self.Name == "Fire" or self.Name == "Shoot") then
+    if silentAimActive and (method == "FireServer" or method == "InvokeServer") then
         local target = getClosest()
-        if target then
-            args[1] = target.Position -- Mermiyi kafaya yönlendir
+        -- Çoğu oyunda mermi hedefi genellikle args[2] veya args[1] olur
+        if target and (self.Name == "Fire" or self.Name == "Shoot") then
+            args[2] = target.Position -- Çoğu sistemde args[2] target'tır
         end
     end
     return oldNamecall(self, unpack(args))
 end)
+setreadonly(mt, true)
 
--- Menü Toggle
-createModernToggle("Silent Aim", "Ekranda FOV çemberi ile hedefleme.", function(state)
-    silentAimActive = state
-    fovCircle.Visible = state
-end)
-
--- Çemberi ekranın ortasında tut
+-- Güncelleme döngüsü
 RunService.RenderStepped:Connect(function()
-    fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-end)
-
--- 20. Fake Lag / Lag Switch Mantığı
-local RunService = game:GetService("RunService")
-local Network = game:GetService("NetworkSettings") -- Bazı oyunlarda engelli olabilir
-
-local lagActive = false
-
-createModernToggle("Fake Lag", "Senin için hareket eder ama diğerleri seni olduğun yerde görür.", function(state)
-    lagActive = state
-    if lagActive then
-        -- Network paket gönderimini yavaşlat veya durdur
-        settings().Network.IncomingReplicationLag = 1000 -- Milisaniye cinsinden gecikme
-        showNotification("Fake Lag", "Diğerleri seni sabit görecek!", true)
+    if silentAimActive then
+        fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        fovCircle.Visible = true
     else
-        settings().Network.IncomingReplicationLag = 0
-        showNotification("Fake Lag", "Normal moda dönüldü.", false)
+        fovCircle.Visible = false
     end
 end)
+
 
 -- Arka plan bypass sistemi
 pcall(function()
