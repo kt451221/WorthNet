@@ -502,7 +502,7 @@ end
 ---------------------------------------------------------
 local noclipConnection = nil
 local isFlying = false
-local flySpeed = 50
+local flySpeed = 60
 local antiFlingConn = nil
 local mm2ESPActive = false
 local mm2Highlights = {}
@@ -525,13 +525,14 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- 2. FLY CONTROL (Güncellenmiş: P tuşu + Sabit Uçuş)
+-- 2. FLY CONTROL (Güncellenmiş: Menü + P tuşu Senkronize)
 local flyingEnabled = false
-local flySpeed = 50
+local flySpeed = 60
 local bv, bg
 
-local function toggleFly()
-    flyingEnabled = not flyingEnabled
+-- Uçma mantığını yöneten ana fonksiyon (Dışarıya alındı)
+local function updateFlyState(state)
+    flyingEnabled = state
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChild("Humanoid")
@@ -581,12 +582,22 @@ local function toggleFly()
     end
 end
 
--- P Tuşu Ataması
+-- Menü (ModernToggle) Bağlantısı
+createModernToggle("Fly", "İstediğin yere uç! (P Tuşu ile de açıp kapatabilirsin)", function(state)
+    -- Menüden True/False geldiğinde direkt ana fonksiyonu tetikler
+    updateFlyState(state)
+end)
+
+-- P Tuşu Bağlantısı
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- Chate yazı yazarken vs. tetiklenmemesi için gameProcessed kontrolü yapıyoruz
     if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-        toggleFly()
+        -- Mevcut durumun tam tersini göndererek Aç/Kapat mantığı kuruyoruz
+        updateFlyState(not flyingEnabled)
     end
 end)
+
+
 
 local isInvisible = false
 
@@ -665,33 +676,74 @@ RunService.RenderStepped:Connect(function()
 end)
 
 
--- Aimbot (Kamerayı düşmana çevirir)
+-- 3. AIMBOT CONTROL (Menü Bağlantılı)
+local aimbotEnabled = false
+local aimbotConnection = nil
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local aimActive = false
+local localPlayer = Players.LocalPlayer
 
--- Aimbot'u aktif et
-createModernToggle("Aimbot", "Kamerayı en yakın düşmana kilitler.", function(state)
-    aimActive = state
-end)
+-- En yakın rakibi bulan yardımcı fonksiyon
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local currentCamera = workspace.CurrentCamera
+    local localChar = localPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
 
--- RenderStepped yerine Camera.CFrame'i sürekli güncelle
-RunService.RenderStepped:Connect(function()
-    if aimActive then
-        local target = getClosest() -- Senin tanımladığın fonksiyon
-        if target and target:FindFirstChild("Head") then
-            -- Kameranın mevcut pozisyonunu al ve hedefe çevir
-            local targetPosition = target.Head.Position
-            local cameraPosition = Camera.CFrame.Position
+    if not localRoot then return nil end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            -- Takım Kontrolü (Eğer takım arkadaşıysa atla)
+            if player.Team and player.Team == localPlayer.Team then continue end
             
-            -- Kamerayı doğrudan hedefe odakla
-            Camera.CFrame = CFrame.lookAt(cameraPosition, targetPosition)
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChild("Humanoid")
+            
+            -- Oyuncunun canlı ve görünür olduğunu kontrol et
+            if root and hum and hum.Health > 0 then
+                -- Ekranda olup olmadığını kontrol etme (Opsiyonel, mesafe odaklı)
+                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+                if onScreen then
+                    local distance = (root.Position - localRoot.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Menü Butonu Tanımlaması
+createModernToggle("Aimbot", "En yakın rakibe otomatik kilitlenir.", function(state)
+    aimbotEnabled = state
+    
+    if aimbotEnabled then
+        -- Her karede (RenderStepped) kamerayı en yakın oyuncuya çevirir
+        aimbotConnection = RunService.RenderStepped:Connect(function()
+            local targetPlayer = getClosestPlayer()
+            local char = targetPlayer and targetPlayer.Character
+            local head = char and char:FindFirstChild("Head") -- Kafaya kilitlenir
+            
+            if head then
+                local camera = workspace.CurrentCamera
+                -- Kameranın CFrame'ini rakibin kafasına bakacak şekilde pürüzsüzce veya direkt odaklar
+                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+            end
+        end)
+    else
+        -- Toggle kapatıldığında bağlantıyı kopar
+        if aimbotConnection then
+            aimbotConnection:Disconnect()
+            aimbotConnection = nil
         end
     end
 end)
-
 -- Auto-Clicker (Extreme Speed)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local autoClickEnabled = false
@@ -988,52 +1040,60 @@ createModernToggle("Gun ESP", "Yerdeki silahı mor renkli gösterir.", function(
 	end
 end)
 
--- Auto-Aim & Auto-TP (Güncellenmiş)
-local autoAimActive = false
+-- 4. AUTO AIM / TRIGGERBOT CONTROL (Menü Bağlantılı)
+local autoAimEnabled = false
+local autoAimConnection = nil
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local mouse = localPlayer:GetMouse()
 
-createModernToggle("Auto Aim", "Kamerayı otomatik hedefe kilitler.", function(state)
-    toggleAutoAim(state) 
-end)
+-- Fare ile tıklama simülasyonu yapan fonksiyon (VirtualInputManager kullanır)
+local vim = game:GetService("VirtualInputManager")
+local function autoClick()
+    vim:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0) -- Sol Tık Bas
+    task.wait(0.02)
+    vim:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0) -- Sol Tık Bırak
+end
 
-local function toggleAutoAim(state)
-    autoAimActive = state
-    if state then
-        showNotification("Auto-Aim", "Aktif! H'ye basarak kapat.", true)
-        task.spawn(function()
-            while autoAimActive do
-                task.wait(0.01)
-                local char = player.Character
-                if char and (char:FindFirstChild("Knife") or char:FindFirstChild("Gun")) then
-                    local targetPlayer = nil
-                    local dist = 1000
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                            local d = (char.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                            if d < dist then
-                                dist = d
-                                targetPlayer = p
-                            end
-                        end
-                    end
+createModernToggle("Auto Aim", "Crosshair rakibin üzerine geldiğinde otomatik ateş eder.", function(state)
+    autoAimEnabled = state
+    
+    if autoAimEnabled then
+        -- Farenin hedef aldığı nesneyi sürekli kontrol eder
+        autoAimConnection = mouse:GetPropertyChangedSignal("Target"):Connect(function()
+            if not autoAimEnabled then return end
+            
+            local target = mouse.Target
+            if target and target.Parent then
+                -- Target bir karakter parçası mı veya model mi kontrol et
+                local character = target.Parent
+                if not character:FindFirstChild("Humanoid") then
+                    character = character.Parent -- Aksesuar veya şapkalara denk gelirse üst modeli al
+                end
+                
+                local humanoid = character and character:FindFirstChild("Humanoid")
+                local player = Players:GetPlayerFromCharacter(character)
+                
+                -- Hedef geçerli bir oyuncuysa, canlıysa ve takım arkadaşın değilse ateş et
+                if player and player ~= localPlayer and humanoid and humanoid.Health > 0 then
+                    -- Takım Kontrolü (Team Check)
+                    if player.Team and player.Team == localPlayer.Team then return end
                     
-                    if targetPlayer then
-                        -- Auto TP: Hedefe 3 stud mesafe kalana kadar ışınlan
-                        if (char.HumanoidRootPart.Position - targetPlayer.Character.HumanoidRootPart.Position).Magnitude > 5 then
-                            char.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-                        end
-                        -- Auto Aim: Kilitleme
-                        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetPlayer.Character.HumanoidRootPart.Position)
+                    -- Chate yazmıyorsan veya oyun içi arayüze tıklamıyorsan ateş et
+                    if not game:GetService("UserInputService"):GetFocusedTextBox() then
+                        autoClick()
                     end
                 end
             end
         end)
     else
-        -- HİLEDEN ÇIKINCA SABİT KALAN MOUSE VE KAMERA SORUNU FİXİ
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-        showNotification("Auto-Aim", "Devre dışı bırakıldı.", false)
+        -- Kapatıldığında bağlantıyı temizle
+        if autoAimConnection then
+            autoAimConnection:Disconnect()
+            autoAimConnection = nil
+        end
     end
-end
+end)
 
 -- 13. SpinBot
 local spinConn = nil
@@ -1315,77 +1375,114 @@ createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitl
     end)
 end)
 
--- 19. Silent Aim & FOV Circle
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players") -- Eksik servis eklendi
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
+-- 5. SILENT AIM CONTROL (Menü Bağlantılı)
+local silentAimEnabled = false
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local mouse = localPlayer:GetMouse()
 
-local FOV_RADIUS = 150
-local silentAimActive = false
+-- En yakın rakibi bulan fonksiyon (Aimbot ile aynı mantık, kafayı hedefler)
+local function getSilentTarget()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local currentCamera = workspace.CurrentCamera
+    local localChar = localPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
 
-createModernToggle("Silent Aim", "Mermileri hedefe yönlendirir.", function(state)
-    silentAimActive = state
-end)
+    if not localRoot then return nil end
 
--- Çemberi oluştur
-local fovCircle = Drawing.new("Circle")
-fovCircle.Thickness = 1
-fovCircle.NumSides = 30
-fovCircle.Radius = FOV_RADIUS
-fovCircle.Filled = false
-fovCircle.Color = Color3.fromRGB(255, 255, 255)
-fovCircle.Visible = false
-fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-
--- En yakın düşmanı bul (Güvenli)
-local function getClosest()
-    local closest, dist = nil, FOV_RADIUS
-    local mousePos = UserInputService:GetMouseLocation()
-    
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local pos, onScreen = Camera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-            if onScreen then
-                local mouseDist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                if mouseDist < dist then
-                    closest = p.Character.HumanoidRootPart
-                    dist = mouseDist
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            -- Takım Kontrolü
+            if player.Team and player.Team == localPlayer.Team then continue end
+            
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local head = char and char:FindFirstChild("Head")
+            local hum = char and char:FindFirstChild("Humanoid")
+            
+            if root and head and hum and hum.Health > 0 then
+                -- Ekranda görünürlük kontrolü
+                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+                if onScreen then
+                    local distance = (root.Position - localRoot.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closestPlayer = char -- Karakter modelini döndürür
+                    end
                 end
             end
         end
     end
-    return closest
+    return closestPlayer
 end
 
--- Hook işlemleri
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
+-- ROBLOX METATABLE HOOKING (Mermi bükme mekanizması)
+local gmt = getrawmetatable(game)
+local oldIndex = gmt.__index
+setreadonly(gmt, false)
 
-mt.__namecall = newcclosure(function(self, ...)
-    local args = {...}
-    local method = getnamecallmethod()
-    
-    if silentAimActive and (method == "FireServer" or method == "InvokeServer") then
-        local target = getClosest()
-        -- Çoğu oyunda mermi hedefi genellikle args[2] veya args[1] olur
-        if target and (self.Name == "Fire" or self.Name == "Shoot") then
-            args[2] = target.Position -- Çoğu sistemde args[2] target'tır
+gmt.__index = newcclosure(function(self, index)
+    -- Eğer Silent Aim aktifse ve silah scripti mouse'un pozisyonunu/hedefini istiyorsa araya gir
+    if silentAimEnabled and checkcaller() == false then
+        if self == mouse then
+            if index == "Hit" or index == "Target" then
+                local targetChar = getSilentTarget()
+                if targetChar and targetChar:FindFirstChild("Head") then
+                    -- Eğer silah nereye vuracağını soruyorsa, mermiyi kafaya yönlendir
+                    if index == "Hit" then
+                        return targetChar.Head.CFrame
+                    elseif index == "Target" then
+                        return targetChar.Head
+                    end
+                end
+            end
         end
     end
-    return oldNamecall(self, unpack(args))
+    return oldIndex(self, index)
 end)
-setreadonly(mt, true)
 
--- Güncelleme döngüsü
-RunService.RenderStepped:Connect(function()
-    if silentAimActive then
-        fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-        fovCircle.Visible = true
+setreadonly(gmt, true)
+
+-- Menü Butonu Tanımlaması
+createModernToggle("Silent Aim", "Kamerayı çevirmeden mermileri doğrudan hedefe büker.", function(state)
+    silentAimEnabled = state
+end)
+
+-- 6. FOV CIRCLE (Menü Bağlantılı Görüş Alanı Çemberi)
+local fovEnabled = false
+local fovConnection = nil
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local mouse = localPlayer:GetMouse()
+
+-- Çemberi oluşturuyoruz (Drawing API sadece Executor'larda çalışır)
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = false
+fovCircle.Radius = 150 -- Çemberin büyüklüğü (İsteğe göre değiştirebilirsin)
+fovCircle.Color = Color3.fromRGB(255, 255, 255) -- Beyaz renk
+fovCircle.Thickness = 1.5 -- Çizgi kalınlığı
+fovCircle.Filled = false
+fovCircle.Transparency = 1
+
+createModernToggle("Show FOV", "Aimbot'un kapsama alanı çemberini ekranda gösterir.", function(state)
+    fovEnabled = state
+    fovCircle.Visible = fovEnabled
+    
+    if fovEnabled then
+        -- Çemberi sürekli olarak farenin pozisyonuna günceller
+        fovConnection = RunService.RenderStepped:Connect(function()
+            -- GuiInset (Roblox'un üst barı) kaynaklı kaymayı düzeltmek için +36 ekliyoruz
+            local guiInset = game:GetService("GuiService"):GetGuiInset()
+            fovCircle.Position = Vector2.new(mouse.X, mouse.Y + guiInset.Y)
+        end)
     else
-        fovCircle.Visible = false
+        -- Kapatıldığında çemberin yerini güncellemeyi durdur
+        if fovConnection then
+            fovConnection:Disconnect()
+            fovConnection = nil
+        end
     end
 end)
 
