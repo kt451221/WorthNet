@@ -1375,13 +1375,12 @@ createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitl
     end)
 end)
 
--- 5. SILENT AIM CONTROL (Menü Bağlantılı)
+-- 5. SILENT AIM CONTROL (Güvenli Versiyon)
 local silentAimEnabled = false
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 local mouse = localPlayer:GetMouse()
 
--- En yakın rakibi bulan fonksiyon (Aimbot ile aynı mantık, kafayı hedefler)
 local function getSilentTarget()
     local closestPlayer = nil
     local shortestDistance = math.huge
@@ -1391,24 +1390,22 @@ local function getSilentTarget()
 
     if not localRoot then return nil end
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer then
-            -- Takım Kontrolü
-            if player.Team and player.Team == localPlayer.Team then continue end
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if targetPlayer ~= localPlayer then
+            if targetPlayer.Team and targetPlayer.Team == localPlayer.Team then continue end
             
-            local char = player.Character
+            local char = targetPlayer.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local head = char and char:FindFirstChild("Head")
             local hum = char and char:FindFirstChild("Humanoid")
             
             if root and head and hum and hum.Health > 0 then
-                -- Ekranda görünürlük kontrolü
                 local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
                 if onScreen then
                     local distance = (root.Position - localRoot.Position).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
-                        closestPlayer = char -- Karakter modelini döndürür
+                        closestPlayer = char
                     end
                 end
             end
@@ -1417,68 +1414,60 @@ local function getSilentTarget()
     return closestPlayer
 end
 
--- ROBLOX METATABLE HOOKING (Mermi bükme mekanizması)
-local gmt = getrawmetatable(game)
-local oldIndex = gmt.__index
-setreadonly(gmt, false)
+createModernToggle("Silent Aim", "Mermileri bük. (Executor destekliyorsa çalışır)", function(state)
+    silentAimEnabled = state
+end)
 
-gmt.__index = newcclosure(function(self, index)
-    -- Eğer Silent Aim aktifse ve silah scripti mouse'un pozisyonunu/hedefini istiyorsa araya gir
-    if silentAimEnabled and checkcaller() == false then
-        if self == mouse then
-            if index == "Hit" or index == "Target" then
-                local targetChar = getSilentTarget()
-                if targetChar and targetChar:FindFirstChild("Head") then
-                    -- Eğer silah nereye vuracağını soruyorsa, mermiyi kafaya yönlendir
-                    if index == "Hit" then
-                        return targetChar.Head.CFrame
-                    elseif index == "Target" then
-                        return targetChar.Head
+-- Hata verip menüyü bozmaması için pcall içine alıyoruz
+pcall(function()
+    local gmt = getrawmetatable(game)
+    local oldIndex = gmt.__index
+    setreadonly(gmt, false)
+
+    gmt.__index = newcclosure(function(self, index)
+        if silentAimEnabled and checkcaller() == false then
+            if self == mouse then
+                if index == "Hit" or index == "Target" then
+                    local targetChar = getSilentTarget()
+                    if targetChar and targetChar:FindFirstChild("Head") then
+                        if index == "Hit" then return targetChar.Head.CFrame end
+                        if index == "Target" then return targetChar.Head end
                     end
                 end
             end
         end
-    end
-    return oldIndex(self, index)
+        return oldIndex(self, index)
+    end)
+    setreadonly(gmt, true)
 end)
 
-setreadonly(gmt, true)
-
--- Menü Butonu Tanımlaması
-createModernToggle("Silent Aim", "Kamerayı çevirmeden mermileri doğrudan hedefe büker.", function(state)
-    silentAimEnabled = state
-end)
-
--- 6. FOV CIRCLE (Menü Bağlantılı Görüş Alanı Çemberi)
+-- 6. FOV CIRCLE (Güvenli Versiyon)
 local fovEnabled = false
 local fovConnection = nil
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-local mouse = localPlayer:GetMouse()
+local fovCircle
 
--- Çemberi oluşturuyoruz (Drawing API sadece Executor'larda çalışır)
-local fovCircle = Drawing.new("Circle")
-fovCircle.Visible = false
-fovCircle.Radius = 150 -- Çemberin büyüklüğü (İsteğe göre değiştirebilirsin)
-fovCircle.Color = Color3.fromRGB(255, 255, 255) -- Beyaz renk
-fovCircle.Thickness = 1.5 -- Çizgi kalınlığı
-fovCircle.Filled = false
-fovCircle.Transparency = 1
+-- Executor Drawing desteklemiyorsa çökmeyi önler
+pcall(function()
+    fovCircle = Drawing.new("Circle")
+    fovCircle.Visible = false
+    fovCircle.Radius = 150
+    fovCircle.Color = Color3.fromRGB(255, 255, 255)
+    fovCircle.Thickness = 1.5
+    fovCircle.Filled = false
+    fovCircle.Transparency = 1
+end)
 
-createModernToggle("Show FOV", "Aimbot'un kapsama alanı çemberini ekranda gösterir.", function(state)
+createModernToggle("Show FOV", "Aimbot'un kapsama alanını gösterir.", function(state)
     fovEnabled = state
-    fovCircle.Visible = fovEnabled
+    if fovCircle then fovCircle.Visible = fovEnabled end
     
-    if fovEnabled then
-        -- Çemberi sürekli olarak farenin pozisyonuna günceller
+    if fovEnabled and fovCircle then
         fovConnection = RunService.RenderStepped:Connect(function()
-            -- GuiInset (Roblox'un üst barı) kaynaklı kaymayı düzeltmek için +36 ekliyoruz
             local guiInset = game:GetService("GuiService"):GetGuiInset()
             fovCircle.Position = Vector2.new(mouse.X, mouse.Y + guiInset.Y)
         end)
     else
-        -- Kapatıldığında çemberin yerini güncellemeyi durdur
         if fovConnection then
             fovConnection:Disconnect()
             fovConnection = nil
@@ -1486,6 +1475,65 @@ createModernToggle("Show FOV", "Aimbot'un kapsama alanı çemberini ekranda gös
     end
 end)
 
+-- MM2 ÖZEL AIMBOT (Sadece Silahlılara/Bıçaklılara Kitlenir)
+local mm2AimbotEnabled = false
+local mm2AimbotConnection = nil
+
+local function getArmedPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local currentCamera = workspace.CurrentCamera
+    local localChar = localPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+
+    if not localRoot then return nil end
+
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if targetPlayer ~= localPlayer and targetPlayer.Character then
+            local char = targetPlayer.Character
+            local back = targetPlayer:FindFirstChild("Backpack")
+            local hum = char:FindFirstChild("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+
+            -- Adamın envanterinde veya elinde Gun veya Knife var mı kontrol et
+            local hasWeapon = (char:FindFirstChild("Knife") or char:FindFirstChild("Gun") or (back and (back:FindFirstChild("Knife") or back:FindFirstChild("Gun"))))
+
+            if hasWeapon and root and hum and hum.Health > 0 then
+                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+                if onScreen then
+                    local distance = (root.Position - localRoot.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        closestPlayer = targetPlayer
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+createModernToggle("MM2 Aimbot", "Sadece Katil ve Şerife kilitlenir.", function(state)
+    mm2AimbotEnabled = state
+    
+    if mm2AimbotEnabled then
+        mm2AimbotConnection = RunService.RenderStepped:Connect(function()
+            local targetPlayer = getArmedPlayer()
+            local char = targetPlayer and targetPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart") -- Gövdeye kilitlenmek bıçak atmak için daha iyidir
+            
+            if root then
+                local camera = workspace.CurrentCamera
+                camera.CFrame = CFrame.new(camera.CFrame.Position, root.Position)
+            end
+        end)
+    else
+        if mm2AimbotConnection then
+            mm2AimbotConnection:Disconnect()
+            mm2AimbotConnection = nil
+        end
+    end
+end)
 
 -- Arka plan bypass sistemi
 pcall(function()
