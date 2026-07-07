@@ -676,22 +676,26 @@ RunService.RenderStepped:Connect(function()
 end)
 
 
--- 3. AIMBOT CONTROL (Menü Bağlantılı)
+-- 3. AIMBOT CONTROL (Menü Bağlantılı - Gelişmiş Crosshair Odaklı)
 local aimbotEnabled = false
 local aimbotConnection = nil
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService") -- Fare konumunu almak için şart
 local localPlayer = Players.LocalPlayer
 
--- En yakın rakibi bulan yardımcı fonksiyon
+-- Ekranda imlece/crosshair'e en yakın rakibi bulan yardımcı fonksiyon
 local function getClosestPlayer()
     local closestPlayer = nil
-    local shortestDistance = math.huge
+    local shortestDistance = math.huge -- En küçük ekran mesafesini tutar
     local currentCamera = workspace.CurrentCamera
     local localChar = localPlayer.Character
     local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
 
     if not localRoot then return nil end
+
+    -- Farenin/Ekranın merkezinin anlık 2D koordinatını alıyoruz
+    local mouseLocation = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= localPlayer then
@@ -702,14 +706,19 @@ local function getClosestPlayer()
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChild("Humanoid")
             
-            -- Oyuncunun canlı ve görünür olduğunu kontrol et
+            -- Oyuncunun canlı olduğunu kontrol et
             if root and hum and hum.Health > 0 then
-                -- Ekranda olup olmadığını kontrol etme (Opsiyonel, mesafe odaklı)
-                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+                -- Oyuncunun dünyadaki konumunu ekrandaki 2D konuma çeviriyoruz
+                local screenPos, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+                
                 if onScreen then
-                    local distance = (root.Position - localRoot.Position).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
+                    -- İmleç ile oyuncunun ekrandaki yeri arasındaki piksel mesafesini ölçüyoruz
+                    local playerScreenPoint = Vector2.new(screenPos.X, screenPos.Y)
+                    local screenDistance = (playerScreenPoint - mouseLocation).Magnitude
+                    
+                    -- Ekrandaki en yakın adama kilitlenmesini sağlayan logic
+                    if screenDistance < shortestDistance then
+                        shortestDistance = screenDistance
                         closestPlayer = player
                     end
                 end
@@ -720,7 +729,7 @@ local function getClosestPlayer()
 end
 
 -- Menü Butonu Tanımlaması
-createModernToggle("Aimbot", "En yakın rakibe otomatik kilitlenir.", function(state)
+createModernToggle("Aimbot", "İmlecinize en yakın rakibe otomatik kilitlenir.", function(state)
     aimbotEnabled = state
     
     if aimbotEnabled then
@@ -732,7 +741,7 @@ createModernToggle("Aimbot", "En yakın rakibe otomatik kilitlenir.", function(s
             
             if head then
                 local camera = workspace.CurrentCamera
-                -- Kameranın CFrame'ini rakibin kafasına bakacak şekilde pürüzsüzce veya direkt odaklar
+                -- Kamerayı yumuşak ama net bir şekilde hedefe odaklar
                 camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
             end
         end)
@@ -1108,22 +1117,38 @@ createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(stat
     end
 end)
 
--- 14. Hitbox Expander
-local hitboxActive = false
-createModernToggle("Hitbox Expander", "Rakiplerin kafalarını büyütür.", function(state)
-    hitboxActive = state
-    task.spawn(function()
-        while hitboxActive do
-            task.wait(1)
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-                    p.Character.Head.Size = Vector3.new(5, 5, 5)
-                    p.Character.Head.Transparency = 0.5
-                    p.Character.Head.CanCollide = false
+-- 14. HITBOX EXPANDER (Gövde Büyütücü)
+local hitboxEnabled = false
+local hitboxConnection = nil
+local expandedSize = Vector3.new(12, 12, 12) -- Hitbox büyüklüğü (İdealdir)
+
+createModernToggle("Hitbox Expander", "Rakiplerin vurulma alanını devasa yapar.", function(state)
+    hitboxEnabled = state
+    
+    if hitboxEnabled then
+        hitboxConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            for _, targetPlayer in ipairs(game:GetService("Players"):GetPlayers()) do
+                if targetPlayer ~= player and targetPlayer.Character then
+                    local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.Size = expandedSize
+                        root.Transparency = 0.7 -- Nereye vuracağını görmen için yarı şeffaf turuncu kutu yapar
+                        root.Color = Color3.fromRGB(220, 130, 30) -- Senin WorthNet Turuncusu
+                        root.CanCollide = false -- Kutulara takılıp düşmemen için fisik kapatılır
+                    end
                 end
             end
+        end)
+    else
+        if hitboxConnection then hitboxConnection:Disconnect() hitboxConnection = nil end
+        -- Kapatıldığında herkesin hitbox boyutunu eski orijinal haline getirir
+        for _, targetPlayer in ipairs(game:GetService("Players"):GetPlayers()) do
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                targetPlayer.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+                targetPlayer.Character.HumanoidRootPart.Transparency = 1
+            end
         end
-    end)
+    end
 end)
 
 -- 14. Inventory ESP (Envanter Tarayıcı)
