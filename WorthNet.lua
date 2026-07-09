@@ -676,47 +676,54 @@ RunService.RenderStepped:Connect(function()
 end)
 
 
--- 3. AIMBOT CONTROL (Menü Bağlantılı - Gelişmiş Crosshair Odaklı)
+-- 3. AIMBOT CONTROL (FOV Destekli & Gelişmiş)
 local aimbotEnabled = false
 local aimbotConnection = nil
+local fovRadius = 200 -- FOV çemberinin yarıçapı (piksel)
+
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService") -- Fare konumunu almak için şart
+local UserInputService = game:GetService("UserInputService")
 local localPlayer = Players.LocalPlayer
 
--- Ekranda imlece/crosshair'e en yakın rakibi bulan yardımcı fonksiyon
+-- FOV Çemberini görselleştirmek istersen aşağıdaki kısmı kullanabilirsin
+local fovCircle = Drawing.new("Circle")
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Thickness = 1
+fovCircle.Radius = fovRadius
+fovCircle.Filled = false
+fovCircle.Visible = false -- Başlangıçta gizli
+
+-- FOV çemberini ekranın tam ortasına sabitle
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled then
+        local camera = workspace.CurrentCamera
+        fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        fovCircle.Visible = true
+    else
+        fovCircle.Visible = false
+    end
+end)
+
 local function getClosestPlayer()
     local closestPlayer = nil
-    local shortestDistance = math.huge -- En küçük ekran mesafesini tutar
+    local shortestDistance = fovRadius -- Sadece FOV içindekileri hedefle
     local currentCamera = workspace.CurrentCamera
-    local localChar = localPlayer.Character
-    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-
-    if not localRoot then return nil end
-
-    -- Farenin/Ekranın merkezinin anlık 2D koordinatını alıyoruz
     local mouseLocation = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer then
-            -- Takım Kontrolü (Eğer takım arkadaşıysa atla)
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            -- Takım Kontrolü
             if player.Team and player.Team == localPlayer.Team then continue end
             
-            local char = player.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChild("Humanoid")
-            
-            -- Oyuncunun canlı olduğunu kontrol et
-            if root and hum and hum.Health > 0 then
-                -- Oyuncunun dünyadaki konumunu ekrandaki 2D konuma çeviriyoruz
-                local screenPos, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+            local hum = player.Character:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 then
+                local screenPos, onScreen = currentCamera:WorldToViewportPoint(player.Character.Head.Position)
                 
                 if onScreen then
-                    -- İmleç ile oyuncunun ekrandaki yeri arasındaki piksel mesafesini ölçüyoruz
                     local playerScreenPoint = Vector2.new(screenPos.X, screenPos.Y)
                     local screenDistance = (playerScreenPoint - mouseLocation).Magnitude
                     
-                    -- Ekrandaki en yakın adama kilitlenmesini sağlayan logic
                     if screenDistance < shortestDistance then
                         shortestDistance = screenDistance
                         closestPlayer = player
@@ -729,24 +736,21 @@ local function getClosestPlayer()
 end
 
 -- Menü Butonu Tanımlaması
-createModernToggle("Aimbot", "İmlecinize en yakın rakibe otomatik kilitlenir.", function(state)
+createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir.", function(state)
     aimbotEnabled = state
     
     if aimbotEnabled then
-        -- Her karede (RenderStepped) kamerayı en yakın oyuncuya çevirir
         aimbotConnection = RunService.RenderStepped:Connect(function()
             local targetPlayer = getClosestPlayer()
-            local char = targetPlayer and targetPlayer.Character
-            local head = char and char:FindFirstChild("Head") -- Kafaya kilitlenir
-            
-            if head then
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+                local head = targetPlayer.Character.Head
                 local camera = workspace.CurrentCamera
-                -- Kamerayı yumuşak ama net bir şekilde hedefe odaklar
+                
+                -- Kamerayı hedefin kafasına odakla
                 camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
             end
         end)
     else
-        -- Toggle kapatıldığında bağlantıyı kopar
         if aimbotConnection then
             aimbotConnection:Disconnect()
             aimbotConnection = nil
@@ -1206,7 +1210,7 @@ end)
 createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
     if state then
         local target = nil
-        local dist = 1000
+        local dist = 10000
         
         -- En yakın oyuncuyu bul
         for _, p in ipairs(Players:GetPlayers()) do
@@ -1367,7 +1371,7 @@ end)
 
 -- 18. Smooth Aim (FPS Oyunları İçin Güvenli Auto-Aim)
 local smoothAimActive = false
-local aimSpeed = 0.1 -- Bu değeri düşürürsen daha yavaş (daha güvenli) kilitlenir
+local aimSpeed = 0.3 -- Bu değeri düşürürsen daha yavaş (daha güvenli) kilitlenir
 
 createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
     smoothAimActive = state
@@ -1400,71 +1404,6 @@ createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitl
     end)
 end)
 
--- 5. SILENT AIM CONTROL (Güvenli Versiyon)
-local silentAimEnabled = false
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-local mouse = localPlayer:GetMouse()
-
-local function getSilentTarget()
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-    local currentCamera = workspace.CurrentCamera
-    local localChar = localPlayer.Character
-    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-
-    if not localRoot then return nil end
-
-    for _, targetPlayer in ipairs(Players:GetPlayers()) do
-        if targetPlayer ~= localPlayer then
-            if targetPlayer.Team and targetPlayer.Team == localPlayer.Team then continue end
-            
-            local char = targetPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local head = char and char:FindFirstChild("Head")
-            local hum = char and char:FindFirstChild("Humanoid")
-            
-            if root and head and hum and hum.Health > 0 then
-                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
-                if onScreen then
-                    local distance = (root.Position - localRoot.Position).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closestPlayer = char
-                    end
-                end
-            end
-        end
-    end
-    return closestPlayer
-end
-
-createModernToggle("Silent Aim", "Mermileri bük. (Executor destekliyorsa çalışır)", function(state)
-    silentAimEnabled = state
-end)
-
--- Hata verip menüyü bozmaması için pcall içine alıyoruz
-pcall(function()
-    local gmt = getrawmetatable(game)
-    local oldIndex = gmt.__index
-    setreadonly(gmt, false)
-
-    gmt.__index = newcclosure(function(self, index)
-        if silentAimEnabled and checkcaller() == false then
-            if self == mouse then
-                if index == "Hit" or index == "Target" then
-                    local targetChar = getSilentTarget()
-                    if targetChar and targetChar:FindFirstChild("Head") then
-                        if index == "Hit" then return targetChar.Head.CFrame end
-                        if index == "Target" then return targetChar.Head end
-                    end
-                end
-            end
-        end
-        return oldIndex(self, index)
-    end)
-    setreadonly(gmt, true)
-end)
 
 -- 6. FOV CIRCLE (Güvenli Versiyon)
 local fovEnabled = false
