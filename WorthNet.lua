@@ -502,6 +502,9 @@ end
 ---------------------------------------------------------
 local noclipConnection = nil
 local autoCoinEnabled = false
+local collectedCount = 0 -- Toplanan coin sayacı
+local MAX_CAPACITY = 40  -- Maksimum kapasite
+local COIN_DELAY = 2     -- Saniyede bir coin al
 local isFlying = false
 local flySpeed = 60
 local antiFlingConn = nil
@@ -716,34 +719,51 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN
-createModernToggle("MM2 Auto Coin)", "Tüm coinleri tespit edip toplar.", function(state)
+createModernToggle("MM2 Auto Coin)", "40 coin toplayıp 30 saniye bekler.", function(state)
     autoCoinEnabled = state
     
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
+                if collectedCount >= MAX_CAPACITY then
+                    showNotification("Auto Coin", "Kapasite doldu! 30 saniye bekleniyor...", false)
+                    task.wait(30) -- 30 saniye bekleme süresi
+                    collectedCount = 0 -- Sayacı sıfırla
+                    showNotification("Auto Coin", "Yeni tura başlanıyor!", true)
+                end
+
                 local char = player.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
-                    -- Workspace'deki tüm 'Coin' nesnelerini tarayan optimize edilmiş döngü
+                    local coinFound = nil
+                    -- Coin bulma
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        -- Hem isme hem de içerisinde coin olduğunu belirten özelliklere bakıyoruz
                         if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "GoldCoin") then
-                            
-                            -- Coine ışınlan (Tween yerine anlık gitmek bazen daha hızlıdır)
-                            hrp.CFrame = obj.CFrame
-                            
-                            -- Coini topladığından emin olmak için küçük bir bekleme
-                            task.wait(0.5)
+                            coinFound = obj
+                            break
                         end
                     end
+                    
+                    if coinFound then
+                        -- Resetlenmemek için ışınlanma yerine karakteri hedefe yönlendiriyoruz (veya çok kısa mesafe atlıyoruz)
+                        hrp.CFrame = coinFound.CFrame + Vector3.new(0, 1.5, 0) -- Coin'in biraz üstüne koy
+                        collectedCount = collectedCount + 1
+                        
+                        -- Bilgilendirme
+                        if collectedCount % 10 == 0 then
+                            showNotification("Auto Coin", "Toplam: " .. collectedCount .. " / " .. MAX_CAPACITY, true)
+                        end
+                        
+                        task.wait(COIN_DELAY) -- 2 saniyede bir al
+                    end
                 end
-                task.wait(1) -- Çok hızlı çalışıp sunucu tarafında 'kicked' yememek için
+                task.wait(0.1)
             end
         end)
     end
 end)
+
 
 
 
