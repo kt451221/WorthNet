@@ -716,34 +716,31 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN
-createModernToggle("Auto Coin (Fix)", "Tüm coinleri tespit edip toplar.", function(state)
+-- Daha güvenli, karakteri öldürmeyen versiyon
+createModernToggle("Auto Coin)", "Işınlanmadan toplar (daha yavaş).", function(state)
     autoCoinEnabled = state
     
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
                 local char = player.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
                 
-                if hrp then
-                    -- Workspace'deki tüm 'Coin' nesnelerini tarayan optimize edilmiş döngü
+                if hum then
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        -- Hem isme hem de içerisinde coin olduğunu belirten özelliklere bakıyoruz
                         if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "GoldCoin") then
-                            
-                            -- Coine ışınlan (Tween yerine anlık gitmek bazen daha hızlıdır)
-                            hrp.CFrame = obj.CFrame
-                            
-                            -- Coini topladığından emin olmak için küçük bir bekleme
-                            task.wait(0.1)
+                            -- Işınlanmak yerine karakteri oraya yürüt (Humanoid:MoveTo)
+                            hum:MoveTo(obj.Position)
+                            task.wait(0.5) -- Yürümesi için zaman tanı
                         end
                     end
                 end
-                task.wait(0.5) -- Çok hızlı çalışıp sunucu tarafında 'kicked' yememek için
+                task.wait(1)
             end
         end)
     end
 end)
+
 
 
 -- Basit ve Etkili Highlight ESP
