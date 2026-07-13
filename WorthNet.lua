@@ -500,11 +500,7 @@ end
 ---------------------------------------------------------
 -- HİLE AKTİVASYON ALANI (YENİLENMİŞ LİSTE)
 ---------------------------------------------------------
-local noclipConnection = nil
-local autoCoinEnabled = false
-local collectedCount = 0 -- Toplanan coin sayacı
-local MAX_CAPACITY = 40  -- Maksimum kapasite
-local COIN_DELAY = 2     -- Saniyede bir coin al
+local noclipConnection = nil  
 local isFlying = false
 local flySpeed = 60
 local antiFlingConn = nil
@@ -719,6 +715,12 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN     
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local autoCoinEnabled = false
+local collectedCount = 0 
+local MAX_CAPACITY = 40  
+local COIN_DELAY = 2
 
 createModernToggle("Auto Coin (Pro)", "40 coin topla, 30sn bekle.", function(state)
     autoCoinEnabled = state
