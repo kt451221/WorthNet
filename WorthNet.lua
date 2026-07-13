@@ -716,43 +716,35 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN
-
-createModernToggle("MM2 Auto Coin", "Her 2 saniyede bir coinlere gider.", function(state)
+createModernToggle("Auto Coin (Fix)", "Tüm coinleri tespit edip toplar.", function(state)
     autoCoinEnabled = state
     
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
-                local character = player.Character
-                local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
-                    -- Workspace içerisinde 'Coin' ismiyle geçen nesneleri bul
-                    local coinFound = nil
+                    -- Workspace'deki tüm 'Coin' nesnelerini tarayan optimize edilmiş döngü
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj.Name == "Coin" and obj:IsA("BasePart") then
-                            coinFound = obj
-                            break
+                        -- Hem isme hem de içerisinde coin olduğunu belirten özelliklere bakıyoruz
+                        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "GoldCoin") then
+                            
+                            -- Coine ışınlan (Tween yerine anlık gitmek bazen daha hızlıdır)
+                            hrp.CFrame = obj.CFrame
+                            
+                            -- Coini topladığından emin olmak için küçük bir bekleme
+                            task.wait(0.1)
                         end
                     end
-                    
-                    if coinFound then
-                        -- 2 saniyede oraya gitmek için tween ayarı
-                        local info = TweenInfo.new(2, Enum.EasingStyle.Linear)
-                        local goal = {CFrame = coinFound.CFrame}
-                        
-                        local tween = TweenService:Create(hrp, info, goal)
-                        tween:Play()
-                        
-                        showNotification("Auto Coin", "Coin toplanıyor...", true)
-                    end
                 end
-                
-                task.wait(2.2) -- 2 saniye hareket + küçük bekleme süresi
+                task.wait(0.5) -- Çok hızlı çalışıp sunucu tarafında 'kicked' yememek için
             end
         end)
     end
 end)
+
 
 -- Basit ve Etkili Highlight ESP
 createModernToggle("Name ESP", "Düşmanları ve isimlerini parlatır.", function(state)
