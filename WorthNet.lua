@@ -757,6 +757,50 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
         end
     end
 end)
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+local autoCoinEnabled = false
+
+createModernToggle("MM2 Auto Coin", "Her 2 saniyede bir coinlere gider.", function(state)
+    autoCoinEnabled = state
+    
+    if autoCoinEnabled then
+        task.spawn(function()
+            while autoCoinEnabled do
+                local character = player.Character
+                local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                
+                if hrp then
+                    -- Workspace içerisinde 'Coin' ismiyle geçen nesneleri bul
+                    local coinFound = nil
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj.Name == "Coin" and obj:IsA("BasePart") then
+                            coinFound = obj
+                            break
+                        end
+                    end
+                    
+                    if coinFound then
+                        -- 2 saniyede oraya gitmek için tween ayarı
+                        local info = TweenInfo.new(2, Enum.EasingStyle.Linear)
+                        local goal = {CFrame = coinFound.CFrame}
+                        
+                        local tween = TweenService:Create(hrp, info, goal)
+                        tween:Play()
+                        
+                        showNotification("Auto Coin", "Coin toplanıyor...", true)
+                    end
+                end
+                
+                task.wait(2.2) -- 2 saniye hareket + küçük bekleme süresi
+            end
+        end)
+    end
+end)
+
 -- Auto-Clicker (Extreme Speed)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local autoClickEnabled = false
