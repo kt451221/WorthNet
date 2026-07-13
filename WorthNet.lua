@@ -501,6 +501,7 @@ end
 -- HİLE AKTİVASYON ALANI (YENİLENMİŞ LİSTE)
 ---------------------------------------------------------
 local noclipConnection = nil
+local autoCoinEnabled = false
 local isFlying = false
 local flySpeed = 60
 local antiFlingConn = nil
@@ -631,50 +632,6 @@ createModernToggle("Invisible", "Karakterini görünmez yap.", function(state)
     toggleInvisibility(state)
 end)
 
--- Proximity Prompt (Mesafe Bazlı 0 Saniye)
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-
-local proximityEnabled = false
-
-createModernToggle("Instant Interact", "50 stud içindeki etkileşimleri 0 saniye yapar.", function(state)
-    proximityEnabled = state
-end)
-
--- Çökme yapmayan, optimize edilmiş tarama döngüsü
-RunService.RenderStepped:Connect(function()
-    if not proximityEnabled then return end
-    
-    local character = localPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local myPos = character.HumanoidRootPart.Position
-    
-    -- Sadece Workspace'i tara, her saniye değil, her karede (performanslı)
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            -- Parent'ının (nesnenin) pozisyonunu kontrol et
-            local parentPart = obj.Parent
-            if parentPart and parentPart:IsA("BasePart") then
-                local dist = (myPos - parentPart.Position).Magnitude
-                
-                -- Eğer 50 stud içindeyse süreyi 0 yap
-                if dist <= 50 then
-                    if obj.HoldDuration ~= 0 then
-                        obj.HoldDuration = 0
-                    end
-                else
-                    -- 50 stud dışındaysa orijinal değerine (0.5) döndür
-                    if obj.HoldDuration ~= 0.5 then
-                        obj.HoldDuration = 0.5
-                    end
-                end
-            end
-        end
-    end
-end)
-
 
 -- 3. AIMBOT CONTROL (FOV Destekli & Gelişmiş)
 local aimbotEnabled = false
@@ -758,11 +715,7 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
     end
 end)
 
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local player = Players.LocalPlayer
-
-local autoCoinEnabled = false
+--MM2 AUTO COIN
 
 createModernToggle("MM2 Auto Coin", "Her 2 saniyede bir coinlere gider.", function(state)
     autoCoinEnabled = state
@@ -799,32 +752,6 @@ createModernToggle("MM2 Auto Coin", "Her 2 saniyede bir coinlere gider.", functi
             end
         end)
     end
-end)
-
--- Auto-Clicker (Extreme Speed)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local autoClickEnabled = false
-
--- Oyunun tıklama eventini bul (İsmini 'Click', 'Attack' veya 'Use' olarak değiştirebilirsin)
-local clickEvent = ReplicatedStorage:FindFirstChild("Click", true) 
-
-createModernToggle("Auto Clicker", "Saniyede 1000+ tıklama gönderir.", function(state)
-    autoClickEnabled = state
-    task.spawn(function()
-        while autoClickEnabled do
-            if clickEvent then
-                -- Bir döngüde 50 kere ateşle, task.wait() koyma ki hız tavan yapsın
-                for i = 1, 50 do 
-                    clickEvent:FireServer() 
-                end
-                task.wait() -- Sunucunun nefes alması için minik bir boşluk
-            else
-                -- Eğer RemoteEvent yoksa, standart tıklama simülasyonu
-                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                game:GetService("VirtualInputManager"):SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            end
-        end
-    end)
 end)
 
 -- Basit ve Etkili Highlight ESP
@@ -1555,33 +1482,3 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
--- Mouse & Camera Toggle (G Tuşu ile)
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local player = game:GetService("Players").LocalPlayer
-
-local mouseLocked = true
-local toggleLoop = nil
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.G then
-        if mouseLocked then
-            -- KİLİDİ AÇMA DÖNGÜSÜ
-            toggleLoop = RunService.RenderStepped:Connect(function()
-                UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-            end)
-            
-            player.CameraMode = Enum.CameraMode.Classic
-            mouseLocked = false
-            showNotification("System", "Fare serbest bırakıldı!", true)
-        else
-            -- DÖNGÜYÜ DURDUR VE KİLİTLE
-            if toggleLoop then toggleLoop:Disconnect() end
-            
-            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-            player.CameraMode = Enum.CameraMode.LockFirstPerson
-            mouseLocked = true
-            showNotification("System", "Kamera kilitlendi (1st Person).", true)
-        end
-    end
-end)
