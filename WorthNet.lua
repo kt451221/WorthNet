@@ -501,10 +501,6 @@ end
 -- HİLE AKTİVASYON ALANI (YENİLENMİŞ LİSTE)
 ---------------------------------------------------------
 local noclipConnection = nil  
-local autoCoinEnabled = false -- baslangıc
-local collectedCount = 0 
-local MAX_CAPACITY = 40  
-local COIN_DELAY = 2 -- bitis
 local isFlying = false
 local flySpeed = 60
 local antiFlingConn = nil
@@ -719,25 +715,41 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN     
-createModernToggle("Auto Coin (Targeted)", "Coins klasörünü hedefler (En hafif yöntem).", function(state)
+local autoCoinEnabled = false
+local collectedCount = 0
+
+createModernToggle("Auto Coin", "40 coin topla, 30sn bekle.", function(state)
     autoCoinEnabled = state
-    
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
-                -- Buradaki "Coins" ismini, Explorer'da coinin olduğu klasörün isminden emin ol
-                local coinFolder = workspace:FindFirstChild("Coins") 
-                
-                if coinFolder then
-                    for _, coin in pairs(coinFolder:GetChildren()) do
-                        if coin:IsA("BasePart") then
-                            -- Karakteri resetletmemek için direkt coinin içine gitmiyoruz
-                            player.Character.HumanoidRootPart.CFrame = coin.CFrame
-                            task.wait(0.5) -- Dokunma için kısa bekleme
+                if collectedCount >= 40 then
+                    task.wait(30)
+                    collectedCount = 0
+                end
+
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
+
+                if hrp and hum then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        -- Coinleri bulmak için daha genel bir kontrol
+                        if obj:IsA("BasePart") and (string.find(obj.Name, "Coin") or string.find(obj.Name, "Gold")) then
+                            
+                            -- Işınlanmak yerine yürütme (Resetlenmemek için)
+                            hum:MoveTo(obj.Position)
+                            
+                            -- Dokunma simülasyonu
+                            firetouchinterest(hrp, obj, 0)
+                            firetouchinterest(hrp, obj, 1)
+                            
+                            collectedCount = collectedCount + 1
+                            task.wait(2) -- 2 saniye kuralı
                         end
                     end
                 end
-                task.wait(2) -- Performans için bekleme
+                task.wait(0.5)
             end
         end)
     end
