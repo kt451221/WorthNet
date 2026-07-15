@@ -715,46 +715,59 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN     
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 local autoCoinEnabled = false
 local collectedCount = 0
 
-createModernToggle("Auto Coin", "40 coin topla, 30sn bekle.", function(state)
+createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", function(state)
     autoCoinEnabled = state
+    
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
                 if collectedCount >= 40 then
+                    showNotification("Auto Coin", "40/40! 30sn bekleme...", false)
                     task.wait(30)
                     collectedCount = 0
                 end
 
                 local char = player.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local hum = char and char:FindFirstChild("Humanoid")
+                
+                if hrp then
+                    -- Noclip: Duvarlardan geçmesi için
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = false end
+                    end
 
-                if hrp and hum then
+                    local coinFound = nil
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        -- Coinleri bulmak için daha genel bir kontrol
+                        -- Sadece coinleri hedefler
                         if obj:IsA("BasePart") and (string.find(obj.Name, "Coin") or string.find(obj.Name, "Gold")) then
-                            
-                            -- Işınlanmak yerine yürütme (Resetlenmemek için)
-                            hum:MoveTo(obj.Position)
-                            
-                            -- Dokunma simülasyonu
-                            firetouchinterest(hrp, obj, 0)
-                            firetouchinterest(hrp, obj, 1)
-                            
-                            collectedCount = collectedCount + 1
-                            task.wait(2) -- 2 saniye kuralı
+                            coinFound = obj
+                            break
                         end
                     end
+                    
+                    if coinFound then
+                        -- Işınlanma bug'ını çözmek için "Ghost" yöntemi
+                        -- Karakteri direkt içine değil, hafif altına veya içine ışınla
+                        hrp.CFrame = coinFound.CFrame + Vector3.new(0, -1, 0)
+                        
+                        -- Dokunma
+                        firetouchinterest(hrp, coinFound, 0)
+                        firetouchinterest(hrp, coinFound, 1)
+                        
+                        collectedCount = collectedCount + 1
+                        task.wait(1.5) -- 2 saniye yerine 1.5 saniye (daha hızlı)
+                    end
                 end
-                task.wait(0.5)
+                task.wait(0.1)
             end
         end)
     end
 end)
-
 
 
 
