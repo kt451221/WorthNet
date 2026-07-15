@@ -719,43 +719,25 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN     
-createModernToggle("Auto Coin"), "Yürüme ile coin toplar (Kasmaz).", function(state)
+createModernToggle("Auto Coin (Targeted)", "Coins klasörünü hedefler (En hafif yöntem).", function(state)
     autoCoinEnabled = state
     
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
-                if collectedCount >= MAX_CAPACITY then
-                    task.wait(30)
-                    collectedCount = 0
-                end
-
-                local char = player.Character
-                local hum = char and char:FindFirstChild("Humanoid")
+                -- Buradaki "Coins" ismini, Explorer'da coinin olduğu klasörün isminden emin ol
+                local coinFolder = workspace:FindFirstChild("Coins") 
                 
-                if hum then
-                    -- Workspace'i değil, sadece coinleri bulmak için daha hafif bir yöntem
-                    local coinFound = nil
-                    for _, obj in pairs(workspace:GetChildren()) do -- Sadece ana katmanı tara
-                        if (obj.Name == "Coin" or obj.Name == "GoldCoin") and obj:IsA("BasePart") then
-                            coinFound = obj
-                            break
+                if coinFolder then
+                    for _, coin in pairs(coinFolder:GetChildren()) do
+                        if coin:IsA("BasePart") then
+                            -- Karakteri resetletmemek için direkt coinin içine gitmiyoruz
+                            player.Character.HumanoidRootPart.CFrame = coin.CFrame
+                            task.wait(0.5) -- Dokunma için kısa bekleme
                         end
                     end
-                    
-                    if coinFound then
-                        -- Işınlanma yok, sadece yürüme komutu (Resetlenmeyi durdurur)
-                        hum:MoveTo(coinFound.Position)
-                        
-                        -- Dokunma simülasyonu
-                        firetouchinterest(char:FindFirstChild("HumanoidRootPart"), coinFound, 0)
-                        firetouchinterest(char:FindFirstChild("HumanoidRootPart"), coinFound, 1)
-                        
-                        collectedCount = collectedCount + 1
-                        task.wait(COIN_DELAY)
-                    end
                 end
-                task.wait(0.5)
+                task.wait(2) -- Performans için bekleme
             end
         end)
     end
