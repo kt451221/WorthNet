@@ -719,7 +719,7 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN     
-createModernToggle("Auto Coin)", "Yürüme ile coin toplar (Kasmaz).", function(state)
+createModernToggle("Auto Coin"), "Yürüme ile coin toplar (Kasmaz).", function(state)
     autoCoinEnabled = state
     
     if autoCoinEnabled then
