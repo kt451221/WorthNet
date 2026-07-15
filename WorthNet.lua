@@ -501,6 +501,10 @@ end
 -- HİLE AKTİVASYON ALANI (YENİLENMİŞ LİSTE)
 ---------------------------------------------------------
 local noclipConnection = nil  
+local autoCoinEnabled = false -- baslangıc
+local collectedCount = 0 
+local MAX_CAPACITY = 40  
+local COIN_DELAY = 2 -- bitis
 local isFlying = false
 local flySpeed = 60
 local antiFlingConn = nil
@@ -715,60 +719,40 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
 end)
 
 --MM2 AUTO COIN     
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local autoCoinEnabled = false
-local collectedCount = 0 
-local MAX_CAPACITY = 40  
-local COIN_DELAY = 2
-
-createModernToggle("Auto Coin (Pro)", "40 coin topla, 30sn bekle.", function(state)
+createModernToggle("Auto Coin)", "Yürüme ile coin toplar (Kasmaz).", function(state)
     autoCoinEnabled = state
     
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
-                -- Kapasite Kontrolü
                 if collectedCount >= MAX_CAPACITY then
-                    showNotification("Auto Coin", "40 coin doldu! 30s bekleme...", false)
                     task.wait(30)
                     collectedCount = 0
-                    showNotification("Auto Coin", "Yeni tur başlıyor!", true)
                 end
 
                 local char = player.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
                 
-                if hrp then
+                if hum then
+                    -- Workspace'i değil, sadece coinleri bulmak için daha hafif bir yöntem
                     local coinFound = nil
-                    -- Coinleri bul
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and (obj.Name == "Coin" or obj.Name == "GoldCoin") then
+                    for _, obj in pairs(workspace:GetChildren()) do -- Sadece ana katmanı tara
+                        if (obj.Name == "Coin" or obj.Name == "GoldCoin") and obj:IsA("BasePart") then
                             coinFound = obj
                             break
                         end
                     end
                     
                     if coinFound then
-                        -- Resetlenmemek için ışınlanma mesafesini ayarladık
-                        -- Coinin 2 birim üstüne/yanına ışınla
-                        hrp.CFrame = coinFound.CFrame + Vector3.new(0, 2, 0)
+                        -- Işınlanma yok, sadece yürüme komutu (Resetlenmeyi durdurur)
+                        hum:MoveTo(coinFound.Position)
                         
                         -- Dokunma simülasyonu
-                        local touch = coinFound:FindFirstChildOfClass("TouchInterest")
-                        if touch then
-                            firetouchinterest(hrp, coinFound, 0)
-                            firetouchinterest(hrp, coinFound, 1)
-                        end
+                        firetouchinterest(char:FindFirstChild("HumanoidRootPart"), coinFound, 0)
+                        firetouchinterest(char:FindFirstChild("HumanoidRootPart"), coinFound, 1)
                         
                         collectedCount = collectedCount + 1
-                        
-                        -- Bilgilendirme
-                        if collectedCount % 5 == 0 then
-                            showNotification("Auto Coin", "Durum: " .. collectedCount .. "/" .. MAX_CAPACITY, true)
-                        end
-                        
-                        task.wait(COIN_DELAY) -- 2 saniye bekle
+                        task.wait(COIN_DELAY)
                     end
                 end
                 task.wait(0.5)
@@ -776,7 +760,6 @@ createModernToggle("Auto Coin (Pro)", "40 coin topla, 30sn bekle.", function(sta
         end)
     end
 end)
-
 
 
 
