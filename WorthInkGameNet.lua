@@ -1,28 +1,34 @@
--- WorthNet Ink Game v1.0 - All-in-One Hub & Bypass System
+-- WorthNet Ink Game v1.1 - Safe & Bulletproof Hub
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 
--- Ekrandaki eski yapıları temizle
-local oldGui = player.PlayerGui:FindFirstChild("WorthNetInkGameSystem")
+-- Güvenli Parent Seçimi (CoreGui öncelikli, hata olursa PlayerGui)
+local success, parent = pcall(function()
+	return game:GetService("CoreGui")
+end)
+if not success or not parent then
+	parent = player:WaitForChild("PlayerGui")
+end
+
+-- Eski arayüzü temizle
+local oldGui = parent:FindFirstChild("WorthNetInkGameSystem")
 if oldGui then oldGui:Destroy() end
 
--- ANA EKRAN CONTAINER
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "WorthNetInkGameSystem"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = player.PlayerGui
+screenGui.Parent = parent
 
--- INK GAME ÖZEL TEMA RENKLERİ (Pembe / Karanlık Tema)
+-- TEMA RENKLERİ
 local THEME = {
 	Background = Color3.fromRGB(20, 20, 24),
 	Sidebar = Color3.fromRGB(14, 14, 18),
 	Card = Color3.fromRGB(26, 26, 32),
-	Accent = Color3.fromRGB(255, 45, 110), -- Squid Game Pembe Tonu
+	Accent = Color3.fromRGB(255, 45, 110),
 	TextMain = Color3.fromRGB(240, 240, 245),
 	TextDark = Color3.fromRGB(150, 150, 155),
 	ToggleOn = Color3.fromRGB(255, 45, 110),
@@ -37,7 +43,7 @@ local function roundCorners(obj, radius)
 end
 
 ---------------------------------------------------------
--- KUSURSUZ SÜRÜKLENME MOTORU
+-- SÜRÜKLENME MOTORU
 ---------------------------------------------------------
 local function makeDraggable(frame)
 	local dragging = false
@@ -70,7 +76,7 @@ local function makeDraggable(frame)
 end
 
 ---------------------------------------------------------
--- MERKEZİ BİLDİRİM SİSTEMİ
+-- BİLDİRİM SİSTEMİ
 ---------------------------------------------------------
 local activeNotifications = {}
 
@@ -128,7 +134,7 @@ local function showNotification(title, message, isSuccess)
 end
 
 ---------------------------------------------------------
--- KÜÇÜK LOGO (MINIMIZE WINDOW)
+-- MİNİMİZE LOGO
 ---------------------------------------------------------
 local minLogo = Instance.new("TextButton")
 minLogo.Size = UDim2.new(0, 65, 0, 65)
@@ -140,7 +146,7 @@ minLogo.TextSize = 14
 minLogo.TextColor3 = THEME.Accent
 minLogo.BorderSizePixel = 0
 minLogo.ZIndex = 10
-minLogo.Visible = true
+minLogo.Visible = false
 minLogo.Parent = screenGui
 roundCorners(minLogo, 16)
 makeDraggable(minLogo)
@@ -151,7 +157,7 @@ logoStroke.Thickness = 1.5
 logoStroke.Parent = minLogo
 
 ---------------------------------------------------------
--- ANA FRAME (HUB FRAME)
+-- ANA FRAME (HUB)
 ---------------------------------------------------------
 local hubFrame = Instance.new("Frame")
 hubFrame.Size = UDim2.new(0, 600, 0, 380)
@@ -159,7 +165,7 @@ hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
 hubFrame.BorderSizePixel = 0
 hubFrame.ZIndex = 5
-hubFrame.Visible = false
+hubFrame.Visible = true -- Direkt açık başlar
 hubFrame.Parent = screenGui
 roundCorners(hubFrame, 12)
 makeDraggable(hubFrame)
@@ -169,7 +175,7 @@ minLogo.MouseButton1Click:Connect(function()
 	hubFrame.Visible = true
 end)
 
--- SOL SİDEBAR
+-- SİDEBAR
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 160, 1, 0)
 sidebar.BackgroundColor3 = THEME.Sidebar
@@ -231,8 +237,10 @@ searchStroke.Thickness = 1
 searchStroke.Parent = searchBox
 
 ---------------------------------------------------------
--- TOPLU KONTROL BUTONLARI (OPEN ALL / CLOSE ALL)
+-- TOPLU KONTROL BUTONLARI
 ---------------------------------------------------------
+_G.toggleRegistry = _G.toggleRegistry or {}
+
 local controlContainer = Instance.new("Frame")
 controlContainer.Size = UDim2.new(1, -20, 0, 30)
 controlContainer.Position = UDim2.new(0, 10, 0, 150)
@@ -276,14 +284,14 @@ closeStroke.Parent = closeAllBtn
 
 openAllBtn.MouseButton1Click:Connect(function()
 	showNotification("System", "Modüller aktif ediliyor...", true)
-	for name, setToggle in pairs(_G.toggleRegistry or {}) do
+	for name, setToggle in pairs(_G.toggleRegistry) do
 		pcall(function() setToggle(true, true) end)
 	end
 end)
 
 closeAllBtn.MouseButton1Click:Connect(function()
 	showNotification("System", "Modüller kapatılıyor...", false)
-	for name, setToggle in pairs(_G.toggleRegistry or {}) do
+	for name, setToggle in pairs(_G.toggleRegistry) do
 		pcall(function() setToggle(false, true) end)
 	end
 end)
@@ -318,7 +326,7 @@ ytBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- SAĞ İÇERİK ALANI
+-- İÇERİK ALANI
 local contentArea = Instance.new("ScrollingFrame")
 contentArea.Size = UDim2.new(1, -180, 1, -60)
 contentArea.Position = UDim2.new(0, 170, 0, 50)
@@ -349,7 +357,7 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	end
 end)
 
--- KAPATMA VE MİNİMİZE KONTROLLERİ
+-- KAPATMA VE MİNİMİZE
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -40, 0, 10)
@@ -387,8 +395,6 @@ end)
 ---------------------------------------------------------
 -- TOGGLE MOTORU
 ---------------------------------------------------------
-_G.toggleRegistry = {}
-
 local function createModernToggle(name, description, callback)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Size = UDim2.new(1, -10, 0, 55)
@@ -465,12 +471,12 @@ local function createModernToggle(name, description, callback)
 end
 
 ---------------------------------------------------------
--- INK GAME ÖZEL HİLE MODÜLLERİ
+-- İNK GAME MODÜLLERİ
 ---------------------------------------------------------
 
--- 1. Glass Bridge ESP (Cam Köprü Hilesi)
+-- 1. Glass Bridge ESP
 local glassEspActive = false
-createModernToggle("Glass Bridge ESP", "Doğru ve güvenli camları yeşil renkle gösterir.", function(state)
+createModernToggle("Glass Bridge ESP", "Güvenli ve kırılacak camları gösterir.", function(state)
 	glassEspActive = state
 	task.spawn(function()
 		while glassEspActive do
@@ -478,22 +484,19 @@ createModernToggle("Glass Bridge ESP", "Doğru ve güvenli camları yeşil renkl
 			for _, obj in pairs(workspace:GetDescendants()) do
 				if obj:IsA("BasePart") then
 					local name = string.lower(obj.Name)
-					-- Ink Game cam köprü objeleri genelde 'Glass', 'Panel', 'Safe' vb. içerir
 					if string.find(name, "glass") or string.find(name, "pane") then
 						local hl = obj:FindFirstChild("WorthNetGlassHL") or Instance.new("Highlight", obj)
 						hl.Name = "WorthNetGlassHL"
 						hl.Enabled = glassEspActive
-						-- Mantıksal test veya rastgelelik yerine oyun içi property analizi (örneğin materyal veya custom property)
 						if obj.Material == Enum.Material.Glass and obj.Transparency < 0.9 then
-							hl.FillColor = Color3.fromRGB(0, 255, 100) -- Güvenli
+							hl.FillColor = Color3.fromRGB(0, 255, 100)
 						else
-							hl.FillColor = Color3.fromRGB(255, 0, 0) -- Tehlikeli Kırılacak Cam
+							hl.FillColor = Color3.fromRGB(255, 0, 0)
 						end
 					end
 				end
 			end
 		end
-		-- Kapatıldığında temizle
 		for _, obj in pairs(workspace:GetDescendants()) do
 			if obj:IsA("BasePart") then
 				local hl = obj:FindFirstChild("WorthNetGlassHL")
@@ -503,34 +506,14 @@ createModernToggle("Glass Bridge ESP", "Doğru ve güvenli camları yeşil renkl
 	end)
 end)
 
--- 2. Red Light, Green Light Helper (Kırmızı Işık Pozisyon Koruma)
-local rlgLightActive = false
-local lastValidCFrame = nil
-createModernToggle("RLGL Freeze Bypass", "Kırmızı ışıkta hareket cezası almanı engeller.", function(state)
-	rlgLightActive = state
-	task.spawn(function()
-		while rlgLightActive do
-			task.wait(0.1)
-			local char = player.Character
-			local hrp = char and char:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				if not rlgLightActive then break end
-				-- Kırmızı ışık esnasında sunucu hareketini dondurma simülasyonu
-				-- İstemci tarafında pozisyonu sabitleyerek patlamayı önler
-			end
-		end
-	end)
-end)
-
--- 3. Tug of War Auto-Clicker (Halat Çekme Seri Tıklatıcı)
+-- 2. Tug of War Auto-Clicker
 local towActive = false
-createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda saniyede 100 kez tıklar.", function(state)
+createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik tıklar.", function(state)
 	towActive = state
 	task.spawn(function()
 		while towActive do
 			task.wait(0.01)
 			pcall(function()
-				-- Oyun içi buton tetikleme simülasyonu
 				local vim = game:GetService("VirtualInputManager")
 				vim:SendMouseButtonEvent(500, 500, 0, true, game, 0)
 				task.wait(0.005)
@@ -540,26 +523,7 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda saniyede 10
 	end)
 end)
 
--- 4. Dalgona Instant Win (Şeker Kesme Bypass)
-createModernToggle("Dalgona Instant Win", "Şeker kesme süresini anında tamamlar.", function(state)
-	if state then
-		pcall(function()
-			for _, v in pairs(workspace:GetDescendants()) do
-				if string.lower(v.Name):find("dalgona") or string.lower(v.Name):find("cookie") then
-					-- Şekeri tamamlandı olarak işaretleyen RemoteEvent'leri tetikle
-					for _, remote in pairs(v:GetDescendants()) do
-						if remote:IsA("RemoteEvent") then
-							remote:FireServer(true)
-						end
-					end
-				end
-			end
-		end)
-		showNotification("Dalgona", "Şeker görevi bypass edildi!", true)
-	end
-end)
-
--- 5. Fly Control (Uçma Modu - P Tuşu Senkronize)
+-- 3. Fly (P Tuşu Senkronize)
 local flyingEnabled = false
 local bv, bg
 
@@ -620,7 +584,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- 6. SpeedHack (Güvenli Hız)
+-- 4. SpeedHack
 local speedActive = false
 createModernToggle("SpeedHack", "Hızını 50 yapar.", function(state)
 	speedActive = state
@@ -635,9 +599,9 @@ createModernToggle("SpeedHack", "Hızını 50 yapar.", function(state)
 	end
 end)
 
--- 7. Noclip
+-- 5. Noclip
 local noclipConn = nil
-createModernToggle("Noclip", "Duvarlardan ve engellerden geç.", function(state)
+createModernToggle("Noclip", "Duvarlardan geç.", function(state)
 	if state then
 		noclipConn = RunService.Stepped:Connect(function()
 			if player.Character then
@@ -651,9 +615,9 @@ createModernToggle("Noclip", "Duvarlardan ve engellerden geç.", function(state)
 	end
 end)
 
--- 8. FullBright
+-- 6. FullBright
 local origAmbient, brightLoop = nil, nil
-createModernToggle("FullBright", "Karanlık odaları ve geceleri aydınlatır.", function(state)
+createModernToggle("FullBright", "Karanlığı aydınlatır.", function(state)
 	if state then
 		origAmbient = Lighting.Ambient
 		brightLoop = RunService.RenderStepped:Connect(function()
@@ -665,9 +629,9 @@ createModernToggle("FullBright", "Karanlık odaları ve geceleri aydınlatır.",
 	end
 end)
 
--- 9. Anti-Void
+-- 7. Anti-Void
 local antiVoidConn = nil
-createModernToggle("Anti-Void", "Boşluğa düştüğünde ölmeni engeller.", function(state)
+createModernToggle("Anti-Void", "Boşluğa düşmeyi engeller.", function(state)
 	if state then
 		antiVoidConn = RunService.Heartbeat:Connect(function()
 			local char = player.Character
@@ -682,9 +646,9 @@ createModernToggle("Anti-Void", "Boşluğa düştüğünde ölmeni engeller.", f
 	end
 end)
 
--- 10. Anti-AFK
+-- 8. Anti-AFK
 local afkConn = nil
-createModernToggle("Anti-AFK", "Oyundan atılmanı engeller.", function(state)
+createModernToggle("Anti-AFK", "Oyundan atılmayı önler.", function(state)
 	if state then
 		afkConn = Players.LocalPlayer.Idled:Connect(function()
 			game:GetService("VirtualUser"):CaptureController()
@@ -696,20 +660,22 @@ createModernToggle("Anti-AFK", "Oyundan atılmanı engeller.", function(state)
 end)
 
 ---------------------------------------------------------
--- ANTI-CHEAT BYPASS KORUMASI (METATABLE HOOK)
+-- GÜVENLİ BYPASS (Pcall Korumalı)
 ---------------------------------------------------------
 pcall(function()
-	local metatable = getrawmetatable(game)
-	local namecall = metatable.__namecall
-	setreadonly(metatable, false)
-	metatable.__namecall = newcclosure(function(self, ...)
-		local method = getnamecallmethod()
-		if method == "FireServer" and (tostring(self):lower():find("anticheat") or tostring(self):lower():find("ban")) then 
-			return nil 
-		end
-		return namecall(self, ...)
-	end)
-	setreadonly(metatable, true)
+	if getrawmetatable and setreadonly and newcclosure and getnamecallmethod then
+		local metatable = getrawmetatable(game)
+		local namecall = metatable.__namecall
+		setreadonly(metatable, false)
+		metatable.__namecall = newcclosure(function(self, ...)
+			local method = getnamecallmethod()
+			if method == "FireServer" and (tostring(self):lower():find("anticheat") or tostring(self):lower():find("ban")) then 
+				return nil 
+			end
+			return namecall(self, ...)
+		end)
+		setreadonly(metatable, true)
+	end
 end)
 
-showNotification("WorthNet Ink Game", "Sistem başarıyla yüklendi, iyi eğlenceler!", true)
+showNotification("WorthNet Ink Game", "Arayüz başarıyla yüklendi!", true)
