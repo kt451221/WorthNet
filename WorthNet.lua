@@ -37,7 +37,7 @@ local function roundCorners(obj, radius)
 end
 
 ---------------------------------------------------------
--- KUSURSUZ SÜRÜKLENME MOTORU (Düzeltilmiş)
+-- KUSURSUZ SÜRÜKLENME MOTORU (Kesin Çözüm)
 ---------------------------------------------------------
 local function makeDraggable(frame)
 	local dragging = false
@@ -45,8 +45,8 @@ local function makeDraggable(frame)
 
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			-- Slider, TextBox veya Butonlara tıklandıysa menüyü sürükleme
-			local guiObjects = player.PlayerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
+			-- Doğru servis üzerinden tıklanan GUI öğelerini kontrol ediyoruz
+			local guiObjects = UserInputService:GetGuiObjectsAtPosition(Vector2.new(input.Position.X, input.Position.Y))
 			for _, obj in ipairs(guiObjects) do
 				if obj:IsA("TextBox") or obj:IsA("TextButton") or obj.Name:lower():find("slider") or obj.Name:lower():find("track") or obj.Name:lower():find("thumb") then
 					return
@@ -74,7 +74,8 @@ local function makeDraggable(frame)
 			local delta = input.Position - dragStart
 			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
-
+	end)
+end
 ---------------------------------------------------------
 -- MERKEZİ BİLDİRİM SİSTEMİ
 ---------------------------------------------------------
