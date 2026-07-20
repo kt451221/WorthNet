@@ -873,7 +873,7 @@ thumbCorner.CornerRadius = UDim.new(1, 0)
 thumbCorner.Parent = sliderThumb
 sliderThumb.Parent = sliderTrack
 
-local minVal, maxVal = 16, 250
+local minVal, maxVal = 16, 1000
 
 local function updateSpeed(val)
 	targetSpeedValue = math.clamp(math.floor(val), minVal, maxVal)
