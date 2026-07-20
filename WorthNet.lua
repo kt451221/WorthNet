@@ -651,263 +651,6 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
--- -- MM2 AUTO GUN (Smooth Wall-Slide & GunDrop Collector)
-local mm2AutoGunActive = false
-
-createModernToggle("MM2 Auto Gun", "Yere düşen silahı otomatik ve yumuşak bir şekilde alır.", "Duvar içinden süzülerek gider, silahı alınca durur.", function(state)
-	mm2AutoGunActive = state
-	
-	task.spawn(function()
-		while mm2AutoGunActive do
-			task.wait(0.2)
-			pcall(function()
-				local char = player.Character
-				if not char then return end
-				local root = char:FindFirstChild("HumanoidRootPart")
-				if not root then return end
-				
-				-- Envanter veya karakterde silah var mı kontrol et
-				local backpack = player:FindFirstChild("Backpack")
-				local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
-				
-				-- Eğer silahımız yoksa haritadaki GunDrop'u ara
-				if not hasGun then
-					local gunDrop = nil
-					
-					-- MM2 workspace içerisindeki GunDrop'u bulma
-					for _, obj in ipairs(workspace:GetChildren()) do
-						if obj.Name == "GunDrop" then
-							if obj:IsA("Model") then
-								gunDrop = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
-							elseif obj:IsA("BasePart") then
-								gunDrop = obj
-							end
-							break
-						end
-					end
-					
-					-- Eğer GunDrop bulunduysa ona doğru süzül
-					if gunDrop then
-						-- Duvarlardan geçebilmek için çarpışmaları kapat
-						for _, p in ipairs(char:GetDescendants()) do
-							if p:IsA("BasePart") then p.CanCollide = false end
-						end
-						
-						-- Silaha doğru akıcı ve hızlı bir şekilde yaklaş
-						while mm2AutoGunActive and gunDrop and gunDrop.Parent do
-							local bpCheck = player:FindFirstChild("Backpack")
-							if char:FindFirstChild("Gun") or (bpCheck and bpCheck:FindFirstChild("Gun")) then
-								break
-							end
-							
-							local targetPos = gunDrop.Position
-							if (root.Position - targetPos).Magnitude < 2.5 then
-								break
-							end
-							
-							-- Lerp ile yumuşak kayma hareketi
-							root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos + Vector3.new(0, 1.5, 0)), 0.25)
-							root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-							task.wait(0.03)
-						end
-						
-						-- Çarpışmaları eski haline getir
-						for _, p in ipairs(char:GetDescendants()) do
-							if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
-								p.CanCollide = true 
-							end
-						end
-					end
-				end
-			end)
-		end
-	end)
-end)
-
--- -- 11. FAKE LAG / DESYNC ("Wi-Fi Hilesi" - Donuk Görünme)
-local desyncActive = false
-local desyncConnection = nil
-local originalCFrame = nil
-
-createModernToggle("Fake Lag (Desync)", "Bağlantın kopmuş gibi başkalarına donmuş görünürsün.", "Açtığın an olduğun yerde sabit kalırsın, kapattığında normale dönersin.", function(state)
-	desyncActive = state
-	local char = player.Character
-	if not char then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChild("Humanoid")
-	
-	if desyncActive and root then
-		originalCFrame = root.CFrame
-		
-		-- Karakterin sunucuya konum göndermesini donduruyoruz (Others see you frozen)
-		desyncConnection = RunService.Heartbeat:Connect(function()
-			if root and root.Parent and originalCFrame then
-				-- Sunucuya sürekli ilk bastığın konumu göndererek başkalarının ekranında donmanı sağlıyoruz
-				root.CFrame = originalCFrame
-				root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-				root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-				
-				-- PlatformStand açarak yerel hareketin fizik motorunu bozmasını önlüyoruz
-				if hum then
-					hum.PlatformStand = true
-				end
-			end
-		end)
-	else
-		-- Kapatıldığında eski konumuna ve normal hareketine geri dön
-		if desyncConnection then
-			desyncConnection:Disconnect()
-			desyncConnection = nil
-		end
-		
-		if hum then
-			hum.PlatformStand = false
-		end
-		
-		originalCFrame = nil
-	end
-end)
-
--- -- MM2 SMART COMBAT KILLER (Fixed & Universal Tool Detection)
-local mm2CombatActive = false
-
-createModernToggle("MM2 Smart Combat", "Şerifse Otomatik Sık, Katilse Bıçak At", "Rolü ve araçları kusursuz algılar.", function(state)
-	mm2CombatActive = state
-	
-	task.spawn(function()
-		while mm2CombatActive do
-			task.wait(0.05)
-			pcall(function()
-				local char = player.Character
-				local backpack = player:FindFirstChild("Backpack")
-				if not char then return end
-
-				local humRoot = char:FindFirstChild("HumanoidRootPart")
-				if not humRoot then return end
-
-				-- Eldeki veya envanterdeki araçları (Tool) güvenli bir şekilde bulalım
-				local equippedGun = char:FindFirstChildOfClass("Tool") and (char:FindFirstChildOfClass("Tool").Name == "Gun" and char:FindFirstChildOfClass("Tool") or nil)
-				local backpackGun = backpack and backpack:FindFirstChild("Gun")
-				local hasGun = equippedGun or backpackGun
-
-				local equippedKnife = char:FindFirstChildOfClass("Tool") and (char:FindFirstChildOfClass("Tool").Name == "Knife" and char:FindFirstChildOfClass("Tool") or nil)
-				local backpackKnife = backpack and backpack:FindFirstChild("Knife")
-				local hasKnife = equippedKnife or backpackKnife
-
-				-- 1. EĞER ELİNDE VEYA ÇANTANDA TABANCA VARSA (Şerif / Hero)
-				if hasGun then
-					for _, p in ipairs(Players:GetPlayers()) do
-						if p ~= player and p.Character then
-							local enemyChar = p.Character
-							local enemyBackpack = p:FindFirstChild("Backpack")
-							local enemyHum = enemyChar:FindFirstChild("Humanoid")
-							local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
-							
-							-- Katip tespiti (Üzerinde Knife olan oyuncu)
-							local enemyHasKnife = enemyChar:FindFirstChild("Knife") or (enemyBackpack and enemyBackpack:FindFirstChild("Knife"))
-							
-							if enemyHasKnife and enemyRoot and enemyHum and enemyHum.Health > 0 then
-								local camera = workspace.CurrentCamera
-								local predictedPos = enemyRoot.Position + (enemyRoot.AssemblyLinearVelocity * 0.08)
-								
-								-- Kamerayı hedefe kilitle
-								camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPos)
-								
-								-- Silahı kuşan ve ateş et
-								local activeGun = backpackGun and backpackGun or equippedGun
-								if activeGun then
-									if activeGun.Parent == backpack then
-										activeGun.Parent = char
-										task.wait(0.02)
-									end
-									activeGun:Activate()
-								end
-							end
-						end
-					end
-
-				-- 2. EĞER ELİNDE VEYA ÇANTANDA BIÇAK VARSA (Katil)
-				elseif hasKnife then
-					for _, p in ipairs(Players:GetPlayers()) do
-						if p ~= player and p.Character then
-							local enemyChar = p.Character
-							local enemyHum = enemyChar:FindFirstChild("Humanoid")
-							local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
-							
-							if enemyRoot and enemyHum and enemyHum.Health > 0 then
-								local distance = (humRoot.Position - enemyRoot.Position).Magnitude
-								if distance < 20 then -- Yakın mesafe masum avı
-									local camera = workspace.CurrentCamera
-									camera.CFrame = CFrame.new(camera.CFrame.Position, enemyRoot.Position)
-									
-									local activeKnife = backpackKnife and backpackKnife or equippedKnife
-									if activeKnife then
-										if activeKnife.Parent == backpack then
-											activeKnife.Parent = char
-											task.wait(0.02)
-										end
-										activeKnife:Activate()
-									end
-								end
-							end
-						end
-					end
-				end
-			end)
-		end
-	end)
-end)
-
--- -- 10. FREECAM SPECTATOR (Minecraft Tarzı Serbest Dolaşım)
-local freecamActive = false
-local freecamConnection = nil
-local freecamSpeed = 60 -- Uçuş hızını buradan ayarlayabilirsin
-
-createModernToggle("Freecam Spectator", "Minecraft gibi haritada serbestçe uçarak dolaş.", function(state)
-	freecamActive = state
-	local camera = workspace.CurrentCamera
-	local char = player.Character
-	local hum = char and char:FindFirstChild("Humanoid")
-	
-	if freecamActive then
-		-- Kamerayı oyunun varsayılan kontrolünden çıkarıp serbest moda alıyoruz
-		if hum then
-			camera.CameraSubject = nil
-		end
-		camera.CameraType = Enum.CameraType.Scriptable
-		
-		local camCFrame = camera.CFrame
-		
-		freecamConnection = RunService.RenderStepped:Connect(function(dt)
-			if not freecamActive then return end
-			
-			local moveDir = Vector3.new(0, 0, 0)
-			
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
-			
-			-- Kameranın bakış açısını (rotasyonunu) bozmadan pozisyonunu güncelliyoruz
-			local rot = camera.CFrame - camera.CFrame.Position
-			camCFrame = camCFrame + (moveDir * freecamSpeed * dt)
-			camera.CFrame = CFrame.new(camCFrame.Position) * rot
-		end)
-	else
-		-- Kapatıldığında bağlantıyı kes ve kamerayı anında oyuncuya geri ver
-		if freecamConnection then
-			freecamConnection:Disconnect()
-			freecamConnection = nil
-		end
-		
-		camera.CameraType = Enum.CameraType.Custom
-		if char and char:FindFirstChild("Humanoid") then
-			camera.CameraSubject = char.Humanoid
-		end
-	end
-end)
 -- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
 local speedHackActive = false
 local targetSpeedValue = 75
@@ -1224,33 +967,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- 6. INVISIBLE
-local function toggleInvisibility(state)
-    local char = player.Character
-    if not char then return end
-
-    for _, obj in pairs(char:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("Decal") then
-            obj.Transparency = state and 1 or 0
-        end
-        if obj:IsA("Accessory") then
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("BasePart") then
-                    child.Transparency = state and 1 or 0
-                end
-            end
-        end
-    end
-end
-
-createModernToggle("Invisible", "Karakterini görünmez yap.", function(state)
-    toggleInvisibility(state)
-end)
 
 -- 7. AIMBOT CONTROL
 local aimbotEnabled = false
 local aimbotConnection = nil
-local fovRadius = 200 
+local fovRadius = 150
 
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.fromRGB(255, 255, 255)
@@ -1315,58 +1036,6 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
             aimbotConnection:Disconnect()
             aimbotConnection = nil
         end
-    end
-end)
-
--- 8. AUTO COIN
-local autoCoinEnabled = false
-local collectedCount = 0
-
-createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", function(state)
-    autoCoinEnabled = state
-    
-    if autoCoinEnabled then
-        task.spawn(function()
-            while autoCoinEnabled do
-                if collectedCount >= 40 then
-                    showNotification("Auto Coin", "40/40! 30sn bekleme...", false)
-                    task.wait(30)
-                    collectedCount = 0
-                end
-
-                local char = player.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                
-                if hrp then
-                    for _, part in pairs(char:GetDescendants()) do
-                        if part:IsA("BasePart") then part.CanCollide = false end
-                    end
-
-                    local coinFound = nil
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and (string.find(obj.Name, "Coin") or string.find(obj.Name, "Gold")) then
-                            coinFound = obj
-                            break
-                        end
-                    end
-                    
-                    if coinFound then
-                        hrp.CFrame = coinFound.CFrame + Vector3.new(0, -1, 0)
-                        
-                        if firetouchinterest then
-                            pcall(function()
-                                firetouchinterest(hrp, coinFound, 0)
-                                firetouchinterest(hrp, coinFound, 1)
-                            end)
-                        end
-                        
-                        collectedCount = collectedCount + 1
-                        task.wait(1.5)
-                    end
-                end
-                task.wait(0.1)
-            end
-        end)
     end
 end)
 
@@ -1453,13 +1122,6 @@ createModernToggle("Name & Health ESP", "Düşmanların rengini, ismini ve canı
 	end
 end)
 
--- InteractionHandler Fix
-local InteractionHandler = player.PlayerScripts:FindFirstChild("InteractionHandler", true)
-if InteractionHandler then
-    pcall(function()
-        hookfunction(InteractionHandler.GetWaitTime, function() return 0.001 end)
-    end)
-end
 
 -- 10. ANTI-FLING
 createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
@@ -1496,7 +1158,7 @@ local function bypassMap(state)
                 if obj.Transparency == 1 and obj.CanCollide == true then
                     obj.CanCollide = false
                 end
-                if obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") then
+                if obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") or obj.Name:lower():find("invisiblewall") then
                     obj.CanCollide = false
                 end
             end
@@ -1558,21 +1220,6 @@ createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.",
 	end
 end)
 
--- 14. BHOP
-createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop yaparsınız.", function(state)
-	if state then
-		bhopConn = RunService.RenderStepped:Connect(function()
-			if player.Character and player.Character:FindFirstChild("Humanoid") then
-				local hum = player.Character.Humanoid
-				if hum.FloorMaterial ~= Enum.Material.Air and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-					hum.Jump = true
-				end
-			end
-		end)
-	else
-		if bhopConn then bhopConn:Disconnect() bhopConn = nil end
-	end
-end)
 
 -- 15. FULLBRIGHT
 local origAmbient, origColorShift, brightLoop = nil, nil, nil
@@ -1620,36 +1267,6 @@ createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", functio
 	end
 end)
 
--- 18. GUN ESP
-local gunESPActive = false
-local gunHighlight = nil
-
-createModernToggle("Gun ESP", "Yerdeki silahı mor renkli gösterir.", function(state)
-	gunESPActive = state
-	if not gunESPActive then
-		if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
-	else
-		task.spawn(function()
-			while gunESPActive do
-				task.wait(0.5)
-				if not gunESPActive then break end
-				local droppedGun = workspace:FindFirstChild("Gun", true)
-				if droppedGun and droppedGun:IsA("Tool") and not droppedGun:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
-					if not gunHighlight or gunHighlight.Parent ~= droppedGun then
-						if gunHighlight then gunHighlight:Destroy() end
-						gunHighlight = Instance.new("Highlight")
-						gunHighlight.FillColor = Color3.fromRGB(150, 0, 255)
-						gunHighlight.OutlineColor = Color3.fromRGB(80, 0, 150)
-						gunHighlight.FillTransparency = 0.4
-						gunHighlight.Parent = droppedGun
-					end
-				else
-					if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
-				end
-			end
-		end)
-	end
-end)
 
 -- 19. AUTO AIM / TRIGGERBOT
 local autoAimEnabled = false
@@ -1812,45 +1429,29 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
     end
 end)
 
--- 24. FLING SYSTEM
-createModernToggle("Fling System", "Hedefi fırlatır.", function(state)
-    _G.FlingEnabled = state
-    task.spawn(function()
-        while _G.FlingEnabled do
-            task.wait(0.1)
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        local targetHrp = p.Character.HumanoidRootPart
-                        local dist = (hrp.Position - targetHrp.Position).Magnitude
-                        if dist < 10 then
-                            local vel = hrp.Velocity
-                            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0.5)
-                            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                            task.wait(0.05)
-                            hrp.AssemblyLinearVelocity = vel
-                        end
-                    end
-                end
-            end
+-- Oyuncu listesini güncel olarak çeken fonksiyon
+local function getPlayerList()
+    local list = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player then
+            table.insert(list, p.Name)
         end
-    end)
-end)
+    end
+    return list
+end
 
--- 25. GOD MODE
-local godEnabled = false
-createModernToggle("God Mode", "Canını sürekli 100'de tutar.", function(state)
-    godEnabled = state
-end)
-
-RunService.Heartbeat:Connect(function()
-    if godEnabled then
-        local char = player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.Health = char.Humanoid.MaxHealth
+-- Oyuncu Seçme ve Işınlanma Menüsü
+createModernToggle("TP Player", "Işınlanmak istediğin oyuncuyu seç.", getPlayerList(), function(selectedName)
+    local targetPlayer = Players:FindFirstChild(selectedName)
+    
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            myRoot.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
+            showNotification("Teleport", selectedName .. " adlı oyuncuya ışınlanıldı!", true)
         end
+    else
+        showNotification("Teleport", "Seçilen oyuncu bulunamadı!", false)
     end
 end)
 
