@@ -651,10 +651,97 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
+-- -- MM2 AUTO GUN & ESP (Smooth Wall-Slide / No Teleport)
+local mm2AutoGunActive = false
+
+createModernToggle("MM2 Auto Gun", "Yere düşen silahı gösterir, duvar içinden süzülerek gidip alır.", "Otomatik olarak silahı toplar ve alınca durur.", function(state)
+	mm2AutoGunActive = state
+	
+	task.spawn(function()
+		while mm2AutoGunActive do
+			task.wait(0.2)
+			pcall(function()
+				local char = player.Character
+				if not char then return end
+				local root = char:FindFirstChild("HumanoidRootPart")
+				if not root then return end
+				
+				-- MM2'de yere düşen silah objesini bul ("GunDrop")
+				local gunDropPart = nil
+				for _, obj in ipairs(workspace:GetChildren()) do
+					if obj.Name == "GunDrop" then
+						if obj:IsA("Model") then
+							gunDropPart = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+						elseif obj:IsA("BasePart") then
+							gunDropPart = obj
+						end
+						break
+					end
+				end
+				
+				-- Eğer haritada yerde silah varsa
+				if gunDropPart then
+					-- 1. ESP Ekle (Yeşil Parlama)
+					local highlight = gunDropPart:FindFirstChild("WorthNet_GunESP")
+					if not highlight then
+						highlight = Instance.new("Highlight")
+						highlight.Name = "WorthNet_GunESP"
+						highlight.Adornee = gunDropPart.Parent:IsA("Model") and gunDropPart.Parent or gunDropPart
+						highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Yeşil renk
+						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+						highlight.Parent = gunDropPart
+					end
+					highlight.Enabled = true
+					
+					-- 2. Envanterde silah var mı kontrol et
+					local backpack = player:FindFirstChild("Backpack")
+					local hasGunNow = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
+					
+					-- Eğer silahımız yoksa ve yerde drop varsa, süzülerek git
+					if not hasGunNow and gunDropPart and gunDropPart.Parent then
+						-- Duvarlardan geçebilmek için çarpışmaları kapat
+						for _, p in ipairs(char:GetDescendants()) do
+							if p:IsA("BasePart") then p.CanCollide = false end
+						end
+						
+						-- Işınlanmadan (Teleportsuz), yumuşak ve hızlı bir şekilde silaha doğru kay/yürü
+						while mm2AutoGunActive and gunDropPart and gunDropPart.Parent do
+							local backpackCheck = player:FindFirstChild("Backpack")
+							if char:FindFirstChild("Gun") or (backpackCheck and backpackCheck:FindFirstChild("Gun")) then
+								break
+							end
+							
+							local currentPos = root.Position
+							local targetPos = gunDropPart.Position
+							local distance = (currentPos - targetPos).Magnitude
+							
+							if distance < 3 then
+								break
+							end
+							
+							-- Lerp ile akıcı ve hızlı yaklaşma (Anti-cheat takılmasını önler)
+							root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos + Vector3.new(0, 2, 0)), 0.18)
+							root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+							task.wait(0.03)
+						end
+						
+						-- Silah alınınca çarpışmaları normale döndür
+						for _, p in ipairs(char:GetDescendants()) do
+							if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
+								p.CanCollide = true 
+							end
+						end
+					end
+				end
+			end)
+		end
+	end)
+end)
+
 -- -- MM2 SMART COMBAT KILLER (Auto-Shoot & Auto-Knife / Raycast & Prediction Pro)
 local mm2CombatActive = false
 
-createModernToggle("Combat", "MM2 Smart Killer", "Rolünü otomatik algılar, duvara sıkmaz ve akıllı tahmin yapar.", function(state)
+createModernToggle("MM2 Auto Attack", "MM2 Smart Killer", "Rolünü otomatik algılar, duvara sıkmaz ve akıllı tahmin yapar.", function(state)
 	mm2CombatActive = state
 	task.spawn(function()
 		while mm2CombatActive do
