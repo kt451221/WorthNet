@@ -1445,29 +1445,153 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
     end
 end)
 
--- Oyuncu listesini güncel olarak çeken fonksiyon
-local function getPlayerList()
-    local list = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player then
-            table.insert(list, p.Name)
+-- Oyuncu Listesi Penceresini Yöneten Değişkenler
+local playerListGui = nil
+local scrollingFrameRef = nil
+local playerConnections = {}
+
+local function createPlayerListWindow()
+    if playerListGui then
+        playerListGui.Enabled = true
+        return
+    end
+
+    -- Ana Ekran GUI'si
+    playerListGui = Instance.new("ScreenGui")
+    playerListGui.Name = "SwoxTechPlayerListMenu"
+    -- Güvenli bir şekilde CoreGui'ye ekleyelim (yoksa PlayerGui)
+    local success = pcall(function()
+        playerListGui.Parent = game:GetService("CoreGui")
+    end)
+    if not success then
+        playerListGui.Parent = player.PlayerGui
+    end
+
+    -- Ana Çerçeve (Kutu)
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 240, 0, 320)
+    mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0) -- Ekranın sol orta kısmı
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true -- İsteğe bağlı sürüklenebilir olsun
+    mainFrame.Parent = playerListGui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 10)
+    frameCorner.Parent = mainFrame
+
+    -- Başlık
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 40)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "Oyuncu Işınlanma Menüsü"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 13
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Parent = mainFrame
+
+    -- Kaydırma Alanı (ScrollingFrame)
+    local scrollingFrame = Instance.new("ScrollingFrame")
+    scrollingFrame.Size = UDim2.new(1, -16, 1, -50)
+    scrollingFrame.Position = UDim2.new(0, 8, 0, 42)
+    scrollingFrame.BackgroundTransparency = 1
+    scrollingFrame.BorderSizePixel = 0
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scrollingFrame.ScrollBarThickness = 4
+    scrollingFrame.Parent = mainFrame
+    scrollingFrameRef = scrollingFrame
+
+    local uiListLayout = Instance.new("UIListLayout")
+    uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    uiListLayout.Padding = UDim.new(0, 6)
+    uiListLayout.Parent = scrollingFrame
+
+    -- Listeyi Doldurma Fonksiyonu
+    local function refreshList()
+        if not scrollingFrameRef then return end
+        
+        -- Eski elemanları temizle
+        for _, child in ipairs(scrollingFrameRef:GetChildren()) do
+            if child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+
+        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+            if targetPlayer ~= player then
+                -- Her oyuncu için satır
+                local itemRow = Instance.new("Frame")
+                itemRow.Size = UDim2.new(1, 0, 0, 32)
+                itemRow.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+                itemRow.BorderSizePixel = 0
+                itemRow.Parent = scrollingFrameRef
+
+                local rowCorner = Instance.new("UICorner")
+                rowCorner.CornerRadius = UDim.new(0, 6)
+                rowCorner.Parent = itemRow
+
+                -- Oyuncu Adı
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(0.65, 0, 1, 0)
+                nameLabel.Position = UDim2.new(0, 8, 0, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = targetPlayer.Name
+                nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+                nameLabel.TextSize = 12
+                nameLabel.Font = Enum.Font.GothamMedium
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                nameLabel.Parent = itemRow
+
+                -- TP Butonu
+                local tpButton = Instance.new("TextButton")
+                tpButton.Size = UDim2.new(0.28, 0, 0.75, 0)
+                tpButton.Position = UDim2.new(0.70, 0, 0.125, 0)
+                tpButton.BackgroundColor3 = Color3.fromRGB(0, 162, 255)
+                tpButton.BorderSizePixel = 0
+                tpButton.Text = "TP"
+                tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                tpButton.TextSize = 12
+                tpButton.Font = Enum.Font.GothamBold
+                tpButton.Parent = itemRow
+
+                local btnCorner = Instance.new("UICorner")
+                btnCorner.CornerRadius = UDim.new(0, 5)
+                btnCorner.Parent = tpButton
+
+                -- TP Butonuna Basıldığında Çalışacak Kod
+                tpButton.MouseButton1Click:Connect(function()
+                    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot then
+                            myRoot.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
+                        end
+                    end
+                end)
+            end
         end
     end
-    return list
+
+    refreshList()
+
+    -- Oyuncu giriş/çıkışlarında listeyi otomatik güncelle
+    table.insert(playerConnections, Players.PlayerAdded:Connect(refreshList))
+    table.insert(playerConnections, Players.PlayerRemoving:Connect(refreshList))
 end
 
--- Oyuncu Seçme ve Işınlanma Menüsü
-createModernToggle("TP Player", "Işınlanmak istediğin oyuncuyu seç.", getPlayerList(), function(selectedName)
-    local targetPlayer = Players:FindFirstChild(selectedName)
-    
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if myRoot then
-            myRoot.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
-            showNotification("Teleport", selectedName .. " adlı oyuncuya ışınlanıldı!", true)
-        end
+local function hidePlayerListWindow()
+    if playerListGui then
+        playerListGui.Enabled = false
+    end
+end
+
+-- Toggle Bağlantısı
+createModernToggle("TP Player Menüsü", "Oyuncu listesi penceresini açar/kapatır.", function(state)
+    if state then
+        createPlayerListWindow()
     else
-        showNotification("Teleport", "Seçilen oyuncu bulunamadı!", false)
+        hidePlayerListWindow()
     end
 end)
 
@@ -1552,13 +1676,6 @@ createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
     end
 end)
 
--- 29. REJOIN
-local TeleportService = game:GetService("TeleportService")
-createModernToggle("Rejoin", "Aynı sunucuye tekrar bağlanır.", function(state)
-    if state then
-        TeleportService:Teleport(game.PlaceId, player)
-    end
-end)
 
 -- 30. SMOOTH AIM
 local smoothAimActive = false
@@ -1591,11 +1708,26 @@ createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitl
     end)
 end)
 
--- 31. MM2 ÖZEL AIMBOT
+-- 31. MM2 ÖZEL AIMBOT & CROSSHAIR
 local mm2AimbotEnabled = false
 local mm2AimbotConnection = nil
 
-local function getArmedPlayer()
+-- Küçük bir crosshair oluşturalım (Drawing Kütüphanesi)
+local crosshair = Drawing.new("Circle")
+crosshair.Visible = false
+crosshair.Radius = 3
+crosshair.Filled = true
+crosshair.Color = Color3.fromRGB(0, 255, 255) -- Cyan / Mavi tonlarında şık bir crosshair
+crosshair.Transparency = 0.9
+
+-- Yerel oyuncunun elinde/envanterinde Gun var mı kontrol eden fonksiyon
+local function localHasGun()
+    local localChar = player.Character
+    local localBack = player:FindFirstChild("Backpack")
+    return (localChar and localChar:FindFirstChild("Gun")) or (localBack and localBack:FindFirstChild("Gun"))
+end
+
+local function getTargetPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
     local currentCamera = workspace.CurrentCamera
@@ -1604,19 +1736,30 @@ local function getArmedPlayer()
 
     if not localRoot then return nil end
 
+    local hasGun = localHasGun()
+
     for _, targetPlayer in ipairs(Players:GetPlayers()) do
         if targetPlayer ~= player and targetPlayer.Character then
             local char = targetPlayer.Character
             local back = targetPlayer:FindFirstChild("Backpack")
             local hum = char:FindFirstChild("Humanoid")
-            local root = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head") -- Doğrudan kafa hedef alınır
 
-            local hasWeapon = (char:FindFirstChild("Knife") or char:FindFirstChild("Gun") or (back and (back:FindFirstChild("Knife") or back:FindFirstChild("Gun"))))
+            local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
+            local targetHasGun = (char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun")))
 
-            if hasWeapon and root and hum and hum.Health > 0 then
-                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
+            -- Eğer bizim elimizde Gun varsa, sadece Knife olan kişiye (Katile) odaklan
+            local isValidTarget = false
+            if hasGun then
+                isValidTarget = targetHasKnife
+            else
+                isValidTarget = targetHasKnife or targetHasGun
+            end
+
+            if isValidTarget and head and hum and hum.Health > 0 then
+                local _, onScreen = currentCamera:WorldToViewportPoint(head.Position)
                 if onScreen then
-                    local distance = (root.Position - localRoot.Position).Magnitude
+                    local distance = (head.Position - localRoot.Position).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
                         closestPlayer = targetPlayer
@@ -1628,16 +1771,23 @@ local function getArmedPlayer()
     return closestPlayer
 end
 
-createModernToggle("MM2 Aimbot", "Sadece Katil ve Şerife kilitlenir.", function(state)
+createModernToggle("MM2 Aimbot", "Silahın varsa direkt Katilin kafasına kilitlenir.", function(state)
     mm2AimbotEnabled = state
+    crosshair.Visible = state
+    
     if mm2AimbotEnabled then
         mm2AimbotConnection = RunService.RenderStepped:Connect(function()
-            local targetPlayer = getArmedPlayer()
+            -- Crosshair'i ekranın tam merkezine sabitle
+            local screenSize = workspace.CurrentCamera.ViewportSize
+            crosshair.Position = screenSize / 2
+
+            local targetPlayer = getTargetPlayer()
             local char = targetPlayer and targetPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if root then
+            local head = char and char:FindFirstChild("Head")
+            
+            if head then
                 local camera = workspace.CurrentCamera
-                camera.CFrame = CFrame.new(camera.CFrame.Position, root.Position)
+                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
             end
         end)
     else
