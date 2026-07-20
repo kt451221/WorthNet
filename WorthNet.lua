@@ -1537,18 +1537,41 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 26. CLICK TP
-createModernToggle("Click TP", "Tıkladığın yere ışınlar.", function(state)
-    _G.ClickTP = state
+-- 26. X TUŞU İLE CLICK TP (Bypass & Anti-Rubberband Destekli)
+local clickTPXActive = false
+
+createModernToggle("Click TP (X Tuşu)", "Fareyi nereye tutarsan X tuşuna basınca oraya ışınlanırsın.", function(state)
+    clickTPXActive = state
+    if state then
+        showNotification("Click TP", "Aktif! Nişan al ve X tuşuna bas.", true)
+    else
+        showNotification("Click TP", "Kapatıldı.", false)
+    end
 end)
 
-mouse.Button1Down:Connect(function()
-    if _G.ClickTP and mouse.Hit then
-        local targetPos = mouse.Hit.p
-        local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
-        end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and clickTPXActive and input.KeyCode == Enum.KeyCode.X then
+        pcall(function()
+            if mouse.Hit then
+                local targetPos = mouse.Hit.p
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                
+                if hrp then
+                    -- Anti-cheat'in velocity (hız) algoritmalarını kandırmak için hızı sıfırlıyoruz
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                    
+                    -- Yerin içine gömülmemek için hafif yukarıda başlatıyoruz
+                    hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+                    
+                    -- Pozisyon değiştikten sonra hızı tekrar sıfırlayarak geri atılmayı (rubber-band) azaltıyoruz
+                    task.defer(function()
+                        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    end)
+                end
+            end
+        end)
     end
 end)
 
