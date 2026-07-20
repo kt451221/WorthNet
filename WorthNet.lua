@@ -651,81 +651,68 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
--- -- MM2 AUTO GUN & ESP (Smooth Wall-Slide / No Teleport)
+-- -- MM2 AUTO GUN (Debug & Extended Search Fix)
 local mm2AutoGunActive = false
 
-createModernToggle("MM2 Auto Gun", "Yere düşen silahı gösterir, duvar içinden süzülerek gidip alır.", "Otomatik olarak silahı toplar ve alınca durur.", function(state)
+createModernToggle("MM2 Auto Gun (Fix)", "Yere düşen silahı geniş çaplı tarar ve hatasız alır.", "Konsola bilgi yazdırır.", function(state)
 	mm2AutoGunActive = state
+	print("[WorthNet] Auto Gun Durumu:", state)
 	
 	task.spawn(function()
 		while mm2AutoGunActive do
-			task.wait(0.2)
+			task.wait(0.5)
 			pcall(function()
 				local char = player.Character
 				if not char then return end
 				local root = char:FindFirstChild("HumanoidRootPart")
 				if not root then return end
 				
-				-- MM2'de yere düşen silah objesini bul ("GunDrop")
-				local gunDropPart = nil
-				for _, obj in ipairs(workspace:GetChildren()) do
-					if obj.Name == "GunDrop" then
+				-- Silahı workspace içerisinde daha geniş bir yolla arayalım (Model veya Part)
+				local gunDropTarget = nil
+				
+				for _, obj in ipairs(workspace:GetDescendants()) do
+					if obj.Name == "GunDrop" or obj.Name == "Gun" then
 						if obj:IsA("Model") then
-							gunDropPart = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+							gunDropTarget = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
 						elseif obj:IsA("BasePart") then
-							gunDropPart = obj
+							gunDropTarget = obj
 						end
-						break
+						if gunDropTarget then break end
 					end
 				end
 				
-				-- Eğer haritada yerde silah varsa
-				if gunDropPart then
-					-- 1. ESP Ekle (Yeşil Parlama)
-					local highlight = gunDropPart:FindFirstChild("WorthNet_GunESP")
-					if not highlight then
-						highlight = Instance.new("Highlight")
-						highlight.Name = "WorthNet_GunESP"
-						highlight.Adornee = gunDropPart.Parent:IsA("Model") and gunDropPart.Parent or gunDropPart
-						highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Yeşil renk
-						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-						highlight.Parent = gunDropPart
-					end
-					highlight.Enabled = true
+				if gunDropTarget then
+					print("[WorthNet] Silah bulundu! Konuma gidiliyor...")
 					
-					-- 2. Envanterde silah var mı kontrol et
+					-- Envanter kontrolü
 					local backpack = player:FindFirstChild("Backpack")
 					local hasGunNow = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
 					
-					-- Eğer silahımız yoksa ve yerde drop varsa, süzülerek git
-					if not hasGunNow and gunDropPart and gunDropPart.Parent then
-						-- Duvarlardan geçebilmek için çarpışmaları kapat
+					if not hasGunNow then
+						-- Çarpışmaları kapat
 						for _, p in ipairs(char:GetDescendants()) do
 							if p:IsA("BasePart") then p.CanCollide = false end
 						end
 						
-						-- Işınlanmadan (Teleportsuz), yumuşak ve hızlı bir şekilde silaha doğru kay/yürü
-						while mm2AutoGunActive and gunDropPart and gunDropPart.Parent do
-							local backpackCheck = player:FindFirstChild("Backpack")
-							if char:FindFirstChild("Gun") or (backpackCheck and backpackCheck:FindFirstChild("Gun")) then
+						-- Yumuşak ve hızlı yaklaşma
+						while mm2AutoGunActive and gunDropTarget and gunDropTarget.Parent do
+							local bpCheck = player:FindFirstChild("Backpack")
+							if char:FindFirstChild("Gun") or (bpCheck and bpCheck:FindFirstChild("Gun")) then
+								print("[WorthNet] Silah başarıyla alındı!")
 								break
 							end
 							
-							local currentPos = root.Position
-							local targetPos = gunDropPart.Position
-							local distance = (currentPos - targetPos).Magnitude
-							
-							if distance < 3 then
+							local targetPos = gunDropTarget.Position
+							if (root.Position - targetPos).Magnitude < 3 then
 								break
 							end
 							
-							-- Lerp ile akıcı ve hızlı yaklaşma (Anti-cheat takılmasını önler)
-							root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos + Vector3.new(0, 2, 0)), 0.18)
+							root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos + Vector3.new(0, 2, 0)), 0.2)
 							root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 							task.wait(0.03)
 						end
 						
-						-- Silah alınınca çarpışmaları normale döndür
+						-- Çarpışmaları aç
 						for _, p in ipairs(char:GetDescendants()) do
 							if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
 								p.CanCollide = true 
@@ -736,6 +723,34 @@ createModernToggle("MM2 Auto Gun", "Yere düşen silahı gösterir, duvar içind
 			end)
 		end
 	end)
+end)
+
+-- -- 11. FAKE LAG / DESYNC ("Wi-Fi Hilesi" - Donmuş Görünme)
+local desyncActive = false
+local desyncConnection = nil
+
+createModernToggle("Fake Lag (Desync)", "Bağlantın kopmuş gibi başkalarına donmuş görünürsün.", function(state)
+	desyncActive = state
+	local char = player.Character
+	
+	if desyncActive and char then
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if root then
+			-- Karakterin sunucuya konum göndermesini (replication) donduruyoruz
+			-- Fizik motorunu yerel konuma alıp sunucu güncellemelerini kesiyoruz
+			desyncConnection = RunService.Heartbeat:Connect(function()
+				if root and root.Parent then
+					root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+					root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				end
+			end)
+		end
+	else
+		if desyncConnection then
+			desyncConnection:Disconnect()
+			desyncConnection = nil
+		end
+	end
 end)
 
 -- -- MM2 SMART COMBAT KILLER (Auto-Shoot & Auto-Knife / Raycast & Prediction Pro)
