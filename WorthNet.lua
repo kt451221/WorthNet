@@ -652,63 +652,101 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
--- MM2 AUTO-SHOOT KILLER (PRO - Prediction & WallCheck Destekli)
-local mm2AutoShootActive = false
-createModernToggle("MM2 Auto-Shoot Killer Pro", "Katili hareket yönüne göre tahmin eder ve duvar arkası boşa ateş etmez.", function(state)
-    mm2AutoShootActive = state
-    task.spawn(function()
-        while mm2AutoShootActive do
-            task.wait(0.04) -- Tepki süresini hızlandırdık
-            pcall(function()
-                local char = player.Character
-                local backpack = player:FindFirstChild("Backpack")
-                local hasGun = (char and char:FindFirstChild("Gun")) or (backpack and backpack:FindFirstChild("Gun"))
-                
-                if hasGun then
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= player and p.Character then
-                            local enemyChar = p.Character
-                            local enemyBackpack = p:FindFirstChild("Backpack")
-                            local hum = enemyChar:FindFirstChild("Humanoid")
-                            local root = enemyChar:FindFirstChild("HumanoidRootPart")
-                            
-                            local hasKnife = enemyChar:FindFirstChild("Knife") or (enemyBackpack and enemyBackpack:FindFirstChild("Knife"))
-                            
-                            if hasKnife and root and hum and hum.Health > 0 then
-                                local camera = workspace.CurrentCamera
-                                
-                                -- 1. PREDICTION (Katilin o anki hızına göre ilerideki konumunu hesapla)
-                                local enemyVelocity = root.AssemblyLinearVelocity
-                                local predictedPos = root.Position + (enemyVelocity * 0.12) -- Katsayıyı oyun hızına göre ayarlayabilirsin
-                                
-                                -- 2. RAYCAST (Arada duvar var mı kontrol et)
-                                local raycastParams = RaycastParams.new()
-                                raycastParams.FilterDescendantsInstances = {char, enemyChar}
-                                raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-                                local rayResult = workspace:Raycast(camera.CFrame.Position, (predictedPos - camera.CFrame.Position).Unit * 500, raycastParams)
-                                
-                                -- Eğer arada engel yoksa veya hedef doğrudan görüş açısındaysa vur
-                                if not rayResult or (rayResult.Position - predictedPos).Magnitude < 12 then
-                                    -- Tahmin edilen konuma anlık flick at
-                                    camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPos)
-                                    
-                                    -- Silahı kuşan ve ateş et
-                                    local gun = char:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
-                                    if gun then
-                                        if gun.Parent == backpack then
-                                            gun.Parent = char
-                                            task.wait(0.02)
-                                        end
-                                        gun:Activate()
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    end)
+-- -- MM2 SMART COMBAT KILLER (Auto-Shoot & Auto-Knife / Raycast & Prediction Pro)
+local mm2CombatActive = false
+
+createModernToggle("Combat", "MM2 Smart Killer", "Rolünü otomatik algılar, duvara sıkmaz ve akıllı tahmin yapar.", function(state)
+	mm2CombatActive = state
+	task.spawn(function()
+		while mm2CombatActive do
+			task.wait(0.03) -- 30ms ultra hızlı tarama döngüsü
+			pcall(function()
+				local char = player.Character
+				local backpack = player:FindFirstChild("Backpack")
+				if not char then return end
+
+				local humRoot = char:FindFirstChild("HumanoidRootPart")
+				if not humRoot then return end
+
+				-- Silah veya Bıçak kontrolü
+				local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
+				local hasKnife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
+
+				-- EĞER ŞERİFSEN VEYA TABANCAN VARSA: Katili Vur
+				if hasGun then
+					for _, p in ipairs(Players:GetPlayers()) do
+						if p ~= player and p.Character then
+							local enemyChar = p.Character
+							local enemyBackpack = p:FindFirstChild("Backpack")
+							local enemyHum = enemyChar:FindFirstChild("Humanoid")
+							local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
+							
+							local enemyHasKnife = enemyChar:FindFirstChild("Knife") or (enemyBackpack and enemyBackpack:FindFirstChild("Knife"))
+							
+							-- Hedef katilse ve yaşıyorsa
+							if enemyHasKnife and enemyRoot and enemyHum and enemyHum.Health > 0 then
+								local camera = workspace.CurrentCamera
+								
+								-- 1. Akıllı Hız Tahmini (Prediction)
+								local enemyVelocity = enemyRoot.AssemblyLinearVelocity
+								local predictedPos = enemyRoot.Position + (enemyVelocity * 0.09) -- Gecikme payı optimize edildi
+								
+								-- 2. Gelişmiş Raycast Duvar Kontrolü (Duvara sıkmayı önler)
+								local raycastParams = RaycastParams.new()
+								raycastParams.FilterDescendantsInstances = {char, enemyChar}
+								raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+								raycastParams.IgnoreWater = true
+								
+								local rayResult = workspace:Raycast(camera.CFrame.Position, (predictedPos - camera.CFrame.Position).Unit * 600, raycastParams)
+								
+								-- Eğer arada engel yoksa veya hedef doğrudan görüş alanındaysa ateş et
+								if not rayResult or (rayResult.Position - predictedPos).Magnitude < 10 then
+									camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPos)
+									
+									local gun = char:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
+									if gun then
+										if gun.Parent == backpack then
+											gun.Parent = char
+											task.wait(0.01)
+										end
+										gun:Activate()
+									end
+								end
+							end
+						end
+					end
+
+				-- EĞER KATİLSEN VE BIÇAĞIN VARSA: Yakındaki masumları avla
+				elseif hasKnife then
+					for _, p in ipairs(Players:GetPlayers()) do
+						if p ~= player and p.Character then
+							local enemyChar = p.Character
+							local enemyHum = enemyChar:FindFirstChild("Humanoid")
+							local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
+							
+							if enemyRoot and enemyHum and enemyHum.Health > 0 then
+								local distance = (humRoot.Position - enemyRoot.Position).Magnitude
+								-- 18 stud mesafedeyse bıçağı fırlat/sapla
+								if distance < 18 then
+									local camera = workspace.CurrentCamera
+									camera.CFrame = CFrame.new(camera.CFrame.Position, enemyRoot.Position)
+									
+									local knife = char:FindFirstChild("Knife") or backpack:FindFirstChild("Knife")
+									if knife then
+										if knife.Parent == backpack then
+											knife.Parent = char
+											task.wait(0.01)
+										end
+										knife:Activate()
+									end
+								end
+							end
+						end
+					end
+				end
+			end)
+		end
+	end)
 end)
 -- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
 local speedHackActive = false
