@@ -1209,23 +1209,87 @@ createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", fu
     end
 end)
 
--- 9. NAME ESP
-createModernToggle("Name ESP", "Düşmanları ve isimlerini parlatır.", function(state)
-    _G.ESP = state
-    task.spawn(function()
-        while _G.ESP do
-            task.wait(1)
-            for _, p in pairs(Players:GetPlayers()) do
-                if not _G.ESP then break end
-                if p ~= player and p.Character then
-                    local highlight = p.Character:FindFirstChild("ESP_Highlight") or Instance.new("Highlight", p.Character)
-                    highlight.Name = "ESP_Highlight"
-                    highlight.Enabled = state
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                end
-            end
-        end
-    end)
+-- -- 9. ADVANCED NAME & HEALTH ESP (Highlight + BillboardGui)
+local espActive = false
+
+createModernToggle("Name & Health ESP", "Düşmanların rengini, ismini ve canını gösterir.", function(state)
+	espActive = state
+	
+	if espActive then
+		task.spawn(function()
+			while espActive do
+				for _, p in ipairs(Players:GetPlayers()) do
+					if not espActive then break end
+					if p ~= player and p.Character then
+						local char = p.Character
+						local head = char:FindFirstChild("Head")
+						local hum = char:FindFirstChild("Humanoid")
+						
+						if head and hum and hum.Health > 0 then
+							-- 1. Highlight (Karakter Renklendirme ve Parlatma)
+							local highlight = char:FindFirstChild("WorthNet_Highlight")
+							if not highlight then
+								highlight = Instance.new("Highlight")
+								highlight.Name = "WorthNet_Highlight"
+								highlight.Adornee = char
+								highlight.Parent = char
+							end
+							highlight.Enabled = true
+							highlight.FillColor = Color3.fromRGB(255, 50, 50) -- Kırmızı dolgu rengi
+							highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- Beyaz çerçeve
+							highlight.FillTransparency = 0.5
+							
+							-- 2. BillboardGui (İsim ve Can Göstergesi)
+							local billboard = head:FindFirstChild("WorthNet_ESPBill")
+							local textLabel
+							
+							if not billboard then
+								billboard = Instance.new("BillboardGui")
+								billboard.Name = "WorthNet_ESPBill"
+								billboard.Size = UDim2.new(0, 200, 0, 50)
+								billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+								billboard.AlwaysOnTop = true
+								billboard.Parent = head
+								
+								textLabel = Instance.new("TextLabel")
+								textLabel.Name = "InfoText"
+								textLabel.Size = UDim2.new(1, 0, 1, 0)
+								textLabel.BackgroundTransparency = 1
+								textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+								textLabel.TextStrokeTransparency = 0 -- Okunabilirlik için siyah kenar
+								textLabel.TextSize = 14
+								textLabel.Font = Enum.Font.SourceSansBold
+								textLabel.Parent = billboard
+							else
+								textLabel = billboard:FindFirstChild("InfoText")
+							end
+							
+							-- Can yüzdesini hesapla ve yazdır
+							if textLabel then
+								local healthPercent = math.floor((hum.Health / hum.MaxHealth) * 100)
+								textLabel.Text = p.Name .. " [" .. healthPercent .. "%]"
+							end
+						end
+					end
+				end
+				task.wait(0.3) -- Performans için optimize edilmiş tarama aralığı
+			end
+		end)
+	else
+		-- Kapatıldığında tüm ESP ögelerini temizle
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Character then
+				local highlight = p.Character:FindFirstChild("WorthNet_Highlight")
+				if highlight then highlight:Destroy() end
+				
+				local head = p.Character:FindFirstChild("Head")
+				if head then
+					local billboard = head:FindFirstChild("WorthNet_ESPBill")
+					if billboard then billboard:Destroy() end
+				end
+			end
+		end
+	end
 end)
 
 -- InteractionHandler Fix
