@@ -748,32 +748,53 @@ createModernToggle("Combat", "MM2 Smart Killer", "Rolünü otomatik algılar, du
 	end)
 end)
 
--- -- 10. SPECTATE SYSTEM (İzleyici Modu)
-local spectating = false
-local currentTargetIndex = 1
+-- -- 10. FREECAM SPECTATOR (Minecraft Tarzı Serbest Dolaşım)
+local freecamActive = false
+local freecamConnection = nil
+local freecamSpeed = 60 -- Uçuş hızını buradan ayarlayabilirsin
 
-createModernToggle("Spectate", "Seçilen oyuncuyu kameraya kilitler.", function(state)
-	spectating = state
+createModernToggle("Freecam Spectator", "Minecraft gibi haritada serbestçe uçarak dolaş.", function(state)
+	freecamActive = state
 	local camera = workspace.CurrentCamera
+	local char = player.Character
+	local hum = char and char:FindFirstChild("Humanoid")
 	
-	if spectating then
-		task.spawn(function()
-			while spectating do
-				task.wait(0.1)
-				local playersList = Players:GetPlayers()
-				if #playersList > 1 then
-					currentTargetIndex = (currentTargetIndex % #playersList) + 1
-					local target = playersList[currentTargetIndex]
-					
-					if target ~= player and target.Character and target.Character:FindFirstChild("Humanoid") then
-						camera.CameraSubject = target.Character.Humanoid
-					end
-				end
-			end
+	if freecamActive then
+		-- Kamerayı oyunun varsayılan kontrolünden çıkarıp serbest moda alıyoruz
+		if hum then
+			camera.CameraSubject = nil
+		end
+		camera.CameraType = Enum.CameraType.Scriptable
+		
+		local camCFrame = camera.CFrame
+		
+		freecamConnection = RunService.RenderStepped:Connect(function(dt)
+			if not freecamActive then return end
+			
+			local moveDir = Vector3.new(0, 0, 0)
+			
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+			
+			-- Kameranın bakış açısını (rotasyonunu) bozmadan pozisyonunu güncelliyoruz
+			local rot = camera.CFrame - camera.CFrame.Position
+			camCFrame = camCFrame + (moveDir * freecamSpeed * dt)
+			camera.CFrame = CFrame.new(camCFrame.Position) * rot
 		end)
 	else
-		if player.Character and player.Character:FindFirstChild("Humanoid") then
-			camera.CameraSubject = player.Character.Humanoid
+		-- Kapatıldığında bağlantıyı kes ve kamerayı anında oyuncuya geri ver
+		if freecamConnection then
+			freecamConnection:Disconnect()
+			freecamConnection = nil
+		end
+		
+		camera.CameraType = Enum.CameraType.Custom
+		if char and char:FindFirstChild("Humanoid") then
+			camera.CameraSubject = char.Humanoid
 		end
 	end
 end)
