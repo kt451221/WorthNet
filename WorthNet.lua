@@ -1,4 +1,4 @@
--- WorthNet UI System v4.3 - Search Engine, Notifications & Premium Expand
+-- WorthNet UI System v4.3 - Full Fixed & Optimized
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -69,13 +69,12 @@ local function makeDraggable(frame)
 end
 
 ---------------------------------------------------------
--- MERKEZİ BİLDİRİM SİSTEMİ (ALT ALTA SIRALAMA MOTORU)
+-- MERKEZİ BİLDİRİM SİSTEMİ
 ---------------------------------------------------------
 local activeNotifications = {}
 
 local function rearrangeNotifications()
 	for index, notif in ipairs(activeNotifications) do
-		-- Her bildirim aralarında 10 piksel boşluk olacak şekilde alt alta hesaplanır
 		local targetY = 20 + ((index - 1) * 60)
 		TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(1, -240, 0, targetY)
@@ -87,7 +86,6 @@ local function showNotification(title, message, isSuccess)
 	local notifFrame = Instance.new("Frame")
 	notifFrame.Size = UDim2.new(0, 220, 0, 50)
 	
-	-- Giriş animasyonu için yine ekranın sağ dışından başlar
 	local initialY = 20 + (#activeNotifications * 60)
 	notifFrame.Position = UDim2.new(1, 30, 0, initialY)
 	notifFrame.BackgroundColor3 = THEME.Sidebar
@@ -110,26 +108,20 @@ local function showNotification(title, message, isSuccess)
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = notifFrame
 	
-	-- Listeye ekle ve konumları güncelle
 	table.insert(activeNotifications, notifFrame)
 	rearrangeNotifications()
 	
-	-- Kapanış ve temizlik lojiği
 	task.delay(2.5, function()
-		-- Tablodan bu bildirimi kaldır
 		local foundIndex = table.find(activeNotifications, notifFrame)
 		if foundIndex then
 			table.remove(activeNotifications, foundIndex)
 		end
 		
-		-- Ekran dışına kayma animasyonu
 		local currentY = notifFrame.Position.Y.Offset
 		local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(1, 30, 0, currentY)
 		})
 		closeTween:Play()
-		
-		-- Diğer kalan bildirimleri yukarı kaydır
 		rearrangeNotifications()
 		
 		closeTween.Completed:Connect(function() 
@@ -199,7 +191,6 @@ logoLabel.TextSize = 18
 logoLabel.ZIndex = 7
 logoLabel.Parent = sidebar
 
--- "All Hacks" Sekme Çerçevesi
 local allHacksBtn = Instance.new("Frame")
 allHacksBtn.Size = UDim2.new(1, -20, 0, 40)
 allHacksBtn.Position = UDim2.new(0, 10, 0, 60)
@@ -220,9 +211,7 @@ allHacksLabel.TextXAlignment = Enum.TextXAlignment.Left
 allHacksLabel.ZIndex = 8
 allHacksLabel.Parent = allHacksBtn
 
----------------------------------------------------------
--- YENİ: ARAMA KUTUSU (SEARCH BAR)
----------------------------------------------------------
+-- ARAMA KUTUSU
 local searchBox = Instance.new("TextBox")
 searchBox.Size = UDim2.new(1, -20, 0, 32)
 searchBox.Position = UDim2.new(0, 10, 0, 110)
@@ -242,12 +231,10 @@ searchStroke.Color = Color3.fromRGB(50, 50, 55)
 searchStroke.Thickness = 1
 searchStroke.Parent = searchBox
 
----------------------------------------------------------
--- YENİ: TOPLU KONTROL BUTONLARI (OPEN ALL / CLOSE ALL)
----------------------------------------------------------
+-- TOPLU KONTROL BUTONLARI
 local controlContainer = Instance.new("Frame")
 controlContainer.Size = UDim2.new(1, -20, 0, 30)
-controlContainer.Position = UDim2.new(0, 10, 0, 150) -- Arama kutusunun hemen altına hizalı
+controlContainer.Position = UDim2.new(0, 10, 0, 150)
 controlContainer.BackgroundTransparency = 1
 controlContainer.ZIndex = 8
 controlContainer.Parent = sidebar
@@ -255,7 +242,7 @@ controlContainer.Parent = sidebar
 local openAllBtn = Instance.new("TextButton")
 openAllBtn.Size = UDim2.new(0.5, -5, 1, 0)
 openAllBtn.Position = UDim2.new(0, 0, 0, 0)
-openAllBtn.BackgroundColor3 = Color3.fromRGB(30, 45, 35) -- Hafif yeşil tonlu premium admin teması
+openAllBtn.BackgroundColor3 = Color3.fromRGB(30, 45, 35)
 openAllBtn.Text = "Open All"
 openAllBtn.Font = Enum.Font.GothamBold
 openAllBtn.TextSize = 11
@@ -272,7 +259,7 @@ openStroke.Parent = openAllBtn
 local closeAllBtn = Instance.new("TextButton")
 closeAllBtn.Size = UDim2.new(0.5, -5, 1, 0)
 closeAllBtn.Position = UDim2.new(0.5, 5, 0, 0)
-closeAllBtn.BackgroundColor3 = Color3.fromRGB(45, 25, 25) -- Hafif kırmızı tonlu tehlike teması
+closeAllBtn.BackgroundColor3 = Color3.fromRGB(45, 25, 25)
 closeAllBtn.Text = "Close All"
 closeAllBtn.Font = Enum.Font.GothamBold
 closeAllBtn.TextSize = 11
@@ -286,11 +273,12 @@ closeStroke.Color = Color3.fromRGB(150, 50, 50)
 closeStroke.Thickness = 1
 closeStroke.Parent = closeAllBtn
 
--- TOPLU TETİKLEME İŞLEMLERİ
+_G.toggleRegistry = _G.toggleRegistry or {}
+
 openAllBtn.MouseButton1Click:Connect(function()
 	showNotification("System", "Tüm modüller aktif ediliyor...", true)
 	for name, setToggle in pairs(_G.toggleRegistry) do
-		pcall(function() setToggle(true, true) end) -- suppressNotification=true ile bildirim yağmurunu engeller
+		pcall(function() setToggle(true, true) end)
 	end
 end)
 
@@ -301,12 +289,10 @@ closeAllBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
----------------------------------------------------------
--- YENİ: YOUTUBE SOSYAL MEDYA BUTONU
----------------------------------------------------------
+-- YOUTUBE BUTONU
 local ytBtn = Instance.new("TextButton")
 ytBtn.Size = UDim2.new(1, -20, 0, 35)
-ytBtn.Position = UDim2.new(0, 10, 1, -45) -- Sidebar'ın en altında sabit durur
+ytBtn.Position = UDim2.new(0, 10, 1, -45)
 ytBtn.BackgroundColor3 = Color3.fromRGB(45, 15, 15)
 ytBtn.Text = "❤️ YouTube"
 ytBtn.Font = Enum.Font.GothamBold
@@ -321,11 +307,8 @@ ytStroke.Color = Color3.fromRGB(200, 50, 50)
 ytStroke.Thickness = 1
 ytStroke.Parent = ytBtn
 
--- YouTube Linki Kopyalama / Tetikleme İşlemi
 ytBtn.MouseButton1Click:Connect(function()
-	-- Buraya kendi youtube linkini tırnak içine yaz reis
 	local myYoutubeLink = "https://www.youtube.com/@xAworth" 
-	
 	if setclipboard then
 		setclipboard(myYoutubeLink)
 		showNotification("YouTube", "Kanal linki panoya kopyalandı!", true)
@@ -352,9 +335,6 @@ uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0, 10)
 uiListLayout.Parent = contentArea
 
----------------------------------------------------------
--- ARAMA MOTORU LOJİĞİ (SEARCH FUNCTIONAL)
----------------------------------------------------------
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	local searchText = string.lower(searchBox.Text)
 	for _, card in ipairs(contentArea:GetChildren()) do
@@ -372,9 +352,6 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	end
 end)
 
----------------------------------------------------------
--- ÜST KONTROL BUTONLARI (— VE ✕)
----------------------------------------------------------
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -40, 0, 10)
@@ -408,11 +385,6 @@ minimizeBtn.MouseButton1Click:Connect(function()
 	hubFrame.Visible = false
 	minLogo.Visible = true
 end)
-
----------------------------------------------------------
--- DINAMIK TOGGLE MOTORU (OTOMATİK BİLDİRİM ENTEGRELİ)
----------------------------------------------------------
-_G.toggleRegistry = _G.toggleRegistry or {}
 
 local function createModernToggle(name, description, callback)
 	local cardFrame = Instance.new("Frame")
@@ -467,7 +439,6 @@ local function createModernToggle(name, description, callback)
 	
 	local isOn = false
 	
-	-- Dışarıdan tetiklenebilecek fonksiyonu tanımlıyoruz
 	local function updateState(targetState, suppressNotification)
 		if isOn == targetState then return end
 		isOn = targetState
@@ -486,31 +457,24 @@ local function createModernToggle(name, description, callback)
 			end
 		end
 		
-		callback(isOn)
+		pcall(function()
+			callback(isOn)
+		end)
 	end
 	
 	switch.MouseButton1Click:Connect(function()
 		updateState(not isOn)
 	end)
 	
-	-- Havuza kaydet
 	_G.toggleRegistry[name] = updateState
 end
 
 ---------------------------------------------------------
--- HİLE AKTİVASYON ALANI (YENİLENMİŞ LİSTE)
+-- HİLELER (GÜVENLİ VE HATASIZ LİSTE)
 ---------------------------------------------------------
-local noclipConnection = nil  
-local isFlying = false
-local flySpeed = 60
-local antiFlingConn = nil
-local mm2ESPActive = false
-local mm2Highlights = {}
-local infJumpConn = nil
-local bhopConn = nil
-local originalSpeed = 16
 
 -- 1. NOCLIP
+local noclipConnection = nil  
 createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", function(state)
 	if state then
 		noclipConnection = RunService.Stepped:Connect(function()
@@ -525,12 +489,11 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- 2. FLY CONTROL (Güncellenmiş: Menü + P tuşu Senkronize)
+-- 2. FLY CONTROL
 local flyingEnabled = false
 local flySpeed = 60
 local bv, bg
 
--- Uçma mantığını yöneten ana fonksiyon (Dışarıya alındı)
 local function updateFlyState(state)
     flyingEnabled = state
     local char = player.Character
@@ -538,17 +501,17 @@ local function updateFlyState(state)
     local hum = char and char:FindFirstChild("Humanoid")
 
     if flyingEnabled and root and hum then
-        hum.PlatformStand = true -- Karakterin yürüyüş animasyonlarını ve fiziklerini kapatır
+        hum.PlatformStand = true
         
         bv = Instance.new("BodyVelocity")
         bv.Name = "WorthNetVelocity"
-        bv.MaxForce = Vector3.new(1/0, 1/0, 1/0)
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         bv.Velocity = Vector3.new(0, 0, 0)
         bv.Parent = root
         
         bg = Instance.new("BodyGyro")
         bg.Name = "WorthNetGyro"
-        bg.MaxTorque = Vector3.new(1/0, 1/0, 1/0)
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
         bg.P = 10000
         bg.D = 100
         bg.CFrame = root.CFrame
@@ -560,18 +523,16 @@ local function updateFlyState(state)
                 local camera = workspace.CurrentCamera
                 local targetDir = Vector3.new(0, 0, 0)
 
-                -- Hareket Yönleri
                 if UserInputService:IsKeyDown(Enum.KeyCode.W) then targetDir = targetDir + camera.CFrame.LookVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.S) then targetDir = targetDir - camera.CFrame.LookVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.A) then targetDir = targetDir - camera.CFrame.RightVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.D) then targetDir = targetDir + camera.CFrame.RightVector end
-                -- Space (Yukarı) ve LeftControl/Shift (Aşağı) eklendi
                 if UserInputService:IsKeyDown(Enum.KeyCode.Space) then targetDir = targetDir + Vector3.new(0, 1, 0) end
                 if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then targetDir = targetDir - Vector3.new(0, 1, 0) end
 
                 currentVelocity = currentVelocity:Lerp(targetDir * flySpeed, 0.1)
                 bv.Velocity = currentVelocity
-                bg.CFrame = camera.CFrame -- Kamera nereye bakarsa karakter oraya döner
+                bg.CFrame = camera.CFrame
                 task.wait()
             end
         end)
@@ -582,38 +543,25 @@ local function updateFlyState(state)
     end
 end
 
--- Menü (ModernToggle) Bağlantısı
-createModernToggle("Fly", "İstediğin yere uç! (P Tuşu ile de açıp kapatabilirsin)", function(state)
-    -- Menüden True/False geldiğinde direkt ana fonksiyonu tetikler
+createModernToggle("Fly", "İstediğin yere uç! (P Tuşu ile aç/kapat)", function(state)
     updateFlyState(state)
 end)
 
--- P Tuşu Bağlantısı
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- Chate yazı yazarken vs. tetiklenmemesi için gameProcessed kontrolü yapıyoruz
     if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-        -- Mevcut durumun tam tersini göndererek Aç/Kapat mantığı kuruyoruz
         updateFlyState(not flyingEnabled)
     end
 end)
 
-
-
-local isInvisible = false
-
-local function toggleInvisibility(state)
-    isInvisible = state
-    local char = game.Players.LocalPlayer.Character
+-- 3. INVISIBLE
+createModernToggle("Invisible", "Karakterini görünmez yap.", function(state)
+    local char = player.Character
     if not char then return end
 
-    -- Karakterin içindeki her parçayı tara
     for _, obj in pairs(char:GetDescendants()) do
-        -- Sadece görsel parçaları (Part, MeshPart, Decal) gizle
         if obj:IsA("BasePart") or obj:IsA("Decal") then
-            -- Eğer görünmez yapıyorsak 1, kapatıyorsak 0 yap
             obj.Transparency = state and 1 or 0
         end
-        -- Aksesuarları (şapka, gözlük vs.) da gizlemek için
         if obj:IsA("Accessory") then
             for _, child in pairs(obj:GetChildren()) do
                 if child:IsA("BasePart") then
@@ -622,67 +570,52 @@ local function toggleInvisibility(state)
             end
         end
     end
-    
     showNotification("Invisibility", state and "Görünmezlik Aktif!" or "Görünmezlik Kapalı!", true)
-end
-
--- Menüye Buton Olarak Ekle
-createModernToggle("Invisible", "Karakterini görünmez yap.", function(state)
-    toggleInvisibility(state)
 end)
 
-
--- 3. AIMBOT CONTROL (FOV Destekli & Gelişmiş)
+-- 4. AIMBOT
 local aimbotEnabled = false
 local aimbotConnection = nil
-local fovRadius = 200 -- FOV çemberinin yarıçapı (piksel)
+local fovRadius = 200
+local fovCircle
 
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local localPlayer = Players.LocalPlayer
+pcall(function()
+    fovCircle = Drawing.new("Circle")
+    fovCircle.Color = Color3.fromRGB(255, 255, 255)
+    fovCircle.Thickness = 1
+    fovCircle.Radius = fovRadius
+    fovCircle.Filled = false
+    fovCircle.Visible = false
+end)
 
--- FOV Çemberini görselleştirmek istersen aşağıdaki kısmı kullanabilirsin
-local fovCircle = Drawing.new("Circle")
-fovCircle.Color = Color3.fromRGB(255, 255, 255)
-fovCircle.Thickness = 1
-fovCircle.Radius = fovRadius
-fovCircle.Filled = false
-fovCircle.Visible = false -- Başlangıçta gizli
-
--- FOV çemberini ekranın tam ortasına sabitle
 RunService.RenderStepped:Connect(function()
-    if aimbotEnabled then
+    if aimbotEnabled and fovCircle then
         local camera = workspace.CurrentCamera
         fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         fovCircle.Visible = true
-    else
+    elseif fovCircle then
         fovCircle.Visible = false
     end
 end)
 
 local function getClosestPlayer()
     local closestPlayer = nil
-    local shortestDistance = fovRadius -- Sadece FOV içindekileri hedefle
+    local shortestDistance = fovRadius
     local currentCamera = workspace.CurrentCamera
     local mouseLocation = UserInputService:GetMouseLocation()
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            -- Takım Kontrolü
-            if player.Team and player.Team == localPlayer.Team then continue end
-            
-            local hum = player.Character:FindFirstChild("Humanoid")
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if p.Team and p.Team == player.Team then continue end
+            local hum = p.Character:FindFirstChild("Humanoid")
             if hum and hum.Health > 0 then
-                local screenPos, onScreen = currentCamera:WorldToViewportPoint(player.Character.Head.Position)
-                
+                local screenPos, onScreen = currentCamera:WorldToViewportPoint(p.Character.Head.Position)
                 if onScreen then
                     local playerScreenPoint = Vector2.new(screenPos.X, screenPos.Y)
                     local screenDistance = (playerScreenPoint - mouseLocation).Magnitude
-                    
                     if screenDistance < shortestDistance then
                         shortestDistance = screenDistance
-                        closestPlayer = player
+                        closestPlayer = p
                     end
                 end
             end
@@ -691,38 +624,27 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
--- Menü Butonu Tanımlaması
 createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir.", function(state)
     aimbotEnabled = state
-    
     if aimbotEnabled then
         aimbotConnection = RunService.RenderStepped:Connect(function()
             local targetPlayer = getClosestPlayer()
             if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
                 local head = targetPlayer.Character.Head
-                local camera = workspace.CurrentCamera
-                
-                -- Kamerayı hedefin kafasına odakla
-                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+                workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, head.Position)
             end
         end)
     else
-        if aimbotConnection then
-            aimbotConnection:Disconnect()
-            aimbotConnection = nil
-        end
+        if aimbotConnection then aimbotConnection:Disconnect() aimbotConnection = nil end
     end
 end)
 
---MM2 AUTO COIN     
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+-- 5. AUTO COIN
 local autoCoinEnabled = false
 local collectedCount = 0
 
-createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", function(state)
+createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli coin toplar.", function(state)
     autoCoinEnabled = state
-    
     if autoCoinEnabled then
         task.spawn(function()
             while autoCoinEnabled do
@@ -736,14 +658,12 @@ createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", fu
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
-                    -- Noclip: Duvarlardan geçmesi için
                     for _, part in pairs(char:GetDescendants()) do
                         if part:IsA("BasePart") then part.CanCollide = false end
                     end
 
                     local coinFound = nil
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        -- Sadece coinleri hedefler
                         if obj:IsA("BasePart") and (string.find(obj.Name, "Coin") or string.find(obj.Name, "Gold")) then
                             coinFound = obj
                             break
@@ -751,16 +671,13 @@ createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", fu
                     end
                     
                     if coinFound then
-                        -- Işınlanma bug'ını çözmek için "Ghost" yöntemi
-                        -- Karakteri direkt içine değil, hafif altına veya içine ışınla
                         hrp.CFrame = coinFound.CFrame + Vector3.new(0, -1, 0)
-                        
-                        -- Dokunma
-                        firetouchinterest(hrp, coinFound, 0)
-                        firetouchinterest(hrp, coinFound, 1)
-                        
+                        pcall(function()
+                            firetouchinterest(hrp, coinFound, 0)
+                            firetouchinterest(hrp, coinFound, 1)
+                        end)
                         collectedCount = collectedCount + 1
-                        task.wait(1.5) -- 2 saniye yerine 1.5 saniye (daha hızlı)
+                        task.wait(1.5)
                     end
                 end
                 task.wait(0.1)
@@ -769,34 +686,27 @@ createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", fu
     end
 end)
 
-
-
--- Basit ve Etkili Highlight ESP
+-- 6. NAME ESP
 createModernToggle("Name ESP", "Düşmanları ve isimlerini parlatır.", function(state)
     _G.ESP = state
-    while _G.ESP do
-        task.wait(1)
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= player and p.Character then
-                local highlight = p.Character:FindFirstChild("ESP_Highlight") or Instance.new("Highlight", p.Character)
-                highlight.Name = "ESP_Highlight"
-                highlight.Enabled = state
-                highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Kırmızı
+    task.spawn(function()
+        while _G.ESP do
+            task.wait(1)
+            for _, p in pairs(Players:GetPlayers()) do
+                if not _G.ESP then break end
+                if p ~= player and p.Character then
+                    local highlight = p.Character:FindFirstChild("ESP_Highlight") or Instance.new("Highlight", p.Character)
+                    highlight.Name = "ESP_Highlight"
+                    highlight.Enabled = _G.ESP
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                end
             end
         end
-    end
+    end)
 end)
 
-
--- Etkileşim Bekleme Süresini Sıfırla
-local InteractionHandler = game:GetService("Players").LocalPlayer.PlayerScripts:FindFirstChild("InteractionHandler", true)
-if InteractionHandler then
-    -- Etkileşim süresini 0.001'e çek
-    hookfunction(InteractionHandler.GetWaitTime, function() return 0.001 end)
-end
-
-
--- 3. ANTI-FLING
+-- 7. ANTI-FLING
+local antiFlingConn = nil
 createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
 	if state then
 		antiFlingConn = RunService.Heartbeat:Connect(function()
@@ -804,12 +714,10 @@ createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engel
 				for _, p in ipairs(Players:GetPlayers()) do
 					if p ~= player and p.Character then
 						local enemyRoot = p.Character:FindFirstChild("HumanoidRootPart")
-						if enemyRoot and (enemyRoot.Velocity.Magnitude > 75 or enemyRoot.RotVelocity.Magnitude > 75) then
+						if enemyRoot and (enemyRoot.AssemblyLinearVelocity.Magnitude > 75 or enemyRoot.AssemblyAngularVelocity.Magnitude > 75) then
 							for _, part in ipairs(p.Character:GetDescendants()) do
 								if part:IsA("BasePart") then
 									part.CanCollide = false
-									part.Velocity = Vector3.new(0,0,0)
-									part.RotVelocity = Vector3.new(0,0,0)
 								end
 							end
 						end
@@ -822,40 +730,21 @@ createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engel
 	end
 end)
 
--- Map Bypass & No Collide System
-local workspace = game:GetService("Workspace")
-
-local function bypassMap(state)
-    _G.BypassEnabled = state
-    
-    if state then
-        -- Haritadaki tüm objeleri tara
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                -- Görünmez duvarları bul (Transparency 1 ve CanCollide true olanlar genelde duvardır)
-                if obj.Transparency == 1 and obj.CanCollide == true then
-                    obj.CanCollide = false
-                end
-                -- Alternatif olarak 'Barrier' isimli her şeyi etkisiz kıl
-                if obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") then
-                    obj.CanCollide = false
-                end
+-- 8. MAP BYPASS
+createModernToggle("Map Bypass", "Görünmez duvarları yok et.", function(state)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            if (obj.Transparency == 1 and obj.CanCollide == true) or obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") then
+                obj.CanCollide = not state
             end
         end
-        showNotification("Map Bypass", "Görünmez duvarlar kaldırıldı!", true)
-    else
-        -- Geri döndürmek istersen (Burada oyunun orijinal haline dönmesi zor olabilir, 
-        -- bu yüzden oyun yenilenene kadar açık kalması daha sağlıklıdır.)
-        showNotification("Map Bypass", "Kapatıldı. Harita yenilenmesi gerekebilir.", false)
     end
-end
-
--- Menüye Buton Olarak Ekle
-createModernToggle("Map Bypass", "Görünmez duvarları yok et.", function(state)
-    bypassMap(state)
+    showNotification("Map Bypass", state ? "Görünmez duvarlar kaldırıldı!" : "Kapatıldı.", state)
 end)
 
--- 4. MM2 ESP
+-- 9. MM2 ESP
+local mm2ESPActive = false
+local mm2Highlights = {}
 createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gösterir.", function(state)
 	mm2ESPActive = state
 	if not mm2ESPActive then
@@ -889,43 +778,29 @@ createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gös
 	end
 end)
 
--- 5. SpeedHack (Otomatik Yenilenen & Agresif)
+-- 10. SPEEDHACK
 local speedHackActive = false
-local originalSpeed = 16 -- Varsayılan hız
-
-createModernToggle("SpeedHack", "Hızını 75 yapar ve 30s'de bir günceller.", function(state)
+createModernToggle("SpeedHack", "Hızını 75 yapar ve sürekli günceller.", function(state)
     speedHackActive = state
-    
     if speedHackActive then
         task.spawn(function()
             while speedHackActive do
                 local char = player.Character
                 local hum = char and char:FindFirstChild("Humanoid")
-                
-                if hum then
-                    -- Hızı her zaman 75'e zorla
-                    if hum.WalkSpeed ~= 75 then
-                        hum.WalkSpeed = 75
-                    end
+                if hum and hum.WalkSpeed ~= 75 then
+                    hum.WalkSpeed = 75
                 end
-                
-                -- 30 saniye bekle ve döngüyü tazele
-                task.wait(30)
-                
-                -- Eğer kapatıldıysa döngüden çık
-                if not speedHackActive then break end
+                task.wait(1)
             end
         end)
     else
-        -- Kapatıldığında hızı normale döndür
         local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-        if hum then
-            hum.WalkSpeed = originalSpeed
-        end
+        if hum then hum.WalkSpeed = 16 end
     end
 end)
 
--- 6. INFINITE JUMP
+-- 11. INFINITE JUMP
+local infJumpConn = nil
 createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
 	if state then
 		infJumpConn = UserInputService.JumpRequest:Connect(function()
@@ -938,7 +813,8 @@ createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.",
 	end
 end)
 
--- 7. BHOP
+-- 12. BHOP
+local bhopConn = nil
 createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop yaparsınız.", function(state)
 	if state then
 		bhopConn = RunService.RenderStepped:Connect(function()
@@ -954,49 +830,41 @@ createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop 
 	end
 end)
 
--- 8. YENİ: FULLBRIGHT
-local origAmbient, origColorShift, brightLoop = nil, nil, nil
-createModernToggle("FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
+-- 13. FULLBRIGHT
+local origAmbient, brightLoop = nil, nil
+createModernToggle("FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırır.", function(state)
 	if state then
 		origAmbient = Lighting.Ambient
-		origColorShift = Lighting.ColorShift_Top
 		brightLoop = RunService.RenderStepped:Connect(function()
 			Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-			Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255)
 		end)
 	else
 		if brightLoop then brightLoop:Disconnect() brightLoop = nil end
-		if origAmbient then Lighting.Ambient = origAmbient Lighting.ColorShift_Top = origColorShift end
+		if origAmbient then Lighting.Ambient = origAmbient end
 	end
 end)
 
--- 9. YENİ: NO FOG
-local origFogStart, origFogEnd = nil, nil
-createModernToggle("No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
+-- 14. NO FOG
+local origFogEnd = nil
+createModernToggle("No Fog", "Görüş mesafesini düşüren sisleri yok eder.", function(state)
 	if state then
-		origFogStart = Lighting.FogStart
 		origFogEnd = Lighting.FogEnd
-		Lighting.FogStart = 9e9
 		Lighting.FogEnd = 9e9
 	else
-		if origFogStart then Lighting.FogStart = origFogStart Lighting.FogEnd = origFogEnd end
+		if origFogEnd then Lighting.FogEnd = origFogEnd end
 	end
 end)
 
--- 10. ANTI-VOID
+-- 15. ANTI-VOID
 local antiVoidConn = nil
 createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", function(state)
 	if state then
 		antiVoidConn = RunService.Heartbeat:Connect(function()
 			local char = player.Character
 			local root = char and char:FindFirstChild("HumanoidRootPart")
-			if root then
-				-- Eğer oyuncu Y ekseninde -50'den aşağı düşerse tetiklenir
-				if root.Position.Y < -50 then
-					root.Velocity = Vector3.new(0, 0, 0)
-					-- Karakteri tekrar yukarıda güvenli bir koordinata taşır
-					root.CFrame = root.CFrame + Vector3.new(0, 80, 0)
-				end
+			if root and root.Position.Y < -50 then
+				root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+				root.CFrame = root.CFrame + Vector3.new(0, 80, 0)
 			end
 		end)
 	else
@@ -1004,490 +872,57 @@ createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", functio
 	end
 end)
 
--- 11. GUN ESP
-local gunESPActive = false
-local gunHighlight = nil
-
-createModernToggle("Gun ESP", "Yerdeki silahı mor renkli gösterir.", function(state)
-	gunESPActive = state
-	if not gunESPActive then
-		if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
-	else
-		task.spawn(function()
-			while gunESPActive do
-				task.wait(0.5) -- Sunucuyu yormamak için yarım saniyede bir tarar
-				if not gunESPActive then break end
-				
-				-- Workspace içinde "Gun" isimli bir Tool arar
-				local droppedGun = workspace:FindFirstChild("Gun", true)
-				
-				-- Bulunan nesne gerçekten bir Tool mu ve bir oyuncunun içinde değil mi kontrolü
-				if droppedGun and droppedGun:IsA("Tool") and not droppedGun:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
-					if not gunHighlight or gunHighlight.Parent ~= droppedGun then
-						if gunHighlight then gunHighlight:Destroy() end
-						
-						-- Siyah renkli ESP efekti oluşturma
-						gunHighlight = Instance.new("Highlight")
-						gunHighlight.FillColor = Color3.fromRGB(150, 0, 255)      -- İç dolgu siyah
-						gunHighlight.OutlineColor = Color3.fromRGB(80, 0, 150) -- Dış çizgi koyu gri
-						gunHighlight.FillTransparency = 0.4
-						gunHighlight.Parent = droppedGun
-					end
-				else
-					if gunHighlight then gunHighlight:Destroy() gunHighlight = nil end
-				end
-			end
-		end)
-	end
-end)
-
--- 4. AUTO AIM / TRIGGERBOT CONTROL (Menü Bağlantılı)
-local autoAimEnabled = false
-local autoAimConnection = nil
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-local mouse = localPlayer:GetMouse()
-
--- Fare ile tıklama simülasyonu yapan fonksiyon (VirtualInputManager kullanır)
-local vim = game:GetService("VirtualInputManager")
-local function autoClick()
-    vim:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0) -- Sol Tık Bas
-    task.wait(0.02)
-    vim:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0) -- Sol Tık Bırak
-end
-
-createModernToggle("Auto Aim", "Crosshair rakibin üzerine geldiğinde otomatik ateş eder.", function(state)
-    autoAimEnabled = state
-    
-    if autoAimEnabled then
-        -- Farenin hedef aldığı nesneyi sürekli kontrol eder
-        autoAimConnection = mouse:GetPropertyChangedSignal("Target"):Connect(function()
-            if not autoAimEnabled then return end
-            
-            local target = mouse.Target
-            if target and target.Parent then
-                -- Target bir karakter parçası mı veya model mi kontrol et
-                local character = target.Parent
-                if not character:FindFirstChild("Humanoid") then
-                    character = character.Parent -- Aksesuar veya şapkalara denk gelirse üst modeli al
-                end
-                
-                local humanoid = character and character:FindFirstChild("Humanoid")
-                local player = Players:GetPlayerFromCharacter(character)
-                
-                -- Hedef geçerli bir oyuncuysa, canlıysa ve takım arkadaşın değilse ateş et
-                if player and player ~= localPlayer and humanoid and humanoid.Health > 0 then
-                    -- Takım Kontrolü (Team Check)
-                    if player.Team and player.Team == localPlayer.Team then return end
-                    
-                    -- Chate yazmıyorsan veya oyun içi arayüze tıklamıyorsan ateş et
-                    if not game:GetService("UserInputService"):GetFocusedTextBox() then
-                        autoClick()
-                    end
-                end
-            end
-        end)
-    else
-        -- Kapatıldığında bağlantıyı temizle
-        if autoAimConnection then
-            autoAimConnection:Disconnect()
-            autoAimConnection = nil
-        end
-    end
-end)
-
--- 13. SpinBot
-local spinConn = nil
-createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(state)
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if state and root then
-        spinConn = RunService.RenderStepped:Connect(function()
-            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(45), 0) -- Hız ayarı (45 derece)
-        end)
-    else
-        if spinConn then spinConn:Disconnect() spinConn = nil end
-    end
-end)
-
--- 14. HITBOX EXPANDER (Gövde Büyütücü)
-local hitboxEnabled = false
-local hitboxConnection = nil
-local expandedSize = Vector3.new(12, 12, 12) -- Hitbox büyüklüğü (İdealdir)
-
-createModernToggle("Hitbox Expander", "Rakiplerin vurulma alanını devasa yapar.", function(state)
-    hitboxEnabled = state
-    
-    if hitboxEnabled then
-        hitboxConnection = game:GetService("RunService").Heartbeat:Connect(function()
-            for _, targetPlayer in ipairs(game:GetService("Players"):GetPlayers()) do
-                if targetPlayer ~= player and targetPlayer.Character then
-                    local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        root.Size = expandedSize
-                        root.Transparency = 0.7 -- Nereye vuracağını görmen için yarı şeffaf turuncu kutu yapar
-                        root.Color = Color3.fromRGB(220, 130, 30) -- Senin WorthNet Turuncusu
-                        root.CanCollide = false -- Kutulara takılıp düşmemen için fisik kapatılır
-                    end
-                end
-            end
-        end)
-    else
-        if hitboxConnection then hitboxConnection:Disconnect() hitboxConnection = nil end
-        -- Kapatıldığında herkesin hitbox boyutunu eski orijinal haline getirir
-        for _, targetPlayer in ipairs(game:GetService("Players"):GetPlayers()) do
-            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                targetPlayer.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-                targetPlayer.Character.HumanoidRootPart.Transparency = 1
-            end
-        end
-    end
-end)
-
--- 14. Inventory ESP (Envanter Tarayıcı)
-local invESPActive = false
-local invTags = {}
-
-createModernToggle("Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri listeler.", function(state)
-    invESPActive = state
-    if not invESPActive then
-        for _, tag in pairs(invTags) do if tag then tag:Destroy() end end
-        table.clear(invTags)
-    else
-        task.spawn(function()
-            while invESPActive do
-                task.wait(1) -- Sunucuyu yormamak için 1 saniyelik tarama
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= player and p.Character then
-                        local items = {}
-                        -- 1. Elde tutulanı kontrol et
-                        local tool = p.Character:FindFirstChildOfClass("Tool")
-                        if tool then table.insert(items, tool.Name) end
-                        
-                        -- 2. Backpack (Sırt çantası) kontrol et
-                        local back = p:FindFirstChild("Backpack")
-                        if back then
-                            for _, item in ipairs(back:GetChildren()) do
-                                if item:IsA("Tool") then table.insert(items, item.Name) end
-                            end
-                        end
-                        
-                        -- ESP Tag oluştur/güncelle
-                        local head = p.Character:FindFirstChild("Head")
-                        if head then
-                            if not invTags[p.Name] then
-                                local bb = Instance.new("BillboardGui", head)
-                                bb.Size = UDim2.new(0, 200, 0, 50)
-                                bb.StudsOffset = Vector3.new(0, 3, 0)
-                                local label = Instance.new("TextLabel", bb)
-                                label.Size = UDim2.new(1,0,1,0)
-                                label.BackgroundTransparency = 1
-                                label.TextColor3 = Color3.fromRGB(255, 255, 0)
-                                label.TextScaled = true
-                                invTags[p.Name] = label
-                            end
-                            invTags[p.Name].Text = table.concat(items, ", ")
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
--- 15. Teleport To Nearest Player
-createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
-    if state then
-        local target = nil
-        local dist = 10000
-        
-        -- En yakın oyuncuyu bul
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if myRoot then
-                    local d = (myRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if d < dist then
-                        dist = d
-                        target = p.Character.HumanoidRootPart
-                    end
-                end
-            end
-        end
-        
-        -- Işınlanma işlemi
-        if target then
-            player.Character.HumanoidRootPart.CFrame = target.CFrame * CFrame.new(0, 0, 2)
-            showNotification("Teleport", "Oyuncuya ışınlanıldı!", true)
-        else
-            showNotification("Teleport", "Yakında oyuncu bulunamadı.", false)
-        end
-        
-        -- Butonu otomatik kapat (sadece tıklandığında çalışması için)
-        task.wait(0.5)
-        -- Not: Burada butonun 'isOn' durumunu false yapacak logic ekleyebilirsin
-    end
-end)
-
--- 15. Fling System (Fixlendi - Hedefi Uçuran Versiyon)
-createModernToggle("Fling System", "Hedefi sessizce fırlatır (Güvenli).", function(state)
-    _G.FlingEnabled = state
-    task.spawn(function()
-        while _G.FlingEnabled do
-            task.wait(0.1)
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            if hrp then
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                        local targetHrp = p.Character.HumanoidRootPart
-                        local dist = (hrp.Position - targetHrp.Position).Magnitude
-                        
-                        -- Sadece yakınındakine uygula
-                        if dist < 10 then
-                            -- Fiziksel çakışma (Collision) yaratmak için 
-                            -- Karakterin Hızını/Pozisyonunu sabitleyip hedefin içine itiyoruz
-                            local vel = hrp.Velocity -- Mevcut hızını sakla
-                            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 0.5) 
-                            
-                            -- Hız patlaması yaratmadan sadece fiziksel çarpmayı tetiklemek için:
-                            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                            task.wait(0.05)
-                            hrp.AssemblyLinearVelocity = vel
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end)
-
--- GOD MODE (Health Reset Loop)
+-- 16. GOD MODE
 local godEnabled = false
-
-createModernToggle("God Mode", "Canını sürekli 100'de tutar.", function(state)
+createModernToggle("God Mode", "Canını sürekli full'de tutar.", function(state)
     godEnabled = state
 end)
 
-game:GetService("RunService").Heartbeat:Connect(function()
+RunService.Heartbeat:Connect(function()
     if godEnabled then
-        local player = game.Players.LocalPlayer
         local char = player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            -- Canını sürekli full'e çek
-            char.Humanoid.Health = char.Humanoid.MaxHealth
-        end
+        local hum = char and char:FindFirstChild("Humanoid")
+        if hum then hum.Health = hum.MaxHealth end
     end
 end)
 
--- CLICK TP
-local mouse = game.Players.LocalPlayer:GetMouse()
-
+-- 17. CLICK TP
+local mouse = player:GetMouse()
+_G.ClickTP = false
 createModernToggle("Click TP", "Tıkladığın yere ışınlar.", function(state)
     _G.ClickTP = state
 end)
 
 mouse.Button1Down:Connect(function()
     if _G.ClickTP and mouse.Hit then
-        local targetPos = mouse.Hit.p
-        local char = game.Players.LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
-        end
-    end
-end)
--- AUTO FOLLOW & LOCK SYSTEM
-local followEnabled = false
-local RunService = game:GetService("RunService")
-
-createModernToggle("Auto Follow/Lock", "En yakın oyuncunun içine girer ve takip eder.", function(state)
-    followEnabled = state
-end)
-
-RunService.RenderStepped:Connect(function()
-    if followEnabled then
-        local player = game.Players.LocalPlayer
         local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        
-        if hrp then
-            local closestPlayer = nil
-            local shortestDist = math.huge
-            
-            -- Etraftaki en yakın oyuncuyu bul
-            for _, p in pairs(game.Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local targetHrp = p.Character.HumanoidRootPart
-                    local dist = (hrp.Position - targetHrp.Position).Magnitude
-                    
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closestPlayer = p
-                    end
-                end
-            end
-            
-            -- Eğer biri bulunduysa, içine ışınlan
-            if closestPlayer and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                hrp.CFrame = closestPlayer.Character.HumanoidRootPart.CFrame
-            end
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.p + Vector3.new(0, 3, 0))
         end
     end
 end)
--- 16. Anti-AFK
+
+-- 18. ANTI-AFK
 local afkConn = nil
 createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
     if state then
-        afkConn = Players.LocalPlayer.Idled:Connect(function()
+        afkConn = player.Idled:Connect(function()
             game:GetService("VirtualUser"):CaptureController()
             game:GetService("VirtualUser"):ClickButton1(Vector2.new(0,0))
         end)
     else
-        if afkConn then afkConn:Disconnect() end
+        if afkConn then afkConn:Disconnect() afkConn = nil end
     end
 end)
 
--- 17. Rejoin Button (Tek tıkla çıkıp tekrar girer)
-local TeleportService = game:GetService("TeleportService")
-
+-- 19. REJOIN
 createModernToggle("Rejoin", "Aynı sunucuya tekrar bağlanır.", function(state)
     if state then
-        local jobId = game.JobId
-        TeleportService:Teleport(game.PlaceId, player)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, player)
     end
 end)
 
--- 18. Smooth Aim (FPS Oyunları İçin Güvenli Auto-Aim)
-local smoothAimActive = false
-local aimSpeed = 0.3 -- Bu değeri düşürürsen daha yavaş (daha güvenli) kilitlenir
-
-createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
-    smoothAimActive = state
-    task.spawn(function()
-        while smoothAimActive do
-            task.wait()
-            local closestPlayer = nil
-            local shortestDist = math.huge
-            
-            -- En yakındaki düşmanı bul
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-                    local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.Head.Position)
-                    if onScreen then
-                        local dist = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
-                        if dist < shortestDist then
-                            closestPlayer = p.Character.Head
-                            shortestDist = dist
-                        end
-                    end
-                end
-            end
-            
-            -- Yumuşak kilitlenme
-            if closestPlayer and shortestDist < 200 then -- 200 piksel mesafe sınırı
-                local targetCFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closestPlayer.Position)
-                workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(targetCFrame, aimSpeed)
-            end
-        end
-    end)
-end)
-
-
--- 6. FOV CIRCLE (Güvenli Versiyon)
-local fovEnabled = false
-local fovConnection = nil
-local RunService = game:GetService("RunService")
-local fovCircle
-
--- Executor Drawing desteklemiyorsa çökmeyi önler
-pcall(function()
-    fovCircle = Drawing.new("Circle")
-    fovCircle.Visible = false
-    fovCircle.Radius = 150
-    fovCircle.Color = Color3.fromRGB(255, 255, 255)
-    fovCircle.Thickness = 1.5
-    fovCircle.Filled = false
-    fovCircle.Transparency = 1
-end)
-
-createModernToggle("Show FOV", "Aimbot'un kapsama alanını gösterir.", function(state)
-    fovEnabled = state
-    if fovCircle then fovCircle.Visible = fovEnabled end
-    
-    if fovEnabled and fovCircle then
-        fovConnection = RunService.RenderStepped:Connect(function()
-            local guiInset = game:GetService("GuiService"):GetGuiInset()
-            fovCircle.Position = Vector2.new(mouse.X, mouse.Y + guiInset.Y)
-        end)
-    else
-        if fovConnection then
-            fovConnection:Disconnect()
-            fovConnection = nil
-        end
-    end
-end)
-
--- MM2 ÖZEL AIMBOT (Sadece Silahlılara/Bıçaklılara Kitlenir)
-local mm2AimbotEnabled = false
-local mm2AimbotConnection = nil
-
-local function getArmedPlayer()
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-    local currentCamera = workspace.CurrentCamera
-    local localChar = localPlayer.Character
-    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-
-    if not localRoot then return nil end
-
-    for _, targetPlayer in ipairs(Players:GetPlayers()) do
-        if targetPlayer ~= localPlayer and targetPlayer.Character then
-            local char = targetPlayer.Character
-            local back = targetPlayer:FindFirstChild("Backpack")
-            local hum = char:FindFirstChild("Humanoid")
-            local root = char:FindFirstChild("HumanoidRootPart")
-
-            -- Adamın envanterinde veya elinde Gun veya Knife var mı kontrol et
-            local hasWeapon = (char:FindFirstChild("Knife") or char:FindFirstChild("Gun") or (back and (back:FindFirstChild("Knife") or back:FindFirstChild("Gun"))))
-
-            if hasWeapon and root and hum and hum.Health > 0 then
-                local _, onScreen = currentCamera:WorldToViewportPoint(root.Position)
-                if onScreen then
-                    local distance = (root.Position - localRoot.Position).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closestPlayer = targetPlayer
-                    end
-                end
-            end
-        end
-    end
-    return closestPlayer
-end
-
-createModernToggle("MM2 Aimbot", "Sadece Katil ve Şerife kilitlenir.", function(state)
-    mm2AimbotEnabled = state
-    
-    if mm2AimbotEnabled then
-        mm2AimbotConnection = RunService.RenderStepped:Connect(function()
-            local targetPlayer = getArmedPlayer()
-            local char = targetPlayer and targetPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart") -- Gövdeye kilitlenmek bıçak atmak için daha iyidir
-            
-            if root then
-                local camera = workspace.CurrentCamera
-                camera.CFrame = CFrame.new(camera.CFrame.Position, root.Position)
-            end
-        end)
-    else
-        if mm2AimbotConnection then
-            mm2AimbotConnection:Disconnect()
-            mm2AimbotConnection = nil
-        end
-    end
-end)
-
--- Arka plan bypass sistemi
+-- Bypass koruması güvenli moda alındı
 pcall(function()
 	local metatable = getrawmetatable(game)
 	local namecall = metatable.__namecall
@@ -1499,3 +934,4 @@ pcall(function()
 	setreadonly(metatable, true)
 end)
 
+showNotification("WorthNet", "Tüm sistemler başarıyla yüklendi!", true)
