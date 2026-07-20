@@ -1,4 +1,4 @@
--- WorthNet UI System v4.3 - Search Engine, Notifications & Premium Expand (Düzeltilmiş ve Optimize Edilmiş Sürüm)[cite: 1]
+-- WorthNet UI System v4.4 - Glass Bridge, Tug of War & Adjustable Spam SpeedHack
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -70,7 +70,7 @@ local function makeDraggable(frame)
 end
 
 ---------------------------------------------------------
--- MERKEZİ BİLDİRİM SİSTEMİ (ALT ALTA SIRALAMA MOTORU)
+-- MERKEZİ BİLDİRİM SİSTEMİ
 ---------------------------------------------------------
 local activeNotifications = {}
 
@@ -213,9 +213,7 @@ allHacksLabel.TextXAlignment = Enum.TextXAlignment.Left
 allHacksLabel.ZIndex = 8
 allHacksLabel.Parent = allHacksBtn
 
----------------------------------------------------------
--- ARAMA KUTUSU (SEARCH BAR)
----------------------------------------------------------
+-- ARAMA KUTUSU
 local searchBox = Instance.new("TextBox")
 searchBox.Size = UDim2.new(1, -20, 0, 32)
 searchBox.Position = UDim2.new(0, 10, 0, 110)
@@ -235,9 +233,7 @@ searchStroke.Color = Color3.fromRGB(50, 50, 55)
 searchStroke.Thickness = 1
 searchStroke.Parent = searchBox
 
----------------------------------------------------------
--- TOPLU KONTROL BUTONLARI (OPEN ALL / CLOSE ALL)
----------------------------------------------------------
+-- TOPLU KONTROL BUTONLARI
 local controlContainer = Instance.new("Frame")
 controlContainer.Size = UDim2.new(1, -20, 0, 30)
 controlContainer.Position = UDim2.new(0, 10, 0, 150)
@@ -293,9 +289,7 @@ closeAllBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
----------------------------------------------------------
--- YOUTUBE SOSYAL MEDYA BUTONU
----------------------------------------------------------
+-- YOUTUBE BUTONU
 local ytBtn = Instance.new("TextButton")
 ytBtn.Size = UDim2.new(1, -20, 0, 35)
 ytBtn.Position = UDim2.new(0, 10, 1, -45)
@@ -475,6 +469,116 @@ local function createModernToggle(name, description, callback)
 	_G.toggleRegistry[name] = updateState
 end
 
+-- AYARLANABİLİR SLİDER (BAR) FONKSİYONU
+local function createModernSlider(name, description, min, max, default, callback)
+	local cardFrame = Instance.new("Frame")
+	cardFrame.Name = name
+	cardFrame.Size = UDim2.new(1, -10, 0, 65)
+	cardFrame.BackgroundColor3 = THEME.Card
+	cardFrame.BorderSizePixel = 0
+	cardFrame.ZIndex = 7
+	cardFrame.Parent = contentArea
+	roundCorners(cardFrame, 8)
+	
+	local title = Instance.new("TextLabel")
+	title.Name = "HackyTitle"
+	title.Size = UDim2.new(0, 200, 0, 20)
+	title.Position = UDim2.new(0, 15, 0, 5)
+	title.BackgroundTransparency = 1
+	title.Text = name
+	title.TextColor3 = THEME.TextMain
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 14
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 8
+	title.Parent = cardFrame
+	
+	local desc = Instance.new("TextLabel")
+	desc.Size = UDim2.new(0, 250, 0, 15)
+	desc.Position = UDim2.new(0, 15, 0, 25)
+	desc.BackgroundTransparency = 1
+	desc.Text = description
+	desc.TextColor3 = THEME.TextDark
+	desc.Font = Enum.Font.Gotham
+	desc.TextSize = 11
+	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.ZIndex = 8
+	desc.Parent = cardFrame
+	
+	local valLabel = Instance.new("TextLabel")
+	valLabel.Size = UDim2.new(0, 60, 0, 20)
+	valLabel.Position = UDim2.new(1, -75, 0, 5)
+	valLabel.BackgroundTransparency = 1
+	valLabel.Text = tostring(default)
+	valLabel.TextColor3 = THEME.Accent
+	valLabel.Font = Enum.Font.GothamBold
+	valLabel.TextSize = 13
+	valLabel.TextXAlignment = Enum.TextXAlignment.Right
+	valLabel.ZIndex = 8
+	valLabel.Parent = cardFrame
+	
+	local sliderBar = Instance.new("Frame")
+	sliderBar.Size = UDim2.new(1, -30, 0, 6)
+	sliderBar.Position = UDim2.new(0, 15, 0, 48)
+	sliderBar.BackgroundColor3 = THEME.ToggleOff
+	sliderBar.BorderSizePixel = 0
+	sliderBar.ZIndex = 8
+	sliderBar.Parent = cardFrame
+	roundCorners(sliderBar, 3)
+	
+	local sliderFill = Instance.new("Frame")
+	sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+	sliderFill.BackgroundColor3 = THEME.Accent
+	sliderFill.BorderSizePixel = 0
+	sliderFill.ZIndex = 9
+	sliderFill.Parent = sliderBar
+	roundCorners(sliderFill, 3)
+	
+	local sliderBtn = Instance.new("TextButton")
+	sliderBtn.Size = UDim2.new(1, 10, 1, 10)
+	sliderBtn.Position = UDim2.new(0, -5, 0, -5)
+	sliderBtn.BackgroundTransparency = 1
+	sliderBtn.Text = ""
+	sliderBtn.ZIndex = 10
+	sliderBtn.Parent = sliderBar
+	
+	local dragging = false
+	local currentValue = default
+	
+	local function updateSlider(input)
+		local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+		sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+		currentValue = math.floor(min + ((max - min) * pos))
+		valLabel.Text = tostring(currentValue)
+		callback(currentValue)
+	end
+	
+	sliderBtn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+		end
+	end)
+	
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+	
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			updateSlider(input)
+		end
+	end)
+	
+	sliderBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			updateSlider(input)
+			dragging = true
+		end
+	end)
+end
+
 ---------------------------------------------------------
 -- HİLE AKTİVASYON ALANI
 ---------------------------------------------------------
@@ -486,7 +590,82 @@ local infJumpConn = nil
 local bhopConn = nil
 local originalSpeed = 16
 
--- 1. NOCLIP
+-- 1. GLASS BRIDGE ESP
+local glassEspActive = false
+createModernToggle("Glass Bridge ESP", "Güvenli ve kırılacak camları gösterir.", function(state)
+	glassEspActive = state
+	task.spawn(function()
+		while glassEspActive do
+			task.wait(0.5)
+			for _, obj in pairs(workspace:GetDescendants()) do
+				if obj:IsA("BasePart") then
+					local name = string.lower(obj.Name)
+					if string.find(name, "glass") or string.find(name, "pane") then
+						local hl = obj:FindFirstChild("WorthNetGlassHL") or Instance.new("Highlight", obj)
+						hl.Name = "WorthNetGlassHL"
+						hl.Enabled = glassEspActive
+						if obj.Material == Enum.Material.Glass and obj.Transparency < 0.9 then
+							hl.FillColor = Color3.fromRGB(0, 255, 100)
+						else
+							hl.FillColor = Color3.fromRGB(255, 0, 0)
+						end
+					end
+				end
+			end
+		end
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				local hl = obj:FindFirstChild("WorthNetGlassHL")
+				if hl then hl:Destroy() end
+			end
+		end
+	end)
+end)
+
+-- 2. TUG OF WAR AUTO-CLICKER
+local towActive = false
+createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik tıklar.", function(state)
+	towActive = state
+	task.spawn(function()
+		while towActive do
+			task.wait(0.01)
+			pcall(function()
+				local vim = game:GetService("VirtualInputManager")
+				vim:SendMouseButtonEvent(500, 500, 0, true, game, 0)
+				task.wait(0.005)
+				vim:SendMouseButtonEvent(500, 500, 0, false, game, 0)
+			end)
+		end
+	end)
+end)
+
+-- 3. SPEEDHACK (Ayarlanabilir Slider & Sürekli Spam)
+local speedHackActive = false
+local targetSpeedValue = 75
+local speedSpamConn = nil
+
+createModernToggle("SpeedHack", "Hızını aktif eder ve sıfırlanmasını engellemek için spamlar.", function(state)
+	speedHackActive = state
+	if speedHackActive then
+		speedSpamConn = RunService.Heartbeat:Connect(function()
+			local char = player.Character
+			local hum = char and char:FindFirstChild("Humanoid")
+			if hum and hum.WalkSpeed ~= targetSpeedValue then
+				hum.WalkSpeed = targetSpeedValue
+			end
+		end)
+	else
+		if speedSpamConn then speedSpamConn:Disconnect() speedSpamConn = nil end
+		local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+		if hum then hum.WalkSpeed = originalSpeed end
+	end
+end)
+
+createModernSlider("Speed Value", "SpeedHack hız seviyesini ayarlar.", 16, 250, 75, function(value)
+	targetSpeedValue = value
+end)
+
+-- 4. NOCLIP
 createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", function(state)
 	if state then
 		noclipConnection = RunService.Stepped:Connect(function()
@@ -501,7 +680,7 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- 2. FLY CONTROL
+-- 5. FLY CONTROL
 local flyingEnabled = false
 local flySpeed = 60
 local bv, bg
@@ -565,7 +744,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- INVISIBLE
+-- 6. INVISIBLE
 local function toggleInvisibility(state)
     local char = player.Character
     if not char then return end
@@ -588,7 +767,7 @@ createModernToggle("Invisible", "Karakterini görünmez yap.", function(state)
     toggleInvisibility(state)
 end)
 
--- AIMBOT CONTROL
+-- 7. AIMBOT CONTROL
 local aimbotEnabled = false
 local aimbotConnection = nil
 local fovRadius = 200 
@@ -659,7 +838,7 @@ createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir
     end
 end)
 
--- AUTO COIN (Güvenli firetouchinterest kontrolüyle)
+-- 8. AUTO COIN
 local autoCoinEnabled = false
 local collectedCount = 0
 
@@ -711,7 +890,7 @@ createModernToggle("Auto Coin", "Yer altından, hızlı ve güvenli toplar.", fu
     end
 end)
 
--- NAME ESP
+-- 9. NAME ESP
 createModernToggle("Name ESP", "Düşmanları ve isimlerini parlatır.", function(state)
     _G.ESP = state
     task.spawn(function()
@@ -738,7 +917,7 @@ if InteractionHandler then
     end)
 end
 
--- ANTI-FLING
+-- 10. ANTI-FLING
 createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
 	if state then
 		antiFlingConn = RunService.Heartbeat:Connect(function()
@@ -764,7 +943,7 @@ createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engel
 	end
 end)
 
--- MAP BYPASS
+-- 11. MAP BYPASS
 local function bypassMap(state)
     _G.BypassEnabled = state
     if state then
@@ -788,7 +967,7 @@ createModernToggle("Map Bypass", "Görünmez duvarları yok et.", function(state
     bypassMap(state)
 end)
 
--- MM2 ESP
+-- 12. MM2 ESP
 createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gösterir.", function(state)
 	mm2ESPActive = state
 	if not mm2ESPActive then
@@ -822,30 +1001,7 @@ createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gös
 	end
 end)
 
--- SPEEDHACK
-local speedHackActive = false
-
-createModernToggle("SpeedHack", "Hızını 75 yapar ve 30s'de bir günceller.", function(state)
-    speedHackActive = state
-    if speedHackActive then
-        task.spawn(function()
-            while speedHackActive do
-                local char = player.Character
-                local hum = char and char:FindFirstChild("Humanoid")
-                if hum and hum.WalkSpeed ~= 75 then
-                    hum.WalkSpeed = 75
-                end
-                task.wait(30)
-                if not speedHackActive then break end
-            end
-        end)
-    else
-        local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-        if hum then hum.WalkSpeed = originalSpeed end
-    end
-end)
-
--- INFINITE JUMP
+-- 13. INFINITE JUMP
 createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
 	if state then
 		infJumpConn = UserInputService.JumpRequest:Connect(function()
@@ -858,7 +1014,7 @@ createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.",
 	end
 end)
 
--- BHOP
+-- 14. BHOP
 createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop yaparsınız.", function(state)
 	if state then
 		bhopConn = RunService.RenderStepped:Connect(function()
@@ -874,7 +1030,7 @@ createModernToggle("Bhop Control", "Zıplama tuşuna basılı tutarak seri bhop 
 	end
 end)
 
--- FULLBRIGHT
+-- 15. FULLBRIGHT
 local origAmbient, origColorShift, brightLoop = nil, nil, nil
 createModernToggle("FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
 	if state then
@@ -890,7 +1046,7 @@ createModernToggle("FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldı
 	end
 end)
 
--- NO FOG
+-- 16. NO FOG
 local origFogStart, origFogEnd = nil, nil
 createModernToggle("No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
 	if state then
@@ -903,7 +1059,7 @@ createModernToggle("No Fog", "Görüş mesafesini düşüren tüm sis efektlerin
 	end
 end)
 
--- ANTI-VOID
+-- 17. ANTI-VOID
 local antiVoidConn = nil
 createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", function(state)
 	if state then
@@ -920,7 +1076,7 @@ createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", functio
 	end
 end)
 
--- GUN ESP
+-- 18. GUN ESP
 local gunESPActive = false
 local gunHighlight = nil
 
@@ -951,7 +1107,7 @@ createModernToggle("Gun ESP", "Yerdeki silahı mor renkli gösterir.", function(
 	end
 end)
 
--- AUTO AIM / TRIGGERBOT
+-- 19. AUTO AIM / TRIGGERBOT
 local autoAimEnabled = false
 local autoAimConnection = nil
 local vim = game:GetService("VirtualInputManager")
@@ -992,7 +1148,7 @@ createModernToggle("Auto Aim", "Crosshair rakibin üzerine geldiğinde otomatik 
     end
 end)
 
--- SPINBOT
+-- 20. SPINBOT
 local spinConn = nil
 createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(state)
     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -1005,7 +1161,7 @@ createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(stat
     end
 end)
 
--- HITBOX EXPANDER (Güvenli versiyon)
+-- 21. HITBOX EXPANDER
 local hitboxEnabled = false
 local hitboxConnection = nil
 
@@ -1036,7 +1192,7 @@ createModernToggle("Hitbox Expander", "Rakiplerin vurulma alanını büyütür."
     end
 end)
 
--- INVENTORY ESP
+-- 22. INVENTORY ESP
 local invESPActive = false
 local invTags = {}
 
@@ -1084,7 +1240,7 @@ createModernToggle("Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri
     end
 end)
 
--- TP NEAREST
+-- 23. TP NEAREST
 createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
     if state then
         local target = nil
@@ -1112,7 +1268,7 @@ createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırs
     end
 end)
 
--- FLING SYSTEM
+-- 24. FLING SYSTEM
 createModernToggle("Fling System", "Hedefi fırlatır.", function(state)
     _G.FlingEnabled = state
     task.spawn(function()
@@ -1139,7 +1295,7 @@ createModernToggle("Fling System", "Hedefi fırlatır.", function(state)
     end)
 end)
 
--- GOD MODE
+-- 25. GOD MODE
 local godEnabled = false
 createModernToggle("God Mode", "Canını sürekli 100'de tutar.", function(state)
     godEnabled = state
@@ -1154,7 +1310,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- CLICK TP
+-- 26. CLICK TP
 createModernToggle("Click TP", "Tıkladığın yere ışınlar.", function(state)
     _G.ClickTP = state
 end)
@@ -1169,7 +1325,7 @@ mouse.Button1Down:Connect(function()
     end
 end)
 
--- AUTO FOLLOW & LOCK SYSTEM
+-- 27. AUTO FOLLOW & LOCK SYSTEM
 local followEnabled = false
 createModernToggle("Auto Follow/Lock", "En yakın oyuncuyu takip eder.", function(state)
     followEnabled = state
@@ -1199,7 +1355,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ANTI-AFK
+-- 28. ANTI-AFK
 local afkConn = nil
 createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
     if state then
@@ -1212,7 +1368,7 @@ createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
     end
 end)
 
--- REJOIN
+-- 29. REJOIN
 local TeleportService = game:GetService("TeleportService")
 createModernToggle("Rejoin", "Aynı sunucuye tekrar bağlanır.", function(state)
     if state then
@@ -1220,7 +1376,7 @@ createModernToggle("Rejoin", "Aynı sunucuye tekrar bağlanır.", function(state
     end
 end)
 
--- SMOOTH AIM
+-- 30. SMOOTH AIM
 local smoothAimActive = false
 local aimSpeed = 0.3
 
@@ -1251,7 +1407,7 @@ createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitl
     end)
 end)
 
--- MM2 ÖZEL AIMBOT
+-- 31. MM2 ÖZEL AIMBOT
 local mm2AimbotEnabled = false
 local mm2AimbotConnection = nil
 
