@@ -747,6 +747,36 @@ createModernToggle("Combat", "MM2 Smart Killer", "Rolünü otomatik algılar, du
 		end
 	end)
 end)
+
+-- -- 10. SPECTATE SYSTEM (İzleyici Modu)
+local spectating = false
+local currentTargetIndex = 1
+
+createModernToggle("Spectate", "Seçilen oyuncuyu kameraya kilitler.", function(state)
+	spectating = state
+	local camera = workspace.CurrentCamera
+	
+	if spectating then
+		task.spawn(function()
+			while spectating do
+				task.wait(0.1)
+				local playersList = Players:GetPlayers()
+				if #playersList > 1 then
+					currentTargetIndex = (currentTargetIndex % #playersList) + 1
+					local target = playersList[currentTargetIndex]
+					
+					if target ~= player and target.Character and target.Character:FindFirstChild("Humanoid") then
+						camera.CameraSubject = target.Character.Humanoid
+					end
+				end
+			end
+		end)
+	else
+		if player.Character and player.Character:FindFirstChild("Humanoid") then
+			camera.CameraSubject = player.Character.Humanoid
+		end
+	end
+end)
 -- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
 local speedHackActive = false
 local targetSpeedValue = 75
