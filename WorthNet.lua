@@ -984,76 +984,256 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 
--- 7. AIMBOT CONTROL
-local aimbotEnabled = false
-local aimbotConnection = nil
-local fovRadius = 150
+-- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma & Smooth Takip)
+local aimbotActive = false
+local targetFovValue = 150
+local aimbotConn = nil
 
+local aimbotContainer = Instance.new("Frame")
+aimbotContainer.Name = "AimbotModule"
+aimbotContainer.Size = UDim2.new(1, -10, 0, 105)
+aimbotContainer.BackgroundColor3 = THEME.Card
+aimbotContainer.BorderSizePixel = 0
+aimbotContainer.ZIndex = 7
+aimbotContainer.Parent = contentArea
+roundCorners(aimbotContainer, 8)
+
+local aimbotListLayout = Instance.new("UIListLayout")
+aimbotListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+aimbotListLayout.Padding = UDim.new(0, 10)
+aimbotListLayout.Parent = aimbotContainer
+
+local topRow = Instance.new("Frame")
+topRow.Size = UDim2.new(1, 0, 0, 28)
+topRow.BackgroundTransparency = 1
+topRow.LayoutOrder = 1
+topRow.Parent = aimbotContainer
+
+local aimbotTitleLabel = Instance.new("TextLabel")
+aimbotTitleLabel.Name = "AimbotTitle"
+aimbotTitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+aimbotTitleLabel.Position = UDim2.new(0, 15, 0, 0)
+aimbotTitleLabel.BackgroundTransparency = 1
+aimbotTitleLabel.Text = "Aimbot"
+aimbotTitleLabel.TextColor3 = THEME.TextMain
+aimbotTitleLabel.TextSize = 14
+aimbotTitleLabel.Font = Enum.Font.GothamBold
+aimbotTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+aimbotTitleLabel.ZIndex = 8
+aimbotTitleLabel.Parent = topRow
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 22)
+toggleBtn.Position = UDim2.new(1, -60, 0.5, -11)
+toggleBtn.BackgroundColor3 = THEME.ToggleOff
+toggleBtn.Text = ""
+toggleBtn.ZIndex = 8
+local toggleCorner = Instance.new("UICorner") 
+toggleCorner.CornerRadius = UDim.new(1, 0) 
+toggleCorner.Parent = toggleBtn
+toggleBtn.Parent = topRow
+
+local toggleCircle = Instance.new("Frame")
+toggleCircle.Size = UDim2.new(0, 18, 0, 18)
+toggleCircle.Position = UDim2.new(0, 3, 0.5, -9)
+toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+toggleCircle.ZIndex = 9
+local circleCorner = Instance.new("UICorner") 
+circleCorner.CornerRadius = UDim.new(1, 0) 
+circleCorner.Parent = toggleCircle
+toggleCircle.Parent = toggleBtn
+
+local sliderRow = Instance.new("Frame")
+sliderRow.Size = UDim2.new(1, -30, 0, 50)
+sliderRow.Position = UDim2.new(0, 15, 0, 0)
+sliderRow.BackgroundTransparency = 1
+sliderRow.LayoutOrder = 2
+sliderRow.ZIndex = 8
+sliderRow.Parent = aimbotContainer
+
+local sliderLabel = Instance.new("TextLabel")
+sliderLabel.Size = UDim2.new(1, -55, 0, 20)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.Text = "FOV Çapı: 150"
+sliderLabel.TextColor3 = THEME.TextDark
+sliderLabel.TextSize = 11
+sliderLabel.Font = Enum.Font.Gotham
+sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+sliderLabel.ZIndex = 8
+sliderLabel.Parent = sliderRow
+
+local valueTextBox = Instance.new("TextBox")
+valueTextBox.Size = UDim2.new(0, 45, 0, 20)
+valueTextBox.Position = UDim2.new(1, -45, 0, 0)
+valueTextBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+valueTextBox.TextColor3 = THEME.Accent
+valueTextBox.Text = tostring(targetFovValue)
+valueTextBox.TextSize = 12
+valueTextBox.Font = Enum.Font.GothamBold
+valueTextBox.ClearTextOnFocus = false
+valueTextBox.ZIndex = 8
+local boxCorner = Instance.new("UICorner") 
+boxCorner.CornerRadius = UDim.new(0, 4) 
+boxCorner.Parent = valueTextBox
+valueTextBox.Parent = sliderRow
+
+local sliderTrack = Instance.new("Frame")
+sliderTrack.Size = UDim2.new(1, 0, 0, 6)
+sliderTrack.Position = UDim2.new(0, 0, 0, 34)
+sliderTrack.BackgroundColor3 = THEME.ToggleOff
+sliderTrack.BorderSizePixel = 0
+sliderTrack.ZIndex = 8
+local trackCorner = Instance.new("UICorner") 
+trackCorner.CornerRadius = UDim.new(1, 0) 
+trackCorner.Parent = sliderTrack
+sliderTrack.Parent = sliderRow
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0, 0, 1, 0)
+sliderFill.BackgroundColor3 = THEME.Accent
+sliderFill.BorderSizePixel = 0
+sliderFill.ZIndex = 9
+local fillCorner = Instance.new("UICorner") 
+fillCorner.CornerRadius = UDim.new(1, 0) 
+fillCorner.Parent = sliderFill
+sliderFill.Parent = sliderTrack
+
+local sliderThumb = Instance.new("Frame")
+sliderThumb.Size = UDim2.new(0, 14, 0, 14)
+sliderThumb.AnchorPoint = Vector2.new(0.5, 0.5)
+sliderThumb.Position = UDim2.new(0, 0, 0.5, 0)
+sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderThumb.ZIndex = 10
+local thumbCorner = Instance.new("UICorner") 
+thumbCorner.CornerRadius = UDim.new(1, 0) 
+thumbCorner.Parent = sliderThumb
+sliderThumb.Parent = sliderTrack
+
+local minVal, maxVal = 30, 500
+
+local function updateFov(val)
+	targetFovValue = math.clamp(math.floor(val), minVal, maxVal)
+	valueTextBox.Text = tostring(targetFovValue)
+	sliderLabel.Text = "FOV Çapı: " .. targetFovValue
+	
+	local percent = (targetFovValue - minVal) / (maxVal - minVal)
+	sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+	sliderThumb.Position = UDim2.new(percent, 0, 0.5, 0)
+end
+
+local draggingSlider = false
+sliderTrack.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingSlider = true
+	end
+end)
+sliderThumb.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingSlider = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingSlider = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local mousePos = UserInputService:GetMouseLocation()
+		local absPos = sliderTrack.AbsolutePosition
+		local absSize = sliderTrack.AbsoluteSize
+		local pos = math.clamp((mousePos.X - absPos.X) / absSize.X, 0, 1)
+		local newVal = minVal + (maxVal - minVal) * pos
+		updateFov(newVal)
+	end
+end)
+
+valueTextBox.FocusLost:Connect(function()
+	local num = tonumber(valueTextBox.Text)
+	if num then
+		updateFov(num)
+	else
+		valueTextBox.Text = tostring(targetFovValue)
+	end
+end)
+
+-- FOV Çemberi
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.fromRGB(255, 255, 255)
 fovCircle.Thickness = 1
-fovCircle.Radius = fovRadius
+fovCircle.Radius = targetFovValue
 fovCircle.Filled = false
 fovCircle.Visible = false
 
-RunService.RenderStepped:Connect(function()
-    if aimbotEnabled then
-        local camera = workspace.CurrentCamera
-        fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-        fovCircle.Visible = true
-    else
-        fovCircle.Visible = false
-    end
-end)
+local function getClosestPlayerInFov()
+	local closestPlayer = nil
+	local shortestDistance = targetFovValue
+	local currentCamera = workspace.CurrentCamera
+	local mouseLocation = UserInputService:GetMouseLocation()
 
-local function getClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = fovRadius
-    local currentCamera = workspace.CurrentCamera
-    local mouseLocation = UserInputService:GetMouseLocation()
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            if p.Team and p.Team == player.Team then continue end
-            
-            local hum = p.Character:FindFirstChild("Humanoid")
-            if hum and hum.Health > 0 then
-                local screenPos, onScreen = currentCamera:WorldToViewportPoint(p.Character.Head.Position)
-                
-                if onScreen then
-                    local playerScreenPoint = Vector2.new(screenPos.X, screenPos.Y)
-                    local screenDistance = (playerScreenPoint - mouseLocation).Magnitude
-                    
-                    if screenDistance < shortestDistance then
-                        shortestDistance = screenDistance
-                        closestPlayer = p
-                    end
-                end
-            end
-        end
-    end
-    return closestPlayer
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+			if p.Team and p.Team == player.Team then continue end
+			
+			local hum = p.Character:FindFirstChild("Humanoid")
+			if hum and hum.Health > 0 then
+				local screenPos, onScreen = currentCamera:WorldToViewportPoint(p.Character.Head.Position)
+				
+				if onScreen then
+					local playerScreenPoint = Vector2.new(screenPos.X, screenPos.Y)
+					local screenDistance = (playerScreenPoint - mouseLocation).Magnitude
+					
+					if screenDistance < shortestDistance then
+						shortestDistance = screenDistance
+						closestPlayer = p
+					end
+				end
+			end
+		end
+	end
+	return closestPlayer
 end
 
-createModernToggle("Aimbot", "Sadece FOV çemberi içindeki rakiplere kilitlenir.", function(state)
-    aimbotEnabled = state
-    
-    if aimbotEnabled then
-        aimbotConnection = RunService.RenderStepped:Connect(function()
-            local targetPlayer = getClosestPlayer()
-            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
-                local head = targetPlayer.Character.Head
-                local camera = workspace.CurrentCamera
-                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
-            end
-        end)
-    else
-        if aimbotConnection then
-            aimbotConnection:Disconnect()
-            aimbotConnection = nil
-        end
-    end
+toggleBtn.MouseButton1Click:Connect(function()
+	aimbotActive = not aimbotActive
+	
+	if aimbotActive then
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
+		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
+		showNotification("Aimbot", "Aktif edildi (Sağ Click basılı tutun)!", true)
+		
+		aimbotConn = RunService.RenderStepped:Connect(function()
+			local camera = workspace.CurrentCamera
+			local mouseLoc = UserInputService:GetMouseLocation()
+			
+			fovCircle.Radius = targetFovValue
+			fovCircle.Position = mouseLoc
+			fovCircle.Visible = true
+
+			-- Sadece Sağ Click (MouseButton2) basılı tutulduğunda kilitlen
+			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+				local targetPlayer = getClosestPlayerInFov()
+				if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+					local head = targetPlayer.Character.Head
+					local targetCFrame = CFrame.new(camera.CFrame.Position, head.Position)
+					-- Smooth oran (0.3) ile kamerayı yumuşakça kaydır, fare hareketine tamamen engel olmaz
+					camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.3)
+				end
+			end
+		end)
+	else
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
+		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+		fovCircle.Visible = false
+		showNotification("Aimbot", "Devre dışı bırakıldı.", false)
+		
+		if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
+	end
 end)
+
+updateFov(targetFovValue)
 
 -- -- 9. ADVANCED NAME & HEALTH ESP (Highlight + BillboardGui)
 local espActive = false
