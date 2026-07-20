@@ -37,7 +37,7 @@ local function roundCorners(obj, radius)
 end
 
 ---------------------------------------------------------
--- KUSURSUZ SÜRÜKLENME MOTORU (Kesin Çözüm)
+-- KUSURSUZ SÜRÜKLENME MOTORU (Son Sürüm)
 ---------------------------------------------------------
 local function makeDraggable(frame)
 	local dragging = false
@@ -45,11 +45,17 @@ local function makeDraggable(frame)
 
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			-- Doğru servis üzerinden tıklanan GUI öğelerini kontrol ediyoruz
 			local guiObjects = UserInputService:GetGuiObjectsAtPosition(Vector2.new(input.Position.X, input.Position.Y))
-			for _, obj in ipairs(guiObjects) do
-				if obj:IsA("TextBox") or obj:IsA("TextButton") or obj.Name:lower():find("slider") or obj.Name:lower():find("track") or obj.Name:lower():find("thumb") then
-					return
+			local topObj = guiObjects[1]
+			
+			-- Sadece en üstteki nesne bir kontrol elemanı (buton, textbox, slider) ise sürüklemeyi engelle
+			if topObj then
+				local current = topObj
+				while current and current ~= frame do
+					if current:IsA("TextBox") or current:IsA("TextButton") or current.Name:lower():find("slider") or current.Name:lower():find("track") or current.Name:lower():find("thumb") then
+						return 
+					end
+					current = current.Parent
 				end
 			end
 			
@@ -646,13 +652,13 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
--- MM2 AUTO-SHOOT KILLER (Envanterinde Knife olan kişiye otomatik kilitlenme ve ateş)
+-- MM2 AUTO-SHOOT KILLER (PRO - Prediction & WallCheck Destekli)
 local mm2AutoShootActive = false
-createModernToggle("MM2 Auto-Shoot Killer", "Elinde silah varken envanterinde Knife olan katile otomatik nişan alır ve ateş eder.", function(state)
+createModernToggle("MM2 Auto-Shoot Killer Pro", "Katili hareket yönüne göre tahmin eder ve duvar arkası boşa ateş etmez.", function(state)
     mm2AutoShootActive = state
     task.spawn(function()
         while mm2AutoShootActive do
-            task.wait(0.1)
+            task.wait(0.04) -- Tepki süresini hızlandırdık
             pcall(function()
                 local char = player.Character
                 local backpack = player:FindFirstChild("Backpack")
@@ -663,23 +669,38 @@ createModernToggle("MM2 Auto-Shoot Killer", "Elinde silah varken envanterinde Kn
                         if p ~= player and p.Character then
                             local enemyChar = p.Character
                             local enemyBackpack = p:FindFirstChild("Backpack")
+                            local hum = enemyChar:FindFirstChild("Humanoid")
+                            local root = enemyChar:FindFirstChild("HumanoidRootPart")
+                            
                             local hasKnife = enemyChar:FindFirstChild("Knife") or (enemyBackpack and enemyBackpack:FindFirstChild("Knife"))
                             
-                            if hasKnife and enemyChar:FindFirstChild("HumanoidRootPart") then
-                                local root = enemyChar.HumanoidRootPart
+                            if hasKnife and root and hum and hum.Health > 0 then
                                 local camera = workspace.CurrentCamera
                                 
-                                -- Katile odaklan (Flick / Kilitlenme)
-                                camera.CFrame = CFrame.new(camera.CFrame.Position, root.Position)
+                                -- 1. PREDICTION (Katilin o anki hızına göre ilerideki konumunu hesapla)
+                                local enemyVelocity = root.AssemblyLinearVelocity
+                                local predictedPos = root.Position + (enemyVelocity * 0.12) -- Katsayıyı oyun hızına göre ayarlayabilirsin
                                 
-                                -- Silahı kuşan ve ateş et
-                                local gun = char:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
-                                if gun then
-                                    if gun.Parent == backpack then
-                                        gun.Parent = char
-                                        task.wait(0.05)
+                                -- 2. RAYCAST (Arada duvar var mı kontrol et)
+                                local raycastParams = RaycastParams.new()
+                                raycastParams.FilterDescendantsInstances = {char, enemyChar}
+                                raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                                local rayResult = workspace:Raycast(camera.CFrame.Position, (predictedPos - camera.CFrame.Position).Unit * 500, raycastParams)
+                                
+                                -- Eğer arada engel yoksa veya hedef doğrudan görüş açısındaysa vur
+                                if not rayResult or (rayResult.Position - predictedPos).Magnitude < 12 then
+                                    -- Tahmin edilen konuma anlık flick at
+                                    camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPos)
+                                    
+                                    -- Silahı kuşan ve ateş et
+                                    local gun = char:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
+                                    if gun then
+                                        if gun.Parent == backpack then
+                                            gun.Parent = char
+                                            task.wait(0.02)
+                                        end
+                                        gun:Activate()
                                     end
-                                    gun:Activate()
                                 end
                             end
                         end
@@ -689,7 +710,6 @@ createModernToggle("MM2 Auto-Shoot Killer", "Elinde silah varken envanterinde Kn
         end
     end)
 end)
-
 -- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
 local speedHackActive = false
 local targetSpeedValue = 75
