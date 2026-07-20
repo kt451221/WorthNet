@@ -37,7 +37,7 @@ local function roundCorners(obj, radius)
 end
 
 ---------------------------------------------------------
--- KUSURSUZ SÜRÜKLENME MOTORU
+-- KUSURSUZ SÜRÜKLENME MOTORU (Düzeltilmiş)
 ---------------------------------------------------------
 local function makeDraggable(frame)
 	local dragging = false
@@ -45,6 +45,14 @@ local function makeDraggable(frame)
 
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			-- Slider, TextBox veya Butonlara tıklandıysa menüyü sürükleme
+			local guiObjects = player.PlayerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
+			for _, obj in ipairs(guiObjects) do
+				if obj:IsA("TextBox") or obj:IsA("TextButton") or obj.Name:lower():find("slider") or obj.Name:lower():find("track") or obj.Name:lower():find("thumb") then
+					return
+				end
+			end
+			
 			dragging = true
 			dragStart = input.Position
 			startPos = frame.Position
@@ -66,8 +74,6 @@ local function makeDraggable(frame)
 			local delta = input.Position - dragStart
 			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
-	end)
-end
 
 ---------------------------------------------------------
 -- MERKEZİ BİLDİRİM SİSTEMİ
@@ -637,6 +643,50 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 			end)
 		end
 	end)
+end)
+
+-- MM2 AUTO-SHOOT KILLER (Envanterinde Knife olan kişiye otomatik kilitlenme ve ateş)
+local mm2AutoShootActive = false
+createModernToggle("MM2 Auto-Shoot Killer", "Elinde silah varken envanterinde Knife olan katile otomatik nişan alır ve ateş eder.", function(state)
+    mm2AutoShootActive = state
+    task.spawn(function()
+        while mm2AutoShootActive do
+            task.wait(0.1)
+            pcall(function()
+                local char = player.Character
+                local backpack = player:FindFirstChild("Backpack")
+                local hasGun = (char and char:FindFirstChild("Gun")) or (backpack and backpack:FindFirstChild("Gun"))
+                
+                if hasGun then
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character then
+                            local enemyChar = p.Character
+                            local enemyBackpack = p:FindFirstChild("Backpack")
+                            local hasKnife = enemyChar:FindFirstChild("Knife") or (enemyBackpack and enemyBackpack:FindFirstChild("Knife"))
+                            
+                            if hasKnife and enemyChar:FindFirstChild("HumanoidRootPart") then
+                                local root = enemyChar.HumanoidRootPart
+                                local camera = workspace.CurrentCamera
+                                
+                                -- Katile odaklan (Flick / Kilitlenme)
+                                camera.CFrame = CFrame.new(camera.CFrame.Position, root.Position)
+                                
+                                -- Silahı kuşan ve ateş et
+                                local gun = char:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
+                                if gun then
+                                    if gun.Parent == backpack then
+                                        gun.Parent = char
+                                        task.wait(0.05)
+                                    end
+                                    gun:Activate()
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
 end)
 
 -- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
