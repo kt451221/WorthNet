@@ -966,69 +966,71 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", functio
 	end
 end)
 
--- -- 5. FLY CONTROL (Anti-Kick / Bypass Optimized)
-local flyingEnabled = false
+-- -- 5. CFRAME FLY (Anti-Kick / Delta Style Bypass)
+local cframeFlyActive = false
 local flySpeed = 60
-local bv, bg
+local flyConnection
 
-local function updateFlyState(state)
-	flyingEnabled = state
+local function updateCFrameFly(state)
+	cframeFlyActive = state
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChild("Humanoid")
 
-	if flyingEnabled and root and hum then
-		hum.PlatformStand = true 
+	if cframeFlyActive and root and hum then
+		hum.PlatformStand = true
 		
-		-- Sonsuz güç (1/0) yerine sunucunun "makul" görebileceği yüksek ama sınırlı güç kullanıyoruz (Bypass)
-		bv = Instance.new("BodyVelocity")
-		bv.Name = "WorthNetVelocity"
-		bv.MaxForce = Vector3.new(30000, 30000, 30000)
-		bv.Velocity = Vector3.new(0, 0, 0)
-		bv.Parent = root
-		
-		bg = Instance.new("BodyGyro")
-		bg.Name = "WorthNetGyro"
-		bg.MaxTorque = Vector3.new(30000, 30000, 30000)
-		bg.P = 15000
-		bg.D = 500
-		bg.CFrame = root.CFrame
-		bg.Parent = root
-
-		task.spawn(function()
-			local currentVelocity = Vector3.new(0, 0, 0)
-			while flyingEnabled and root and root.Parent do
-				local camera = workspace.CurrentCamera
-				local targetDir = Vector3.new(0, 0, 0)
-
-				if UserInputService:IsKeyDown(Enum.KeyCode.W) then targetDir = targetDir + camera.CFrame.LookVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.S) then targetDir = targetDir - camera.CFrame.LookVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.A) then targetDir = targetDir - camera.CFrame.RightVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.D) then targetDir = targetDir + camera.CFrame.RightVector end
-				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then targetDir = targetDir + Vector3.new(0, 1, 0) end
-				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then targetDir = targetDir - Vector3.new(0, 1, 0) end
-
-				-- Ani hızlanmaları törpüleyerek sunucunun pozisyon kontrolünü atlatıyoruz
-				currentVelocity = currentVelocity:Lerp(targetDir * flySpeed, 0.2)
-				bv.Velocity = currentVelocity
-				bg.CFrame = camera.CFrame
-				task.wait()
+		-- Fizik motorunu devre dışı bırakıp tamamen CFrame ile kontrolü ele alıyoruz
+		flyConnection = RunService.RenderStepped:Connect(function(dt)
+			if not cframeFlyActive or not root or not root.Parent then
+				if flyConnection then flyConnection:Disconnect() end
+				return
 			end
+			
+			-- Çarpışmaları kapat ki duvarlara takılma
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+			
+			local camera = workspace.CurrentCamera
+			local moveDirection = Vector3.new(0, 0, 0)
+			
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camera.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camera.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camera.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
+			
+			if moveDirection.Magnitude > 0 then
+				moveDirection = moveDirection.Unit
+			end
+			
+			-- Pozisyonu direkt güncelliyoruz ve sunucu hız algılamasın diye Velocity'yi sıfırlıyoruz
+			root.CFrame = root.CFrame + (moveDirection * flySpeed * dt)
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 		end)
 	else
+		if flyConnection then flyConnection:Disconnect() end
 		if hum then hum.PlatformStand = false end
-		if bv then bv:Destroy() end
-		if bg then bg:Destroy() end
+		if char then
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then part.CanCollide = true end
+			end
+		end
 	end
 end
 
-createModernToggle("Fly", "İstediğin yere uç! (P Tuşu ile aç/kapat)", function(state)
-	updateFlyState(state)
+createModernToggle("Fly", "(Kick Atmaz)", "Fizik motorunu bypass eder, P tuşu ile açılır.", function(state)
+	updateCFrameFly(state)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-		updateFlyState(not flyingEnabled)
+		updateCFrameFly(not cframeFlyActive)
 	end
 end)
 
