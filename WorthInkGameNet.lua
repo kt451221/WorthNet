@@ -1,4 +1,4 @@
--- WorthNet Ink Game v1.1 - Safe & Bulletproof Hub
+-- WorthNet Ink Game v1.2 - Xeno Optimized & Bug-Free Hub
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -6,7 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 
--- Güvenli Parent Seçimi (CoreGui öncelikli, hata olursa PlayerGui)
+-- Güvenli Parent Seçimi
 local success, parent = pcall(function()
 	return game:GetService("CoreGui")
 end)
@@ -165,7 +165,7 @@ hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
 hubFrame.BorderSizePixel = 0
 hubFrame.ZIndex = 5
-hubFrame.Visible = true -- Direkt açık başlar
+hubFrame.Visible = true
 hubFrame.Parent = screenGui
 roundCorners(hubFrame, 12)
 makeDraggable(hubFrame)
@@ -656,25 +656,6 @@ createModernToggle("Anti-AFK", "Oyundan atılmayı önler.", function(state)
 		end)
 	else
 		if afkConn then afkConn:Disconnect() end
-	end
-end)
-
----------------------------------------------------------
--- GÜVENLİ BYPASS (Pcall Korumalı)
----------------------------------------------------------
-pcall(function()
-	if getrawmetatable and setreadonly and newcclosure and getnamecallmethod then
-		local metatable = getrawmetatable(game)
-		local namecall = metatable.__namecall
-		setreadonly(metatable, false)
-		metatable.__namecall = newcclosure(function(self, ...)
-			local method = getnamecallmethod()
-			if method == "FireServer" and (tostring(self):lower():find("anticheat") or tostring(self):lower():find("ban")) then 
-				return nil 
-			end
-			return namecall(self, ...)
-		end)
-		setreadonly(metatable, true)
 	end
 end)
 
