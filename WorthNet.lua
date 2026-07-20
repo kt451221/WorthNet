@@ -639,14 +639,187 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
--- 3. SPEEDHACK (Ayarlanabilir Slider & Sürekli Spam)
+-- SPEEDHACK (Tek Çatı Altında: Toggle + Yuvarlak Sürgülü Slider + TextBox)
+local player = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
 local speedHackActive = false
 local targetSpeedValue = 75
+local originalSpeed = 16
 local speedSpamConn = nil
 
-createModernToggle("SpeedHack", "Hızını aktif eder ve sıfırlanmasını engellemek için spamlar.", function(state)
-	speedHackActive = state
+-- Ana Konteyner (Her şeyi alt alta toplamak için)
+-- Not: 'parent' kısmını kendi pencere veya tab değişkeninle değiştirebilirsin.
+local speedHackContainer = Instance.new("Frame")
+speedHackContainer.Name = "SpeedHackModule"
+speedHackContainer.Size = UDim2.new(1, 0, 0, 105)
+speedHackContainer.BackgroundTransparency = 1
+speedHackContainer.Parent = parent 
+
+local uiList = Instance.new("UIListLayout")
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0, 10)
+uiList.Parent = speedHackContainer
+
+-- 1. Kısım: Başlık ve Toggle (Açma/Kapama) Satırı
+local topRow = Instance.new("Frame")
+topRow.Size = UDim2.new(1, 0, 0, 28)
+topRow.BackgroundTransparency = 1
+topRow.LayoutOrder = 1
+topRow.Parent = speedHackContainer
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "SpeedHack"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 14
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = topRow
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 22)
+toggleBtn.Position = UDim2.new(1, -44, 0.5, -11)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.Text = ""
+local toggleCorner = Instance.new("UICorner") 
+toggleCorner.CornerRadius = UDim.new(1, 0) 
+toggleCorner.Parent = toggleBtn
+toggleBtn.Parent = topRow
+
+local toggleCircle = Instance.new("Frame")
+toggleCircle.Size = UDim2.new(0, 18, 0, 18)
+toggleCircle.Position = UDim2.new(0, 2, 0.5, -9)
+toggleCircle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+local circleCorner = Instance.new("UICorner") 
+circleCorner.CornerRadius = UDim.new(1, 0) 
+circleCorner.Parent = toggleCircle
+toggleCircle.Parent = toggleBtn
+
+-- 2. Kısım: Slider ve TextBox (Değer Ayarlama) Satırı
+local sliderRow = Instance.new("Frame")
+sliderRow.Size = UDim2.new(1, 0, 0, 50)
+sliderRow.BackgroundTransparency = 1
+sliderRow.LayoutOrder = 2
+sliderRow.Parent = speedHackContainer
+
+local sliderLabel = Instance.new("TextLabel")
+sliderLabel.Size = UDim2.new(1, -55, 0, 20)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.Text = "Hız Seviyesi: 75"
+sliderLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+sliderLabel.TextSize = 12
+sliderLabel.Font = Enum.Font.Gotham
+sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+sliderLabel.Parent = sliderRow
+
+-- Yazarak Değer Girme Kutusu (TextBox)
+local valueTextBox = Instance.new("TextBox")
+valueTextBox.Size = UDim2.new(0, 45, 0, 20)
+valueTextBox.Position = UDim2.new(1, -45, 0, 0)
+valueTextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+valueTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+valueTextBox.Text = tostring(targetSpeedValue)
+valueTextBox.TextSize = 12
+valueTextBox.Font = Enum.Font.GothamBold
+valueTextBox.ClearTextOnFocus = false
+local boxCorner = Instance.new("UICorner") 
+boxCorner.CornerRadius = UDim.new(0, 4) 
+boxCorner.Parent = valueTextBox
+valueTextBox.Parent = sliderRow
+
+-- Slider Çizgisi ve Yuvarlak Sürgü (Thumb)
+local sliderTrack = Instance.new("Frame")
+sliderTrack.Size = UDim2.new(1, 0, 0, 6)
+sliderTrack.Position = UDim2.new(0, 0, 0, 34)
+sliderTrack.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+local trackCorner = Instance.new("UICorner") 
+trackCorner.CornerRadius = UDim.new(1, 0) 
+trackCorner.Parent = sliderTrack
+sliderTrack.Parent = sliderRow
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+local fillCorner = Instance.new("UICorner") 
+fillCorner.CornerRadius = UDim.new(1, 0) 
+fillCorner.Parent = sliderFill
+sliderFill.Parent = sliderTrack
+
+local sliderThumb = Instance.new("Frame") -- Yuvarlak Tutamaç
+sliderThumb.Size = UDim2.new(0, 14, 0, 14)
+sliderThumb.AnchorPoint = Vector2.new(0.5, 0.5)
+sliderThumb.Position = UDim2.new(0, 0, 0.5, 0)
+sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+local thumbCorner = Instance.new("UICorner") 
+thumbCorner.CornerRadius = UDim.new(1, 0) 
+thumbCorner.Parent = sliderThumb
+sliderThumb.Parent = sliderTrack
+
+-- Mantıksal Fonksiyonlar
+local minVal, maxVal = 16, 250
+
+local function updateSpeed(val)
+	targetSpeedValue = math.clamp(math.floor(val), minVal, maxVal)
+	valueTextBox.Text = tostring(targetSpeedValue)
+	sliderLabel.Text = "Hız Seviyesi: " .. targetSpeedValue
+	
+	local percent = (targetSpeedValue - minVal) / (maxVal - minVal)
+	sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+	sliderThumb.Position = UDim2.new(percent, 0, 0.5, 0)
+end
+
+-- Sürükleme (Drag) Mantığı
+local dragging = false
+sliderTrack.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+	end
+end)
+sliderThumb.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local mousePos = UserInputService:GetMouseLocation()
+		local absPos = sliderTrack.AbsolutePosition
+		local absSize = sliderTrack.AbsoluteSize
+		local pos = math.clamp((mousePos.X - absPos.X) / absSize.X, 0, 1)
+		local newVal = minVal + (maxVal - minVal) * pos
+		updateSpeed(newVal)
+	end
+end)
+
+-- TextBox ile Yazarak Değer Değiştirme
+valueTextBox.FocusLost:Connect(function()
+	local num = tonumber(valueTextBox.Text)
+	if num then
+		updateSpeed(num)
+	else
+		valueTextBox.Text = tostring(targetSpeedValue)
+	end
+end)
+
+-- Toggle Butonu İşlevi
+toggleBtn.MouseButton1Click:Connect(function()
+	speedHackActive = not speedHackActive
+	
 	if speedHackActive then
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 170, 255)}):Play()
+		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -20, 0.5, -9)}):Play()
+		
 		speedSpamConn = RunService.Heartbeat:Connect(function()
 			local char = player.Character
 			local hum = char and char:FindFirstChild("Humanoid")
@@ -655,15 +828,17 @@ createModernToggle("SpeedHack", "Hızını aktif eder ve sıfırlanmasını enge
 			end
 		end)
 	else
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
+		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -9)}):Play()
+		
 		if speedSpamConn then speedSpamConn:Disconnect() speedSpamConn = nil end
 		local hum = player.Character and player.Character:FindFirstChild("Humanoid")
 		if hum then hum.WalkSpeed = originalSpeed end
 	end
 end)
 
-createModernSlider("Speed Value", "SpeedHack hız seviyesini ayarlar.", 16, 250, 75, function(value)
-	targetSpeedValue = value
-end)
+-- İlk Değeri Ayarla
+updateSpeed(targetSpeedValue)
 
 -- 4. NOCLIP
 createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", function(state)
