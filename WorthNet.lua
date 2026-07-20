@@ -595,7 +595,6 @@ end
 ---------------------------------------------------------
 -- HİLE AKTİVASYON ALANI
 ---------------------------------------------------------
-local noclipConnection = nil  
 local antiFlingConn = nil
 local mm2ESPActive = false
 local mm2Highlights = {}
@@ -951,18 +950,48 @@ end)
 
 updateSpeed(targetSpeedValue)
 
--- 4. NOCLIP
-createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar.", function(state)
+-- -- 4. SAFE NOCLIP (Yere Düşme ve Kick Önleyici)
+local noclipConnection = nil
+
+createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar (Kick atmaz).", function(state)
 	if state then
 		noclipConnection = RunService.Stepped:Connect(function()
-			if player.Character then
-				for _, part in ipairs(player.Character:GetDescendants()) do
-					if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+			local char = player.Character
+			if char then
+				local root = char:FindFirstChild("HumanoidRootPart")
+				
+				-- Karakterin tüm parçalarının çarpışmasını kapat
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") and part.CanCollide then 
+						part.CanCollide = false 
+					end
+				end
+				
+				-- Yerin dibine düşüp anti-cheat'e yakalanmamak için hızı ve yerçekimini dengeliyoruz
+				if root then
+					local currentVel = root.AssemblyLinearVelocity
+					-- Eğer aşağıya doğru hızlı bir düşüş varsa bunu sıfırlayarak kicklenmeyi önlüyoruz
+					if currentVel.Y < -5 then
+						root.AssemblyLinearVelocity = Vector3.new(currentVel.X, 0, currentVel.Z)
+					end
 				end
 			end
 		end)
 	else
-		if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+		if noclipConnection then 
+			noclipConnection:Disconnect() 
+			noclipConnection = nil 
+		end
+		
+		-- Kapatıldığında eski haline döndür
+		local char = player.Character
+		if char then
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then 
+					part.CanCollide = true 
+				end
+			end
+		end
 	end
 end)
 
