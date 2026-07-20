@@ -917,7 +917,7 @@ end)
 
 -- -- 5. CFRAME FLY (Anti-Kick / Delta Style Bypass)
 local cframeFlyActive = false
-local flySpeed = 60
+local flySpeed = 50
 local flyConnection
 
 local function updateCFrameFly(state)
@@ -1839,6 +1839,37 @@ RunService.RenderStepped:Connect(function()
             if closestPlayer and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 hrp.CFrame = closestPlayer.Character.HumanoidRootPart.CFrame
             end
+        end
+    end
+end)
+
+-- Anti-Ragdoll System
+local antiRagdollEnabled = false
+local antiRagdollConnection = nil
+
+createModernToggle("Anti-Ragdoll", "Yere kapaklanmayı ve sersemlemeyi önler.", function(state)
+    antiRagdollEnabled = state
+    
+    if antiRagdollEnabled then
+        if not antiRagdollConnection then
+            antiRagdollConnection = RunService.RenderStepped:Connect(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChild("Humanoid")
+                if hum then
+                    if hum.PlatformStand then
+                        hum.PlatformStand = false
+                    end
+                    local currentState = hum:GetState()
+                    if currentState == Enum.HumanoidStateType.Ragdoll or currentState == Enum.HumanoidStateType.FallingDown then
+                        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+                    end
+                end
+            end)
+        end
+    else
+        if antiRagdollConnection then
+            antiRagdollConnection:Disconnect()
+            antiRagdollConnection = nil
         end
     end
 end)
