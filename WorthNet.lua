@@ -651,68 +651,67 @@ createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik t�
 	end)
 end)
 
--- -- MM2 AUTO GUN (Debug & Extended Search Fix)
+-- -- MM2 AUTO GUN (Smooth Wall-Slide & GunDrop Collector)
 local mm2AutoGunActive = false
 
-createModernToggle("MM2 Auto Gun (Fix)", "Yere düşen silahı geniş çaplı tarar ve hatasız alır.", "Konsola bilgi yazdırır.", function(state)
+createModernToggle("MM2 Auto Gun", "Yere düşen silahı otomatik ve yumuşak bir şekilde alır.", "Duvar içinden süzülerek gider, silahı alınca durur.", function(state)
 	mm2AutoGunActive = state
-	print("[WorthNet] Auto Gun Durumu:", state)
 	
 	task.spawn(function()
 		while mm2AutoGunActive do
-			task.wait(0.5)
+			task.wait(0.2)
 			pcall(function()
 				local char = player.Character
 				if not char then return end
 				local root = char:FindFirstChild("HumanoidRootPart")
 				if not root then return end
 				
-				-- Silahı workspace içerisinde daha geniş bir yolla arayalım (Model veya Part)
-				local gunDropTarget = nil
+				-- Envanter veya karakterde silah var mı kontrol et
+				local backpack = player:FindFirstChild("Backpack")
+				local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
 				
-				for _, obj in ipairs(workspace:GetDescendants()) do
-					if obj.Name == "GunDrop" or obj.Name == "Gun" then
-						if obj:IsA("Model") then
-							gunDropTarget = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
-						elseif obj:IsA("BasePart") then
-							gunDropTarget = obj
+				-- Eğer silahımız yoksa haritadaki GunDrop'u ara
+				if not hasGun then
+					local gunDrop = nil
+					
+					-- MM2 workspace içerisindeki GunDrop'u bulma
+					for _, obj in ipairs(workspace:GetChildren()) do
+						if obj.Name == "GunDrop" then
+							if obj:IsA("Model") then
+								gunDrop = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+							elseif obj:IsA("BasePart") then
+								gunDrop = obj
+							end
+							break
 						end
-						if gunDropTarget then break end
 					end
-				end
-				
-				if gunDropTarget then
-					print("[WorthNet] Silah bulundu! Konuma gidiliyor...")
 					
-					-- Envanter kontrolü
-					local backpack = player:FindFirstChild("Backpack")
-					local hasGunNow = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
-					
-					if not hasGunNow then
-						-- Çarpışmaları kapat
+					-- Eğer GunDrop bulunduysa ona doğru süzül
+					if gunDrop then
+						-- Duvarlardan geçebilmek için çarpışmaları kapat
 						for _, p in ipairs(char:GetDescendants()) do
 							if p:IsA("BasePart") then p.CanCollide = false end
 						end
 						
-						-- Yumuşak ve hızlı yaklaşma
-						while mm2AutoGunActive and gunDropTarget and gunDropTarget.Parent do
+						-- Silaha doğru akıcı ve hızlı bir şekilde yaklaş
+						while mm2AutoGunActive and gunDrop and gunDrop.Parent do
 							local bpCheck = player:FindFirstChild("Backpack")
 							if char:FindFirstChild("Gun") or (bpCheck and bpCheck:FindFirstChild("Gun")) then
-								print("[WorthNet] Silah başarıyla alındı!")
 								break
 							end
 							
-							local targetPos = gunDropTarget.Position
-							if (root.Position - targetPos).Magnitude < 3 then
+							local targetPos = gunDrop.Position
+							if (root.Position - targetPos).Magnitude < 2.5 then
 								break
 							end
 							
-							root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos + Vector3.new(0, 2, 0)), 0.2)
+							-- Lerp ile yumuşak kayma hareketi
+							root.CFrame = root.CFrame:Lerp(CFrame.new(targetPos + Vector3.new(0, 1.5, 0)), 0.25)
 							root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 							task.wait(0.03)
 						end
 						
-						-- Çarpışmaları aç
+						-- Çarpışmaları eski haline getir
 						for _, p in ipairs(char:GetDescendants()) do
 							if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
 								p.CanCollide = true 
@@ -725,42 +724,59 @@ createModernToggle("MM2 Auto Gun (Fix)", "Yere düşen silahı geniş çaplı ta
 	end)
 end)
 
--- -- 11. FAKE LAG / DESYNC ("Wi-Fi Hilesi" - Donmuş Görünme)
+-- -- 11. FAKE LAG / DESYNC ("Wi-Fi Hilesi" - Donuk Görünme)
 local desyncActive = false
 local desyncConnection = nil
+local originalCFrame = nil
 
-createModernToggle("Fake Lag (Desync)", "Bağlantın kopmuş gibi başkalarına donmuş görünürsün.", function(state)
+createModernToggle("Fake Lag (Desync)", "Bağlantın kopmuş gibi başkalarına donmuş görünürsün.", "Açtığın an olduğun yerde sabit kalırsın, kapattığında normale dönersin.", function(state)
 	desyncActive = state
 	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChild("Humanoid")
 	
-	if desyncActive and char then
-		local root = char:FindFirstChild("HumanoidRootPart")
-		if root then
-			-- Karakterin sunucuya konum göndermesini (replication) donduruyoruz
-			-- Fizik motorunu yerel konuma alıp sunucu güncellemelerini kesiyoruz
-			desyncConnection = RunService.Heartbeat:Connect(function()
-				if root and root.Parent then
-					root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-					root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+	if desyncActive and root then
+		originalCFrame = root.CFrame
+		
+		-- Karakterin sunucuya konum göndermesini donduruyoruz (Others see you frozen)
+		desyncConnection = RunService.Heartbeat:Connect(function()
+			if root and root.Parent and originalCFrame then
+				-- Sunucuya sürekli ilk bastığın konumu göndererek başkalarının ekranında donmanı sağlıyoruz
+				root.CFrame = originalCFrame
+				root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+				root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				
+				-- PlatformStand açarak yerel hareketin fizik motorunu bozmasını önlüyoruz
+				if hum then
+					hum.PlatformStand = true
 				end
-			end)
-		end
+			end
+		end)
 	else
+		-- Kapatıldığında eski konumuna ve normal hareketine geri dön
 		if desyncConnection then
 			desyncConnection:Disconnect()
 			desyncConnection = nil
 		end
+		
+		if hum then
+			hum.PlatformStand = false
+		end
+		
+		originalCFrame = nil
 	end
 end)
 
--- -- MM2 SMART COMBAT KILLER (Auto-Shoot & Auto-Knife / Raycast & Prediction Pro)
+-- -- MM2 SMART COMBAT KILLER (Fixed & Universal Tool Detection)
 local mm2CombatActive = false
 
-createModernToggle("MM2 Auto Attack", "MM2 Smart Killer", "Rolünü otomatik algılar, duvara sıkmaz ve akıllı tahmin yapar.", function(state)
+createModernToggle("MM2 Smart Combat", "Şerifse Otomatik Sık, Katilse Bıçak At", "Rolü ve araçları kusursuz algılar.", function(state)
 	mm2CombatActive = state
+	
 	task.spawn(function()
 		while mm2CombatActive do
-			task.wait(0.03) -- 30ms ultra hızlı tarama döngüsü
+			task.wait(0.05)
 			pcall(function()
 				local char = player.Character
 				local backpack = player:FindFirstChild("Backpack")
@@ -769,11 +785,16 @@ createModernToggle("MM2 Auto Attack", "MM2 Smart Killer", "Rolünü otomatik alg
 				local humRoot = char:FindFirstChild("HumanoidRootPart")
 				if not humRoot then return end
 
-				-- Silah veya Bıçak kontrolü
-				local hasGun = char:FindFirstChild("Gun") or (backpack and backpack:FindFirstChild("Gun"))
-				local hasKnife = char:FindFirstChild("Knife") or (backpack and backpack:FindFirstChild("Knife"))
+				-- Eldeki veya envanterdeki araçları (Tool) güvenli bir şekilde bulalım
+				local equippedGun = char:FindFirstChildOfClass("Tool") and (char:FindFirstChildOfClass("Tool").Name == "Gun" and char:FindFirstChildOfClass("Tool") or nil)
+				local backpackGun = backpack and backpack:FindFirstChild("Gun")
+				local hasGun = equippedGun or backpackGun
 
-				-- EĞER ŞERİFSEN VEYA TABANCAN VARSA: Katili Vur
+				local equippedKnife = char:FindFirstChildOfClass("Tool") and (char:FindFirstChildOfClass("Tool").Name == "Knife" and char:FindFirstChildOfClass("Tool") or nil)
+				local backpackKnife = backpack and backpack:FindFirstChild("Knife")
+				local hasKnife = equippedKnife or backpackKnife
+
+				-- 1. EĞER ELİNDE VEYA ÇANTANDA TABANCA VARSA (Şerif / Hero)
 				if hasGun then
 					for _, p in ipairs(Players:GetPlayers()) do
 						if p ~= player and p.Character then
@@ -782,42 +803,30 @@ createModernToggle("MM2 Auto Attack", "MM2 Smart Killer", "Rolünü otomatik alg
 							local enemyHum = enemyChar:FindFirstChild("Humanoid")
 							local enemyRoot = enemyChar:FindFirstChild("HumanoidRootPart")
 							
+							-- Katip tespiti (Üzerinde Knife olan oyuncu)
 							local enemyHasKnife = enemyChar:FindFirstChild("Knife") or (enemyBackpack and enemyBackpack:FindFirstChild("Knife"))
 							
-							-- Hedef katilse ve yaşıyorsa
 							if enemyHasKnife and enemyRoot and enemyHum and enemyHum.Health > 0 then
 								local camera = workspace.CurrentCamera
+								local predictedPos = enemyRoot.Position + (enemyRoot.AssemblyLinearVelocity * 0.08)
 								
-								-- 1. Akıllı Hız Tahmini (Prediction)
-								local enemyVelocity = enemyRoot.AssemblyLinearVelocity
-								local predictedPos = enemyRoot.Position + (enemyVelocity * 0.09) -- Gecikme payı optimize edildi
+								-- Kamerayı hedefe kilitle
+								camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPos)
 								
-								-- 2. Gelişmiş Raycast Duvar Kontrolü (Duvara sıkmayı önler)
-								local raycastParams = RaycastParams.new()
-								raycastParams.FilterDescendantsInstances = {char, enemyChar}
-								raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-								raycastParams.IgnoreWater = true
-								
-								local rayResult = workspace:Raycast(camera.CFrame.Position, (predictedPos - camera.CFrame.Position).Unit * 600, raycastParams)
-								
-								-- Eğer arada engel yoksa veya hedef doğrudan görüş alanındaysa ateş et
-								if not rayResult or (rayResult.Position - predictedPos).Magnitude < 10 then
-									camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPos)
-									
-									local gun = char:FindFirstChild("Gun") or backpack:FindFirstChild("Gun")
-									if gun then
-										if gun.Parent == backpack then
-											gun.Parent = char
-											task.wait(0.01)
-										end
-										gun:Activate()
+								-- Silahı kuşan ve ateş et
+								local activeGun = backpackGun and backpackGun or equippedGun
+								if activeGun then
+									if activeGun.Parent == backpack then
+										activeGun.Parent = char
+										task.wait(0.02)
 									end
+									activeGun:Activate()
 								end
 							end
 						end
 					end
 
-				-- EĞER KATİLSEN VE BIÇAĞIN VARSA: Yakındaki masumları avla
+				-- 2. EĞER ELİNDE VEYA ÇANTANDA BIÇAK VARSA (Katil)
 				elseif hasKnife then
 					for _, p in ipairs(Players:GetPlayers()) do
 						if p ~= player and p.Character then
@@ -827,18 +836,17 @@ createModernToggle("MM2 Auto Attack", "MM2 Smart Killer", "Rolünü otomatik alg
 							
 							if enemyRoot and enemyHum and enemyHum.Health > 0 then
 								local distance = (humRoot.Position - enemyRoot.Position).Magnitude
-								-- 18 stud mesafedeyse bıçağı fırlat/sapla
-								if distance < 18 then
+								if distance < 20 then -- Yakın mesafe masum avı
 									local camera = workspace.CurrentCamera
 									camera.CFrame = CFrame.new(camera.CFrame.Position, enemyRoot.Position)
 									
-									local knife = char:FindFirstChild("Knife") or backpack:FindFirstChild("Knife")
-									if knife then
-										if knife.Parent == backpack then
-											knife.Parent = char
-											task.wait(0.01)
+									local activeKnife = backpackKnife and backpackKnife or equippedKnife
+									if activeKnife then
+										if activeKnife.Parent == backpack then
+											activeKnife.Parent = char
+											task.wait(0.02)
 										end
-										knife:Activate()
+										activeKnife:Activate()
 									end
 								end
 							end
