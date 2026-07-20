@@ -1,27 +1,20 @@
--- WorthNet Ink Game v1.2 - Xeno Optimized & Bug-Free Hub
+-- WorthNet Ink Game v1.4 - Pure PlayerGui (CoreGui Yok)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
-
--- Güvenli Parent Seçimi
-local success, parent = pcall(function()
-	return game:GetService("CoreGui")
-end)
-if not success or not parent then
-	parent = player:WaitForChild("PlayerGui")
-end
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- Eski arayüzü temizle
-local oldGui = parent:FindFirstChild("WorthNetInkGameSystem")
+local oldGui = playerGui:FindFirstChild("WorthNetInkGameSystem")
 if oldGui then oldGui:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "WorthNetInkGameSystem"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = parent
+screenGui.Parent = playerGui
 
 -- TEMA RENKLERİ
 local THEME = {
@@ -82,10 +75,12 @@ local activeNotifications = {}
 
 local function rearrangeNotifications()
 	for index, notif in ipairs(activeNotifications) do
-		local targetY = 20 + ((index - 1) * 60)
-		TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(1, -240, 0, targetY)
-		}):Play()
+		if notif and notif.Parent then
+			local targetY = 20 + ((index - 1) * 60)
+			TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Position = UDim2.new(1, -240, 0, targetY)
+			}):Play()
+		end
 	end
 end
 
@@ -122,14 +117,16 @@ local function showNotification(title, message, isSuccess)
 		local foundIndex = table.find(activeNotifications, notifFrame)
 		if foundIndex then table.remove(activeNotifications, foundIndex) end
 		
-		local currentY = notifFrame.Position.Y.Offset
-		local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(1, 30, 0, currentY)
-		})
-		closeTween:Play()
-		rearrangeNotifications()
-		
-		closeTween.Completed:Connect(function() notifFrame:Destroy() end)
+		if notifFrame and notifFrame.Parent then
+			local currentY = notifFrame.Position.Y.Offset
+			local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = UDim2.new(1, 30, 0, currentY)
+			})
+			closeTween:Play()
+			rearrangeNotifications()
+			
+			closeTween.Completed:Connect(function() notifFrame:Destroy() end)
+		end
 	end)
 end
 
