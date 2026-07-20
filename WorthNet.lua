@@ -634,21 +634,37 @@ createModernToggle("Glass Bridge ESP", "Güvenli ve kırılacak camları göster
 	end)
 end)
 
--- 2. TUG OF WAR AUTO-CLICKER
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
 local towActive = false
-createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik tıklar.", function(state)
-	towActive = state
-	task.spawn(function()
-		while towActive do
-			task.wait(0.01)
+
+-- Arka planda çalışan tek ve optimize edilmiş tıklama döngüsü
+task.spawn(function()
+	while true do
+		if towActive then
 			pcall(function()
-				local vim = game:GetService("VirtualInputManager")
-				vim:SendMouseButtonEvent(500, 500, 0, true, game, 0)
+				VirtualInputManager:SendMouseButtonEvent(500, 500, 0, true, game, 0)
 				task.wait(0.005)
-				vim:SendMouseButtonEvent(500, 500, 0, false, game, 0)
+				VirtualInputManager:SendMouseButtonEvent(500, 500, 0, false, game, 0)
 			end)
+			task.wait(0.01)
+		else
+			task.wait(0.1) -- Kapalıyken boşa işlem yapıp yormaması için bekleme süresi
 		end
-	end)
+	end
+end)
+
+-- UI Toggle (Menüden kontrol için)
+createModernToggle("Tug of War Auto-Clicker", "Halat çekme oyununda otomatik tıklar. (Tuş: I)", function(state)
+	towActive = state
+end)
+
+-- "I" tuşu ile kısayoldan açıp kapama
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.KeyCode == Enum.KeyCode.I then
+		towActive = not towActive
+	end
 end)
 
 -- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
@@ -1546,7 +1562,7 @@ end)
 
 -- 30. SMOOTH AIM
 local smoothAimActive = false
-local aimSpeed = 0.3
+local aimSpeed = 0.2
 
 createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
     smoothAimActive = state
