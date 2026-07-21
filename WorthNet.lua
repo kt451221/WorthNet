@@ -980,54 +980,213 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- 8. FLING MODULE (UI Uyumlu createModernToggle İle)
-local flingActive = false
-local flingConn = nil
+-- Oyuncu Listesi Fling Penceresini Yöneten Değişkenler
+local flingPlayerListGui = nil
+local flingScrollingRef = nil
+local flingPlayerConns = {}
+local activeFlingConnection = nil
+local currentlyFlingingTarget = nil
 
-createModernToggle("Fling", "En yakınındaki oyuncuyu fırlatır.", function(state)
-	flingActive = state
+local function createFlingPlayerListWindow()
+	if flingPlayerListGui then
+		flingPlayerListGui.Enabled = true
+		return
+	end
+
+	-- Ana Ekran GUI'si
+	flingPlayerListGui = Instance.new("ScreenGui")
+	flingPlayerListGui.Name = "SwoxTechFlingPlayerListMenu"
 	
-	if flingActive then
-		flingConn = RunService.Heartbeat:Connect(function()
-			local character = player.Character
-			local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-			if not rootPart then return end
-			
-			-- En yakın hedefi bul
-			local closestPlayer = nil
-			local minDist = math.huge
-			
-			for _, p in ipairs(Players:GetPlayers()) do
-				if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					local targetRoot = p.Character.HumanoidRootPart
-					local dist = (targetRoot.Position - rootPart.Position).Magnitude
-					if dist < minDist then
-						minDist = dist
-						closestPlayer = p
-					end
-				end
-			end
-			
-			-- Hedef varsa üzerine yapış ve fizik motorunu patlat
-			if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				local targetRoot = closestPlayer.Character.HumanoidRootPart
-				rootPart.CFrame = targetRoot.CFrame
-				rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-				rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-			end
-		end)
-	else
-		-- Kapatıldığında bağlantıyı kopar ve hızları sıfırla
-		if flingConn then
-			flingConn:Disconnect()
-			flingConn = nil
-		end
+	local success = pcall(function()
+		flingPlayerListGui.Parent = game:GetService("CoreGui")
+	end)
+	if not success then
+		flingPlayerListGui.Parent = player.PlayerGui
+	end
+
+	-- Ana Çerçeve (Kutu)
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 240, 0, 320)
+	mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = flingPlayerListGui
+
+	local frameCorner = Instance.new("UICorner")
+	frameCorner.CornerRadius = UDim.new(0, 10)
+	frameCorner.Parent = mainFrame
+
+	-- Başlık
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0, 40)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "Seçmeli Fling Menüsü"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLabel.TextSize = 13
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.Parent = mainFrame
+
+	-- Kaydırma Alanı (ScrollingFrame)
+	local scrollingFrame = Instance.new("ScrollingFrame")
+	scrollingFrame.Size = UDim2.new(1, -16, 1, -50)
+	scrollingFrame.Position = UDim2.new(0, 8, 0, 42)
+	scrollingFrame.BackgroundTransparency = 1
+	scrollingFrame.BorderSizePixel = 0
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scrollingFrame.ScrollBarThickness = 4
+	scrollingFrame.Parent = mainFrame
+	flingScrollingRef = scrollingFrame
+
+	local uiListLayout = Instance.new("UIListLayout")
+	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	uiListLayout.Padding = UDim.new(0, 6)
+	uiListLayout.Parent = scrollingFrame
+
+	-- Listeyi Doldurma Fonksiyonu
+	local function refreshFlingList()
+		if not flingScrollingRef then return end
 		
-		local char = player.Character
-		local rootPart = char and char:FindFirstChild("HumanoidRootPart")
-		if rootPart then
-			rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		-- Eski elemanları temizle
+		for _, child in ipairs(flingScrollingRef:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
 		end
+
+		for _, targetPlayer in ipairs(Players:GetPlayers()) do
+			if targetPlayer ~= player then
+				local itemRow = Instance.new("Frame")
+				itemRow.Size = UDim2.new(1, 0, 0, 32)
+				itemRow.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+				itemRow.BorderSizePixel = 0
+				itemRow.Parent = flingScrollingRef
+
+				local rowCorner = Instance.new("UICorner")
+				rowCorner.CornerRadius = UDim.new(0, 6)
+				rowCorner.Parent = itemRow
+
+				-- Oyuncu Adı
+				local nameLabel = Instance.new("TextLabel")
+				nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
+				nameLabel.Position = UDim2.new(0, 8, 0, 0)
+				nameLabel.BackgroundTransparency = 1
+				nameLabel.Text = targetPlayer.Name
+				nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+				nameLabel.TextSize = 12
+				nameLabel.Font = Enum.Font.GothamMedium
+				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+				nameLabel.Parent = itemRow
+
+				-- Fling Butonu
+				local flingButton = Instance.new("TextButton")
+				flingButton.Size = UDim2.new(0.38, 0, 0.75, 0)
+				flingButton.Position = UDim2.new(0.60, 0, 0.125, 0)
+				flingButton.BackgroundColor3 = (currentlyFlingingTarget == targetPlayer) and Color3.fromRGB(75, 255, 75) or Color3.fromRGB(255, 75, 75)
+				flingButton.BorderSizePixel = 0
+				flingButton.Text = (currentlyFlingingTarget == targetPlayer) and "Durdur" or "Fling"
+				flingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+				flingButton.TextSize = 11
+				flingButton.Font = Enum.Font.GothamBold
+				flingButton.Parent = itemRow
+
+				local btnCorner = Instance.new("UICorner")
+				btnCorner.CornerRadius = UDim.new(0, 5)
+				btnCorner.Parent = flingButton
+
+				-- Fling Butonuna Basıldığında Çalışacak Mantık
+				flingButton.MouseButton1Click:Connect(function()
+					if currentlyFlingingTarget == targetPlayer then
+						-- Eğer zaten bu kişiye fling atılıyorsa durdur
+						if activeFlingConnection then
+							activeFlingConnection:Disconnect()
+							activeFlingConnection = nil
+						end
+						currentlyFlingingTarget = nil
+						
+						local char = player.Character
+						local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+						if rootPart then
+							rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+							rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+						end
+						
+						showNotification("Fling", targetPlayer.Name .. " serbest bırakıldı.", false)
+						refreshFlingList()
+					else
+						-- Önceki aktif fling'i durdur
+						if activeFlingConnection then
+							activeFlingConnection:Disconnect()
+							activeFlingConnection = nil
+						end
+
+						currentlyFlingingTarget = targetPlayer
+						showNotification("Fling", targetPlayer.Name .. " hedeflendi ve fırlatılıyor!", true)
+						refreshFlingList()
+
+						-- Fizik motorunu patlatarak seçilen kişiye yapışma döngüsü (Çalışan sağlam altyapı)
+						activeFlingConnection = RunService.Heartbeat:Connect(function()
+							local character = player.Character
+							local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+							
+							if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and rootPart then
+								local targetRoot = targetPlayer.Character.HumanoidRootPart
+								rootPart.CFrame = targetRoot.CFrame
+								rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+								rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+							else
+								-- Hedef oyundan çıkarsa veya ölürse durdur
+								if activeFlingConnection then
+									activeFlingConnection:Disconnect()
+									activeFlingConnection = nil
+								end
+								currentlyFlingingTarget = nil
+								if rootPart then
+									rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+									rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+								end
+								refreshFlingList()
+							end
+						end)
+					end
+				end)
+			end
+		end
+	end
+
+	refreshFlingList()
+
+	table.insert(flingPlayerConns, Players.PlayerAdded:Connect(refreshFlingList))
+	table.insert(flingPlayerConns, Players.PlayerRemoving:Connect(refreshFlingList))
+end
+
+local function hideFlingPlayerListWindow()
+	if flingPlayerListGui then
+		flingPlayerListGui.Enabled = false
+	end
+	
+	if activeFlingConnection then
+		activeFlingConnection:Disconnect()
+		activeFlingConnection = nil
+	end
+	currentlyFlingingTarget = nil
+	
+	local char = player.Character
+	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+	if rootPart then
+		rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	end
+end
+
+-- Ana Menüye Toggle Entegrasyonu
+createModernToggle("Seçmeli Fling Menüsü", "Oyuncu listesini açar, istediğini seçip fırlatırsın.", function(state)
+	if state then
+		createFlingPlayerListWindow()
+	else
+		hideFlingPlayerListWindow()
 	end
 end)
 
