@@ -1089,6 +1089,38 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar (Kick atma
 	end
 end)
 
+-- 9. PHYSICS CHAOS MODULE (Sistem Hack / Fling Storm Efekti)
+local physicsChaosActive = false
+local physicsChaosConnection
+
+local function updatePhysicsChaos(state)
+	physicsChaosActive = state
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+
+	if physicsChaosActive and root then
+		physicsChaosConnection = RunService.RenderStepped:Connect(function()
+			if not physicsChaosActive or not root or not root.Parent then
+				if physicsChaosConnection then physicsChaosConnection:Disconnect() end
+				return
+			end
+			-- Sunucu replikasyonunu tetikleyerek etrafa kaos salma
+			root.AssemblyLinearVelocity = Vector3.new(math.random(-800, 800), 4000, math.random(-800, 800))
+			root.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+		end)
+	else
+		if physicsChaosConnection then physicsChaosConnection:Disconnect() end
+		if root then
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+	end
+end
+
+createModernToggle("Physics Chaos (Sistem Kaosu)", "Sunucu fizik motorunu patlatarak herkesi şoke eder.", function(state)
+	updatePhysicsChaos(state)
+end)
+
 -- -- 5. CFRAME FLY (Anti-Kick / Delta Style Bypass)
 local cframeFlyActive = false
 local flySpeed = 50
@@ -1368,43 +1400,6 @@ createModernToggle("Seçmeli Fling Menüsü", "Oyuncu listesini açar, istediği
 	end
 end)
 
--- WorthNet UI: createModernToggle Entegrasyonu
-createModernToggle("Physics Chaos (Hacker Fling)", function(state)
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local localPlayer = Players.LocalPlayer
-
-    -- Global bir kontrol değişkeni tanımlıyoruz
-    _G.WorthNetChaosActive = state
-
-    if state then
-        -- Toggle AÇILDIĞINDA çalışacak döngü
-        task.spawn(function()
-            while _G.WorthNetChaosActive do
-                local character = localPlayer.Character
-                if character then
-                    local rootPart = character:FindFirstChild("HumanoidRootPart")
-                    if rootPart then
-                        -- Fizik motorunu sarsacak rastgele şiddetli hız ve dönme
-                        rootPart.AssemblyLinearVelocity = Vector3.new(math.random(-800, 800), 4000, math.random(-800, 800))
-                        rootPart.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-                    end
-                end
-                RunService.RenderStepped:Wait()
-            end
-        end)
-    else
-        -- Toggle KAPATILDIĞINDA karakteri sabitle ve hızları sıfırla
-        local character = localPlayer.Character
-        if character then
-            local rootPart = character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-            end
-        end
-    end
-end)
 
 -- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma, Smooth Takip & Toggle Registry Kayıtlı)
 local aimbotActive = false
