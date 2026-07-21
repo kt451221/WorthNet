@@ -979,47 +979,165 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- 8. FLING MODULE (UI Uyumlu createModernToggle İle)
-local flingActive = false
-local flingConn = nil
+-- 8. SELECTIVE FLING MODULE (Açılır/Kapanır Dinamik Menü Tasarımı)
+local selectedTargetPlayer = nil
+local selectiveFlingActive = false
+local selectiveFlingConn = nil
 
-createModernToggle("Fling", "En yakınındaki oyuncuyu fırlatır.", function(state)
-	flingActive = state
+local flingContainer = Instance.new("Frame")
+flingContainer.Name = "SelectiveFlingModule"
+flingContainer.Size = UDim2.new(1, -10, 0, 38) -- Başlangıçta kapalı (sadece başlık ve toggle)
+flingContainer.BackgroundColor3 = THEME.Card
+flingContainer.BorderSizePixel = 0
+flingContainer.ZIndex = 7
+flingContainer.ClipsDescendants = true -- Taşmaları gizler, açılıp kapanırken kusursuz durur
+flingContainer.Parent = contentArea
+roundCorners(flingContainer, 8)
+
+local flingListLayout = Instance.new("UIListLayout")
+flingListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+flingListLayout.Padding = UDim.new(0, 8)
+flingListLayout.Parent = flingContainer
+
+local topRow = Instance.new("Frame")
+topRow.Size = UDim2.new(1, 0, 0, 38)
+topRow.BackgroundTransparency = 1
+topRow.LayoutOrder = 1
+topRow.Parent = flingContainer
+
+local flingTitleLabel = Instance.new("TextLabel")
+flingTitleLabel.Size = UDim2.new(0.6, 0, 1, 0)
+flingTitleLabel.Position = UDim2.new(0, 15, 0, 0)
+flingTitleLabel.BackgroundTransparency = 1
+flingTitleLabel.Text = "Seçmeli Fling"
+flingTitleLabel.TextColor3 = THEME.TextMain
+flingTitleLabel.TextSize = 14
+flingTitleLabel.Font = Enum.Font.GothamBold
+flingTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+flingTitleLabel.ZIndex = 8
+flingTitleLabel.Parent = topRow
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 44, 0, 22)
+toggleBtn.Position = UDim2.new(1, -60, 0.5, -11)
+toggleBtn.BackgroundColor3 = THEME.ToggleOff
+toggleBtn.Text = ""
+toggleBtn.ZIndex = 8
+local toggleCorner = Instance.new("UICorner") 
+toggleCorner.CornerRadius = UDim.new(1, 0) 
+toggleCorner.Parent = toggleBtn
+toggleBtn.Parent = topRow
+
+local toggleCircle = Instance.new("Frame")
+toggleCircle.Size = UDim2.new(0, 18, 0, 18)
+toggleCircle.Position = UDim2.new(0, 3, 0.5, -9)
+toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+toggleCircle.ZIndex = 9
+local circleCorner = Instance.new("UICorner") 
+circleCorner.CornerRadius = UDim.new(1, 0) 
+circleCorner.Parent = toggleCircle
+toggleCircle.Parent = toggleBtn
+
+-- Oyuncu Listesi (ScrollingFrame) Alanı
+local listScroll = Instance.new("ScrollingFrame")
+listScroll.Size = UDim2.new(1, -30, 0, 105)
+listScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+listScroll.BorderSizePixel = 0
+listScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+listScroll.ScrollBarThickness = 4
+listScroll.LayoutOrder = 2
+listScroll.ZIndex = 8
+listScroll.Visible = false -- Başlangıçta gizli
+roundCorners(listScroll, 6)
+listScroll.Parent = flingContainer
+
+local scrollLayout = Instance.new("UIListLayout")
+scrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+scrollLayout.Padding = UDim.new(0, 4)
+scrollLayout.Parent = listScroll
+
+local function refreshPlayerList()
+	for _, child in ipairs(listScroll:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
 	
-	if flingActive then
-		flingConn = RunService.Heartbeat:Connect(function()
-			local character = player.Character
-			local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-			if not rootPart then return end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player then
+			local pBtn = Instance.new("TextButton")
+			pBtn.Size = UDim2.new(1, -8, 0, 28)
+			pBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+			pBtn.Text = "  " .. p.Name
+			pBtn.TextColor3 = THEME.TextMain
+			pBtn.TextSize = 12
+			pBtn.Font = Enum.Font.Gotham
+			pBtn.TextXAlignment = Enum.TextXAlignment.Left
+			pBtn.ZIndex = 9
+			roundCorners(pBtn, 4)
+			pBtn.Parent = listScroll
 			
-			-- En yakın hedefi bul
-			local closestPlayer = nil
-			local minDist = math.huge
-			
-			for _, p in ipairs(Players:GetPlayers()) do
-				if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					local targetRoot = p.Character.HumanoidRootPart
-					local dist = (targetRoot.Position - rootPart.Position).Magnitude
-					if dist < minDist then
-						minDist = dist
-						closestPlayer = p
+			pBtn.MouseButton1Click:Connect(function()
+				selectedTargetPlayer = p
+				for _, btn in ipairs(listScroll:GetChildren()) do
+					if btn:IsA("TextButton") then
+						btn.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 					end
 				end
-			end
+				pBtn.BackgroundColor3 = THEME.Accent
+				showNotification("Fling Hedefi", p.Name .. " seçildi!", true)
+			end)
+		end
+	end
+	listScroll.CanvasSize = UDim2.new(0, 0, 0, scrollLayout.AbsoluteContentSize.Y)
+end
+
+refreshPlayerList()
+Players.PlayerAdded:Connect(refreshPlayerList)
+Players.PlayerRemoving:Connect(refreshPlayerList)
+
+toggleBtn.MouseButton1Click:Connect(function()
+	selectiveFlingActive = not selectiveFlingActive
+	
+	if selectiveFlingActive then
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
+		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
+		
+		-- Menüyü aç (Yüksekliği animasyonla büyüt)
+		listScroll.Visible = true
+		TweenService:Create(flingContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -10, 0, 155)}):Play()
+		
+		showNotification("Fling Menüsü", "Hedef seçin ve fling aktif!", true)
+		
+		selectiveFlingConn = RunService.Heartbeat:Connect(function()
+			if not selectedTargetPlayer then return end
+			local character = player.Character
+			local rootPart = character and character:FindFirstChild("HumanoidRootPart")
 			
-			-- Hedef varsa üzerine yapış ve fizik motorunu patlat
-			if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				local targetRoot = closestPlayer.Character.HumanoidRootPart
+			if selectedTargetPlayer.Character and selectedTargetPlayer.Character:FindFirstChild("HumanoidRootPart") and rootPart then
+				local targetRoot = selectedTargetPlayer.Character.HumanoidRootPart
 				rootPart.CFrame = targetRoot.CFrame
 				rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
 				rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
 			end
 		end)
 	else
-		-- Kapatıldığında bağlantıyı kopar ve hızları sıfırla
-		if flingConn then
-			flingConn:Disconnect()
-			flingConn = nil
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
+		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+		
+		-- Menüyü kapat (Yüksekliği animasyonla küçült)
+		TweenService:Create(flingContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, -10, 0, 38)}):Play()
+		task.delay(0.3, function()
+			if not selectiveFlingActive then
+				listScroll.Visible = false
+			end
+		end)
+		
+		showNotification("Fling", "Kapatıldı.", false)
+		
+		if selectiveFlingConn then
+			selectiveFlingConn:Disconnect()
+			selectiveFlingConn = nil
 		end
 		
 		local char = player.Character
