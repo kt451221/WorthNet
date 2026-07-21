@@ -979,6 +979,58 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
+-- 8. FLING MODULE (UI Uyumlu createModernToggle İle)
+local flingActive = false
+local flingConn = nil
+
+createModernToggle("Fling", "En yakınındaki oyuncuyu fırlatır.", function(state)
+	flingActive = state
+	
+	if flingActive then
+		flingConn = RunService.Heartbeat:Connect(function()
+			local character = player.Character
+			local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+			if not rootPart then return end
+			
+			-- En yakın hedefi bul
+			local closestPlayer = nil
+			local minDist = math.huge
+			
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					local targetRoot = p.Character.HumanoidRootPart
+					local dist = (targetRoot.Position - rootPart.Position).Magnitude
+					if dist < minDist then
+						minDist = dist
+						closestPlayer = p
+					end
+				end
+			end
+			
+			-- Hedef varsa üzerine yapış ve fizik motorunu patlat
+			if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+				local targetRoot = closestPlayer.Character.HumanoidRootPart
+				rootPart.CFrame = targetRoot.CFrame
+				rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+				rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+			end
+		end)
+	else
+		-- Kapatıldığında bağlantıyı kopar ve hızları sıfırla
+		if flingConn then
+			flingConn:Disconnect()
+			flingConn = nil
+		end
+		
+		local char = player.Character
+		local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+		if rootPart then
+			rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		end
+	end
+end)
+
 
 -- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma, Smooth Takip & Toggle Registry Kayıtlı)
 local aimbotActive = false
