@@ -620,7 +620,7 @@ createModernSlider("TriggerBot Delay", "Ateş etme gecikmesi (ms)", 0, 500, 0, f
 end)
 
 task.spawn(function()
-	while task.wait(0.01) do
+	while task.wait(0.1) do
 		if TriggerBotEnabled and isAlive() then
 			local viewportSize = camera.ViewportSize
 			local ray = camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
@@ -643,10 +643,10 @@ task.spawn(function()
 								mouse1click() 
 							elseif VirtualInputManager then 
 								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, true, game, 0)
-								task.wait(0.05)
+								task.wait(0.1)
 								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, false, game, 0)
 							end
-							task.wait(0.05)
+							task.wait(0.1)
 						end
 					end
 				end
@@ -1714,47 +1714,6 @@ createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", functio
 	end
 end)
 
-
--- 19. AUTO AIM / TRIGGERBOT
-local autoAimEnabled = false
-local autoAimConnection = nil
-local vim = game:GetService("VirtualInputManager")
-
-local function autoClick()
-    vim:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
-    task.wait(0.02)
-    vim:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
-end
-
-createModernToggle("Auto Aim", "Crosshair rakibin üzerine geldiğinde otomatik ateş eder.", function(state)
-    autoAimEnabled = state
-    if autoAimEnabled then
-        autoAimConnection = mouse:GetPropertyChangedSignal("Target"):Connect(function()
-            if not autoAimEnabled then return end
-            local target = mouse.Target
-            if target and target.Parent then
-                local character = target.Parent
-                if not character:FindFirstChild("Humanoid") then
-                    character = character.Parent
-                end
-                local humanoid = character and character:FindFirstChild("Humanoid")
-                local targetPlayer = Players:GetPlayerFromCharacter(character)
-                
-                if targetPlayer and targetPlayer ~= player and humanoid and humanoid.Health > 0 then
-                    if targetPlayer.Team and targetPlayer.Team == player.Team then return end
-                    if not UserInputService:GetFocusedTextBox() then
-                        autoClick()
-                    end
-                end
-            end
-        end)
-    else
-        if autoAimConnection then
-            autoAimConnection:Disconnect()
-            autoAimConnection = nil
-        end
-    end
-end)
 
 -- 20. SPINBOT
 local spinConn = nil
