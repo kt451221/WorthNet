@@ -733,6 +733,68 @@ createModernSlider("Silent Aim FOV", "Silent aim etkileşim çapı", 30, 500, 15
 	silentAimDrawing.Radius = value
 end)
 
+---------------------------------------------------------
+-- NETLESS & BYPASS INVISIBILITY MODULE
+---------------------------------------------------------
+local RunService = game:GetService("RunService")
+local invisBypassActive = false
+local invisConnection = nil
+
+local function enableBypassInvis()
+	local char = player.Character
+	if not char then return end
+	
+	local rootPart = char:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
+	
+	-- Fizik motorunun karakteri fırlatmasını önleyen netless döngüsü
+	invisConnection = RunService.Heartbeat:Connect(function()
+		if not invisBypassActive or not char or not char.Parent then 
+			if invisConnection then invisConnection:Disconnect() end
+			return 
+		end
+		
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") and part ~= rootPart then
+				-- Anti-cheat hız kontrolünü (Velocity) bypass etme
+				part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+				part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				
+				-- Görsel parçaları geçici olarak haritanın altında gizleme
+				-- (Not: Oyundaki anti-cheat'e göre Y koordinatı -5000 veya yer üstünde farklı bir nokta olabilir)
+				local currentCFrame = part.CFrame
+				part.CFrame = CFrame.new(rootPart.Position.X, -4999, rootPart.Position.Z) * currentCFrame.Rotation
+			end
+		end
+	end)
+end
+
+createModernToggle("Görünmezlik", "Anti-cheat korumalı diğerlerine görünmeme modu.", function(state)
+	invisBypassActive = state
+	
+	if invisBypassActive then
+		enableBypassInvis()
+		
+		-- Ölünüp dirildiğinde sistemin bozulmaması için yeniden tetikleme
+		local respawnConn
+		respawnConn = player.CharacterAdded:Connect(function(newChar)
+			if not invisBypassActive then 
+				respawnConn:Disconnect()
+				return 
+			end
+			task.wait(0.5)
+			enableBypassInvis()
+		end)
+	else
+		if invisConnection then
+			invisConnection:Disconnect()
+			invisConnection = nil
+		end
+		-- Karakteri normale döndürme (Reset atarak veya eski haline getirerek)
+		player.Character:BreakJoints() -- Güvenli sıfırlama
+	end
+end)
+
 -- 2. Simple Hitbox (Max 3)
 local HitboxEnabled = false
 local HitboxSize = 3
