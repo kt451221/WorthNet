@@ -1368,6 +1368,44 @@ createModernToggle("Seçmeli Fling Menüsü", "Oyuncu listesini açar, istediği
 	end
 end)
 
+-- WorthNet UI: createModernToggle Entegrasyonu
+createModernToggle("Physics Chaos (Hacker Fling)", function(state)
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local localPlayer = Players.LocalPlayer
+
+    -- Global bir kontrol değişkeni tanımlıyoruz
+    _G.WorthNetChaosActive = state
+
+    if state then
+        -- Toggle AÇILDIĞINDA çalışacak döngü
+        task.spawn(function()
+            while _G.WorthNetChaosActive do
+                local character = localPlayer.Character
+                if character then
+                    local rootPart = character:FindFirstChild("HumanoidRootPart")
+                    if rootPart then
+                        -- Fizik motorunu sarsacak rastgele şiddetli hız ve dönme
+                        rootPart.AssemblyLinearVelocity = Vector3.new(math.random(-800, 800), 4000, math.random(-800, 800))
+                        rootPart.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+                    end
+                end
+                RunService.RenderStepped:Wait()
+            end
+        end)
+    else
+        -- Toggle KAPATILDIĞINDA karakteri sabitle ve hızları sıfırla
+        local character = localPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+end)
+
 -- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma, Smooth Takip & Toggle Registry Kayıtlı)
 local aimbotActive = false
 local targetFovValue = 150
