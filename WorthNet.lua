@@ -1089,37 +1089,6 @@ createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar (Kick atma
 	end
 end)
 
--- 9. PHYSICS CHAOS MODULE (Sistem Hack / Fling Storm Efekti)
-local physicsChaosActive = false
-local physicsChaosConnection
-
-local function updatePhysicsChaos(state)
-	physicsChaosActive = state
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-
-	if physicsChaosActive and root then
-		physicsChaosConnection = RunService.RenderStepped:Connect(function()
-			if not physicsChaosActive or not root or not root.Parent then
-				if physicsChaosConnection then physicsChaosConnection:Disconnect() end
-				return
-			end
-			-- Sunucu replikasyonunu tetikleyerek etrafa kaos salma
-			root.AssemblyLinearVelocity = Vector3.new(math.random(-800, 800), 4000, math.random(-800, 800))
-			root.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-		end)
-	else
-		if physicsChaosConnection then physicsChaosConnection:Disconnect() end
-		if root then
-			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		end
-	end
-end
-
-createModernToggle("Physics Chaos (Sistem Kaosu)", "Sunucu fizik motorunu patlatarak herkesi şoke eder.", function(state)
-	updatePhysicsChaos(state)
-end)
 
 -- -- 5. CFRAME FLY (Anti-Kick / Delta Style Bypass)
 local cframeFlyActive = false
@@ -1398,6 +1367,75 @@ createModernToggle("Seçmeli Fling Menüsü", "Oyuncu listesini açar, istediği
 	else
 		hideFlingPlayerListWindow()
 	end
+end)
+
+-- 10. FLING EVERYONE MODULE (Sunuctaki Herkesi Fırlatma)
+local flingAllActive = false
+local flingAllConnection = nil
+
+local function updateFlingAll(state)
+	flingAllActive = state
+	local char = player.Character
+	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+
+	if flingAllActive and rootPart then
+		showNotification("Fling All", "Herkes fırlatılmaya başlandı!", true)
+		
+		local targetIndex = 1
+		flingAllConnection = RunService.Heartbeat:Connect(function()
+			local character = player.Character
+			local currentRoot = character and character:FindFirstChild("HumanoidRootPart")
+			
+			if not flingAllActive or not currentRoot or not currentRoot.Parent then
+				if flingAllConnection then flingAllConnection:Disconnect() end
+				return
+			end
+
+			-- Sunucudaki diğer tüm oyuncuları topla
+			local targets = {}
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					table.insert(targets, p.Character.HumanoidRootPart)
+				end
+			end
+
+			if #targets > 0 then
+				if targetIndex > #targets then targetIndex = 1 end
+				local targetRoot = targets[targetIndex]
+				
+				if targetRoot and targetRoot.Parent then
+					-- Hızlıca hedefin üzerine ışınlan ve fizik motorunu patlatarak enerjiyi aktar
+					currentRoot.CFrame = targetRoot.CFrame
+					currentRoot.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+					currentRoot.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+				end
+				
+				targetIndex = targetIndex + 1
+			else
+				-- Etrafta kimse yoksa hızı sıfırla ki havada takılı kalmasın
+				currentRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				currentRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			end
+		end)
+	else
+		if flingAllConnection then
+			flingAllConnection:Disconnect()
+			flingAllConnection = nil
+		end
+		
+		local character = player.Character
+		local currentRoot = character and character:FindFirstChild("HumanoidRootPart")
+		if currentRoot then
+			currentRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			currentRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		end
+		
+		showNotification("Fling All", "Fling All durduruldu.", false)
+	end
+end
+
+createModernToggle("Fling Everyone", "Sunucudaki herkesi sırayla havaya uçurur.", function(state)
+	updateFlingAll(state)
 end)
 
 
