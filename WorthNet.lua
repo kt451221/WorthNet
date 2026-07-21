@@ -1833,36 +1833,6 @@ createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(stat
     end
 end)
 
--- 21. HITBOX EXPANDER
-local hitboxEnabled = false
-local hitboxConnection = nil
-
-createModernToggle("Hitbox Expander", "Rakiplerin vurulma alanını büyütür.", function(state)
-    hitboxEnabled = state
-    if hitboxEnabled then
-        hitboxConnection = RunService.Heartbeat:Connect(function()
-            for _, targetPlayer in ipairs(Players:GetPlayers()) do
-                if targetPlayer ~= player and targetPlayer.Character then
-                    local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        root.Size = Vector3.new(5, 5, 5)
-                        root.Transparency = 0.7
-                        root.Color = Color3.fromRGB(220, 130, 30)
-                        root.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        if hitboxConnection then hitboxConnection:Disconnect() hitboxConnection = nil end
-        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                targetPlayer.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-                targetPlayer.Character.HumanoidRootPart.Transparency = 1
-            end
-        end
-    end
-end)
 
 -- 22. INVENTORY ESP
 local invESPActive = false
