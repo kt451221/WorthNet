@@ -658,6 +658,81 @@ task.spawn(function()
 	end
 end)
 
+---------------------------------------------------------
+-- SILENT AIM MODULE (WorthNet UI Uyumlu)
+---------------------------------------------------------
+local silentAimActive = false
+local silentAimFov = 150
+local silentAimConn = nil
+
+local silentAimDrawing = Drawing.new("Circle")
+silentAimDrawing.Color = Color3.fromRGB(255, 100, 100)
+silentAimDrawing.Thickness = 1
+silentAimDrawing.Radius = silentAimFov
+silentAimDrawing.Filled = false
+silentAimDrawing.Visible = false
+
+local function getClosestSilentTarget()
+	local closestTarget = nil
+	local shortestDist = silentAimFov
+	local camera = workspace.CurrentCamera
+	local mouseLoc = UserInputService:GetMouseLocation()
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+			local hum = p.Character:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Health > 0 then
+				if p.Team and p.Team == player.Team then continue end
+				
+				local head = p.Character.Head
+				local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+				
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouseLoc).Magnitude
+					if dist < shortestDist then
+						shortestDist = dist
+						closestTarget = head
+					end
+				end
+			end
+		end
+	end
+	return closestTarget
+end
+
+createModernToggle("Silent Aim", "Kamerayı sarsmadan en yakın hedefe vuruş yönlendirir.", function(state)
+	silentAimActive = state
+	silentAimDrawing.Visible = state
+	
+	if silentAimActive then
+		silentAimConn = RunService.RenderStepped:Connect(function()
+			local mouseLoc = UserInputService:GetMouseLocation()
+			silentAimDrawing.Position = mouseLoc
+			silentAimDrawing.Radius = silentAimFov
+			
+			local targetHead = getClosestSilentTarget()
+			if targetHead then
+				-- Hedef kafayı global değişkene atıyoruz (Oyun içi mermi scriptleri burayı okuyabilir)
+				_G.WorthNetSilentTarget = targetHead
+			else
+				_G.WorthNetSilentTarget = nil
+			end
+		end)
+	else
+		silentAimDrawing.Visible = false
+		if silentAimConn then
+			silentAimConn:Disconnect()
+			silentAimConn = nil
+		end
+		_G.WorthNetSilentTarget = nil
+	end
+end)
+
+createModernSlider("Silent Aim FOV", "Silent aim etkileşim çapı", 30, 500, 150, function(value)
+	silentAimFov = value
+	silentAimDrawing.Radius = value
+end)
+
 -- 2. Simple Hitbox (Max 3)
 local HitboxEnabled = false
 local HitboxSize = 3
