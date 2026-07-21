@@ -607,7 +607,6 @@ local originalSpeed = 16
 -- TRIGGERBOT & SIMPLE HITBOX ÖZELLİKLERİ
 ---------------------------------------------------------
 
--- 1. TriggerBot
 local TriggerBotEnabled = false
 local TriggerBotDelay = 0
 
@@ -620,7 +619,8 @@ createModernSlider("TriggerBot Delay", "Ateş etme gecikmesi (ms)", 0, 500, 0, f
 end)
 
 task.spawn(function()
-	while task.wait(0.1) do
+	while true do
+		task.wait(0.01) -- Tarama hızını artırmak için süreyi düşürdük
 		if TriggerBotEnabled and isAlive() then
 			local viewportSize = camera.ViewportSize
 			local ray = camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
@@ -630,6 +630,7 @@ task.spawn(function()
 			if player.Character then table.insert(ignoreList, player.Character) end
 			raycastParams.FilterDescendantsInstances = ignoreList
 			local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+			
 			if result and result.Instance then
 				local hitPart = result.Instance
 				local model = hitPart:FindFirstAncestorOfClass("Model")
@@ -639,14 +640,16 @@ task.spawn(function()
 						local hum = model:FindFirstChildOfClass("Humanoid")
 						if hum and hum.Health > 0 then
 							if TriggerBotDelay > 0 then task.wait(TriggerBotDelay / 1000) end
+							
 							if mouse1click then 
 								mouse1click() 
 							elseif VirtualInputManager then 
 								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, true, game, 0)
-								task.wait(0.1)
+								task.wait(0.01) -- Tuşun basılı kalma süresini kısalttık
 								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, false, game, 0)
 							end
-							task.wait(0.1)
+							
+							task.wait(0.02) -- Ard arda hızlı sıkabilmesi için atış sonu gecikmesini azalttık
 						end
 					end
 				end
