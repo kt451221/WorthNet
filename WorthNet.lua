@@ -45,26 +45,14 @@ local function makeDraggable(frame)
 
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			local guiObjects = UserInputService:GetGuiObjectsAtPosition(Vector2.new(input.Position.X, input.Position.Y))
-			local topObj = guiObjects[1]
-			
-			-- Sadece en üstteki nesne bir kontrol elemanı (buton, textbox, slider) ise sürüklemeyi engelle
-			if topObj then
-				local current = topObj
-				while current and current ~= frame do
-					if current:IsA("TextBox") or current:IsA("TextButton") or current.Name:lower():find("slider") or current.Name:lower():find("track") or current.Name:lower():find("thumb") then
-						return 
-					end
-					current = current.Parent
-				end
-			end
-			
 			dragging = true
 			dragStart = input.Position
 			startPos = frame.Position
 
 			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				if input.UserInputState == Enum.UserInputState.End then 
+					dragging = false 
+				end
 			end)
 		end
 	end)
@@ -667,7 +655,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- 3. SPEEDHACK (Düzeltilmiş ve UI Uyumlu Modül)
+-- 3. SPEEDHACK (Düzeltilmiş, Kayıtlı ve UI Uyumlu Modül)
 local speedHackActive = false
 local targetSpeedValue = 75
 local speedSpamConn = nil
@@ -792,7 +780,7 @@ thumbCorner.CornerRadius = UDim.new(1, 0)
 thumbCorner.Parent = sliderThumb
 sliderThumb.Parent = sliderTrack
 
-local minVal, maxVal = 16, 1000
+local minVal, maxVal = 16, 500
 
 local function updateSpeed(val)
 	targetSpeedValue = math.clamp(math.floor(val), minVal, maxVal)
@@ -842,30 +830,38 @@ valueTextBox.FocusLost:Connect(function()
 	end
 end)
 
-toggleBtn.MouseButton1Click:Connect(function()
-	speedHackActive = not speedHackActive
-	
-	if speedHackActive then
-		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
-		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
-		showNotification("SpeedHack", "Aktif edildi!", true)
-		
-		speedSpamConn = RunService.Heartbeat:Connect(function()
-			local char = player.Character
-			local hum = char and char:FindFirstChild("Humanoid")
-			if hum and hum.WalkSpeed ~= targetSpeedValue then
-				hum.WalkSpeed = targetSpeedValue
-			end
-		end)
-	else
-		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
-		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
-		showNotification("SpeedHack", "Devre dışı bırakıldı.", false)
-		
-		if speedSpamConn then speedSpamConn:Disconnect() speedSpamConn = nil end
-		local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-		if hum then hum.WalkSpeed = originalSpeed end
+-- Toggle Registry Kaydı ve Tıklama Yönetimi
+_G.toggleRegistry = _G.toggleRegistry or {}
+
+_G.toggleRegistry["SpeedHack"] = function(state, suppress)
+	if speedHackActive ~= state then
+		speedHackActive = state
+		if speedHackActive then
+			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
+			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
+			if not suppress then showNotification("SpeedHack", "Aktif edildi!", true) end
+			
+			speedSpamConn = RunService.Heartbeat:Connect(function()
+				local char = player.Character
+				local hum = char and char:FindFirstChild("Humanoid")
+				if hum and hum.WalkSpeed ~= targetSpeedValue then
+					hum.WalkSpeed = targetSpeedValue
+				end
+			end)
+		else
+			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
+			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+			if not suppress then showNotification("SpeedHack", "Devre dışı bırakıldı.", false) end
+			
+			if speedSpamConn then speedSpamConn:Disconnect() speedSpamConn = nil end
+			local hum = player.Character and player.Character:FindFirstChild("Humanoid")
+			if hum then hum.WalkSpeed = originalSpeed end
+		end
 	end
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+	_G.toggleRegistry["SpeedHack"](not speedHackActive, false)
 end)
 
 updateSpeed(targetSpeedValue)
@@ -984,7 +980,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 
--- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma & Smooth Takip)
+-- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma, Smooth Takip & Toggle Registry Kayıtlı)
 local aimbotActive = false
 local targetFovValue = 150
 local aimbotConn = nil
@@ -1196,41 +1192,48 @@ local function getClosestPlayerInFov()
 	return closestPlayer
 end
 
-toggleBtn.MouseButton1Click:Connect(function()
-	aimbotActive = not aimbotActive
-	
-	if aimbotActive then
-		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
-		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
-		showNotification("Aimbot", "Aktif edildi (Sağ Click basılı tutun)!", true)
-		
-		aimbotConn = RunService.RenderStepped:Connect(function()
-			local camera = workspace.CurrentCamera
-			local mouseLoc = UserInputService:GetMouseLocation()
-			
-			fovCircle.Radius = targetFovValue
-			fovCircle.Position = mouseLoc
-			fovCircle.Visible = true
+-- Toggle Registry Kaydı ve Tıklama Yönetimi
+_G.toggleRegistry = _G.toggleRegistry or {}
 
-			-- Sadece Sağ Click (MouseButton2) basılı tutulduğunda kilitlen
-			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-				local targetPlayer = getClosestPlayerInFov()
-				if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
-					local head = targetPlayer.Character.Head
-					local targetCFrame = CFrame.new(camera.CFrame.Position, head.Position)
-					-- Smooth oran (0.3) ile kamerayı yumuşakça kaydır, fare hareketine tamamen engel olmaz
-					camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.3)
+_G.toggleRegistry["Aimbot"] = function(state, suppress)
+	if aimbotActive ~= state then
+		aimbotActive = state
+		if aimbotActive then
+			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
+			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
+			if not suppress then showNotification("Aimbot", "Aktif edildi (Sağ Click basılı tutun)!", true) end
+			
+			aimbotConn = RunService.RenderStepped:Connect(function()
+				local camera = workspace.CurrentCamera
+				local mouseLoc = UserInputService:GetMouseLocation()
+				
+				fovCircle.Radius = targetFovValue
+				fovCircle.Position = mouseLoc
+				fovCircle.Visible = true
+
+				-- Sadece Sağ Click (MouseButton2) basılı tutulduğunda kilitlen
+				if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+					local targetPlayer = getClosestPlayerInFov()
+					if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+						local head = targetPlayer.Character.Head
+						local targetCFrame = CFrame.new(camera.CFrame.Position, head.Position)
+						camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.3)
+					end
 				end
-			end
-		end)
-	else
-		TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
-		TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
-		fovCircle.Visible = false
-		showNotification("Aimbot", "Devre dışı bırakıldı.", false)
-		
-		if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
+			end)
+		else
+			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
+			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+			fovCircle.Visible = false
+			if not suppress then showNotification("Aimbot", "Devre dışı bırakıldı.", false) end
+			
+			if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
+		end
 	end
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+	_G.toggleRegistry["Aimbot"](not aimbotActive, false)
 end)
 
 updateFov(targetFovValue)
@@ -2007,6 +2010,87 @@ createModernToggle("MM2 Aimbot", "Silahın varsa direkt Katilin kafasına kilitl
             mm2AimbotConnection = nil
         end
     end
+end)
+
+-- MM2 AUTO SHOOT (Elinde Gun varsa Katile otomatik sıkma)
+local mm2AutoShootEnabled = false
+local mm2AutoShootConn = nil
+
+local function localHasGun()
+	local localChar = player.Character
+	local localBack = player:FindFirstChild("Backpack")
+	return (localChar and localChar:FindFirstChild("Gun")) or (localBack and localBack:FindFirstChild("Gun"))
+end
+
+local function getKillerTarget()
+	local closestPlayer = nil
+	local shortestDistance = math.huge
+	local currentCamera = workspace.CurrentCamera
+	local localChar = player.Character
+	local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+
+	if not localRoot then return nil end
+
+	for _, targetPlayer in ipairs(Players:GetPlayers()) do
+		if targetPlayer ~= player and targetPlayer.Character then
+			local char = targetPlayer.Character
+			local back = targetPlayer:FindFirstChild("Backpack")
+			local hum = char:FindFirstChild("Humanoid")
+			local head = char:FindFirstChild("Head")
+
+			-- Sadece Katili (Knife taşıyanı) hedef al
+			local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
+
+			if targetHasKnife and head and hum and hum.Health > 0 then
+				local _, onScreen = currentCamera:WorldToViewportPoint(head.Position)
+				if onScreen then
+					local distance = (head.Position - localRoot.Position).Magnitude
+					if distance < shortestDistance then
+						shortestDistance = distance
+						closestPlayer = targetPlayer
+					end
+				end
+			end
+		end
+	end
+	return closestPlayer
+end
+
+createModernToggle("MM2 Auto Shoot", "Envanterinde Gun varsa Katile otomatik sıkar.", function(state)
+	mm2AutoShootEnabled = state
+	
+	if mm2AutoShootEnabled then
+		mm2AutoShootConn = RunService.RenderStepped:Connect(function()
+			if not localHasGun() then return end
+			
+			local killer = getKillerTarget()
+			if killer and killer.Character and killer.Character:FindFirstChild("Head") then
+				local head = killer.Character.Head
+				local camera = workspace.CurrentCamera
+				
+				-- Katilin kafasına kamerayı sabitle
+				camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+				
+				-- Silahı ele al ve ateş et
+				local localChar = player.Character
+				local gun = localChar:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+				
+				if gun then
+					if gun.Parent ~= localChar then
+						gun.Parent = localChar -- Silahı eline ver
+					end
+					pcall(function()
+						gun:Activate() -- Otomatik ateş et
+					end)
+				end
+			end
+		end)
+	else
+		if mm2AutoShootConn then
+			mm2AutoShootConn:Disconnect()
+			mm2AutoShootConn = nil
+		end
+	end
 end)
 
 -- Metatable Bypass
