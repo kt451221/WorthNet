@@ -5,7 +5,19 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
+
+-- YARDIMCI FONKSİYONLAR (TriggerBot & Hitbox İçin)
+local function isAlive()
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	return hum and hum.Health > 0
+end
+
+local function getEnemyFolder()
+	return workspace
+end
 
 -- Ekrandaki eski yapıları temizle
 local oldGui = player.PlayerGui:FindFirstChild("WorthNetSystem")
@@ -652,6 +664,96 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.I then
 		towActive = not towActive
+	end
+end)
+
+---------------------------------------------------------
+-- TRIGGERBOT & SIMPLE HITBOX ÖZELLİKLERİ
+---------------------------------------------------------
+
+-- 1. TriggerBot
+local TriggerBotEnabled = false
+local TriggerBotDelay = 0
+
+createModernToggle("TriggerBot", "Crosshair düşman üzerindeyken otomatik ateş eder.", function(Value)
+	TriggerBotEnabled = Value
+end)
+
+createModernSlider("TriggerBot Delay", "Ateş etme gecikmesi (ms)", 0, 500, 0, function(Value)
+	TriggerBotDelay = Value
+end)
+
+task.spawn(function()
+	while task.wait(0.01) do
+		if TriggerBotEnabled and isAlive() then
+			local viewportSize = camera.ViewportSize
+			local ray = camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
+			local raycastParams = RaycastParams.new()
+			raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+			local ignoreList = {camera}
+			if player.Character then table.insert(ignoreList, player.Character) end
+			raycastParams.FilterDescendantsInstances = ignoreList
+			local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+			if result and result.Instance then
+				local hitPart = result.Instance
+				local model = hitPart:FindFirstAncestorOfClass("Model")
+				if model and model:FindFirstChildOfClass("Humanoid") then
+					local enemyFolder = getEnemyFolder()
+					if enemyFolder and (model.Parent == enemyFolder or enemyFolder == workspace) then
+						local hum = model:FindFirstChildOfClass("Humanoid")
+						if hum and hum.Health > 0 then
+							if TriggerBotDelay > 0 then task.wait(TriggerBotDelay / 1000) end
+							if mouse1click then 
+								mouse1click() 
+							elseif VirtualInputManager then 
+								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, true, game, 0)
+								task.wait(0.05)
+								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, false, game, 0)
+							end
+							task.wait(0.05)
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- 2. Simple Hitbox (Max 3)
+local HitboxEnabled = false
+local HitboxSize = 3
+local originalHeadSizes = {}
+
+createModernToggle("Simple Hitbox", "Düşman kafalarının vuruş alanını büyütür (Maks 3).", function(Value)
+	HitboxEnabled = Value
+end)
+
+createModernSlider("Hitbox Size", "Kafa hitbox boyutu (Studs)", 1, 3, 3, function(Value)
+	HitboxSize = Value
+end)
+
+task.spawn(function()
+	while task.wait(0.5) do
+		local enemyFolder = getEnemyFolder()
+		if enemyFolder then
+			for _, enemy in ipairs(enemyFolder:GetChildren()) do
+				local head = enemy:FindFirstChild("Head")
+				local hum = enemy:FindFirstChildOfClass("Humanoid")
+				if head and hum and hum.Health > 0 then
+					if not originalHeadSizes[head] then originalHeadSizes[head] = head.Size end
+					if HitboxEnabled then
+						head.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+						head.CanCollide = false
+						head.Transparency = 0.5
+					else
+						if originalHeadSizes[head] and head.Size ~= originalHeadSizes[head] then
+							head.Size = originalHeadSizes[head]
+							head.Transparency = 0
+						end
+					end
+				end
+			end
+		end
 	end
 end)
 
