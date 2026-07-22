@@ -29,16 +29,17 @@ screenGui.Name = "WorthNetSystem"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
--- PREMIUM TEMA RENKLERİ
+-- PREMIUM MIDNIGHT CYBER TEMA RENKLERİ
 local THEME = {
-	Background = Color3.fromRGB(24, 24, 28),
-	Sidebar = Color3.fromRGB(18, 18, 20),
-	Card = Color3.fromRGB(28, 28, 32),
-	Accent = Color3.fromRGB(220, 130, 30),
-	TextMain = Color3.fromRGB(240, 240, 245),
-	TextDark = Color3.fromRGB(150, 150, 155),
-	ToggleOn = Color3.fromRGB(220, 130, 30),
-	ToggleOff = Color3.fromRGB(60, 60, 65)
+	Background = Color3.fromRGB(13, 14, 18),      -- Derin Siyah / Lacivert Tonu
+	Sidebar    = Color3.fromRGB(18, 20, 26),      -- Yan Menü
+	Card       = Color3.fromRGB(24, 27, 36),      -- Kart Arka Planı
+	Accent     = Color3.fromRGB(99, 102, 241),    -- Modern Neon Mor/Mavi (Indigo)
+	AccentGlow = Color3.fromRGB(129, 140, 248),   -- İkincil Vurgu
+	TextMain   = Color3.fromRGB(240, 242, 245),   -- Keskin Beyaz Text
+	TextDark   = Color3.fromRGB(110, 115, 130),   -- Mat Gri Text
+	ToggleOn   = Color3.fromRGB(99, 102, 241),    -- Açık Buton
+	ToggleOff  = Color3.fromRGB(40, 44, 55)       -- Kapalı Buton
 }
 
 local function roundCorners(obj, radius)
@@ -330,35 +331,94 @@ ytBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- SAĞ İÇERİK ALANI
-local contentArea = Instance.new("ScrollingFrame")
-contentArea.Size = UDim2.new(1, -180, 1, -60)
-contentArea.Position = UDim2.new(0, 170, 0, 50)
-contentArea.BackgroundTransparency = 1
-contentArea.BorderSizePixel = 0
-contentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
-contentArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
-contentArea.ScrollBarThickness = 4
-contentArea.ScrollBarImageColor3 = THEME.Accent
-contentArea.ZIndex = 6
-contentArea.Parent = hubFrame
+---------------------------------------------------------
+-- TAB (SEKME) YÖNETİM SİSTEMİ
+---------------------------------------------------------
+local activeTabs = {}
+local tabButtons = {}
 
-local uiListLayout = Instance.new("UIListLayout")
-uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.Padding = UDim.new(0, 10)
-uiListLayout.Parent = contentArea
+-- Sol sidebar içine tab butonlarını dikey sıralayacak alan
+local sidebarTabContainer = Instance.new("ScrollingFrame")
+sidebarTabContainer.Size = UDim2.new(1, -20, 1, -210)
+sidebarTabContainer.Position = UDim2.new(0, 10, 0, 150)
+sidebarTabContainer.BackgroundTransparency = 1
+sidebarTabContainer.BorderSizePixel = 0
+sidebarTabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+sidebarTabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+sidebarTabContainer.ScrollBarThickness = 2
+sidebarTabContainer.Parent = sidebar
 
+local sidebarLayout = Instance.new("UIListLayout")
+sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sidebarLayout.Padding = UDim.new(0, 6)
+sidebarLayout.Parent = sidebarTabContainer
+
+local function createTab(tabName, iconSymbol)
+	-- 1. Sol Menü Butonu (Sidebar)
+	local tabBtn = Instance.new("TextButton")
+	tabBtn.Size = UDim2.new(1, 0, 0, 36)
+	tabBtn.BackgroundColor3 = THEME.Card
+	tabBtn.Text = "  " .. (iconSymbol or "📌") .. "  " .. tabName
+	tabBtn.TextColor3 = THEME.TextDark
+	tabBtn.Font = Enum.Font.GothamBold
+	tabBtn.TextSize = 12
+	tabBtn.TextXAlignment = Enum.TextXAlignment.Left
+	tabBtn.ZIndex = 8
+	tabBtn.Parent = sidebarTabContainer
+	roundCorners(tabBtn, 8)
+
+	-- 2. Sağ İçerik Alanı (O Sekmeye Özel ScrollingFrame)
+	local tabFrame = Instance.new("ScrollingFrame")
+	tabFrame.Size = UDim2.new(1, -180, 1, -60)
+	tabFrame.Position = UDim2.new(0, 170, 0, 50)
+	tabFrame.BackgroundTransparency = 1
+	tabFrame.BorderSizePixel = 0
+	tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	tabFrame.ScrollBarThickness = 4
+	tabFrame.ScrollBarImageColor3 = THEME.Accent
+	tabFrame.ZIndex = 6
+	tabFrame.Visible = false -- Başlangıçta gizli
+	tabFrame.Parent = hubFrame
+
+	local uiListLayout = Instance.new("UIListLayout")
+	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	uiListLayout.Padding = UDim.new(0, 10)
+	uiListLayout.Parent = tabFrame
+
+	table.insert(activeTabs, tabFrame)
+	table.insert(tabButtons, tabBtn)
+
+	-- Sekme Değiştirme Mantığı
+	tabBtn.MouseButton1Click:Connect(function()
+		for _, frame in ipairs(activeTabs) do
+			frame.Visible = false
+		end
+		for _, btn in ipairs(tabButtons) do
+			btn.TextColor3 = THEME.TextDark
+			btn.BackgroundColor3 = THEME.Card
+		end
+		
+		tabFrame.Visible = true
+		tabBtn.TextColor3 = THEME.TextMain
+		tabBtn.BackgroundColor3 = THEME.Accent
+	end)
+
+	return tabFrame
+end
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	local searchText = string.lower(searchBox.Text)
-	for _, card in ipairs(contentArea:GetChildren()) do
-		if card:IsA("Frame") then
-			local titleLabel = card:FindFirstChild("HackyTitle")
-			if titleLabel then
-				local name = string.lower(titleLabel.Text)
-				if string.find(name, searchText) then
-					card.Visible = true
-				else
-					card.Visible = false
+	for _, tabFrame in ipairs(activeTabs) do
+		for _, card in ipairs(tabFrame:GetChildren()) do
+			if card:IsA("Frame") then
+				local titleLabel = card:FindFirstChild("HackyTitle")
+				if titleLabel then
+					local name = string.lower(titleLabel.Text)
+					if string.find(name, searchText) then
+						card.Visible = true
+					else
+						card.Visible = false
+					end
 				end
 			end
 		end
@@ -407,7 +467,7 @@ local function createModernToggle(name, description, callback)
 	cardFrame.BackgroundColor3 = THEME.Card
 	cardFrame.BorderSizePixel = 0
 	cardFrame.ZIndex = 7
-	cardFrame.Parent = contentArea
+	cardFrame.Parent = parentTab
 	roundCorners(cardFrame, 8)
 	
 	local title = Instance.new("TextLabel")
@@ -504,7 +564,7 @@ local function createModernSlider(name, description, min, max, default, callback
 	title.TextSize = 14
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.ZIndex = 8
-	title.Parent = cardFrame
+	title.Parent = parentTab
 	
 	local desc = Instance.new("TextLabel")
 	desc.Size = UDim2.new(0, 250, 0, 15)
@@ -592,6 +652,106 @@ local function createModernSlider(name, description, min, max, default, callback
 	end)
 end
 
+-- TAB'LARI OLUŞTURMA
+local mainTab     = createTab("Main", "❖")
+local combatTab   = createTab("Combat", "⚔")
+local visualsTab  = createTab("Visuals", "◈")
+local moveTab     = createTab("Movement", "⚡")
+local mm2Tab      = createTab("MM2 Special", "🎯")
+local settingsTab = createTab("Settings", "⚙")
+
+-- Varsayılan Olarak İlk Sekmeyi Açık Yapma
+if activeTabs[1] then
+	activeTabs[1].Visible = true
+	tabButtons[1].TextColor3 = THEME.TextMain
+	tabButtons[1].BackgroundColor3 = THEME.Accent
+end
+
+---------------------------------------------------------
+-- SETTINGS TAB (AYARLAR SEKME İÇERİĞİ)
+---------------------------------------------------------
+
+-- 1. Custom Toggle Keybind
+local toggleKey = Enum.KeyCode.RightShift
+local isSettingKey = false
+
+local keybindCard = Instance.new("Frame")
+keybindCard.Size = UDim2.new(1, -10, 0, 52)
+keybindCard.BackgroundColor3 = THEME.Card
+keybindCard.BorderSizePixel = 0
+keybindCard.ZIndex = 7
+keybindCard.Parent = settingsTab
+roundCorners(keybindCard, 6)
+
+local kbTitle = Instance.new("TextLabel")
+kbTitle.Size = UDim2.new(0, 200, 0, 22)
+kbTitle.Position = UDim2.new(0, 12, 0, 5)
+kbTitle.BackgroundTransparency = 1
+kbTitle.Text = "Menu Keybind"
+kbTitle.TextColor3 = THEME.TextMain
+kbTitle.Font = Enum.Font.GothamBold
+kbTitle.TextSize = 13
+kbTitle.TextXAlignment = Enum.TextXAlignment.Left
+kbTitle.Parent = keybindCard
+
+local kbDesc = Instance.new("TextLabel")
+kbDesc.Size = UDim2.new(0, 220, 0, 18)
+kbDesc.Position = UDim2.new(0, 12, 0, 25)
+kbDesc.BackgroundTransparency = 1
+kbDesc.Text = "Menüyü açıp kapatacak kısayol tuşu."
+kbDesc.TextColor3 = THEME.TextDark
+kbDesc.Font = Enum.Font.Gotham
+kbDesc.TextSize = 10
+kbDesc.TextXAlignment = Enum.TextXAlignment.Left
+kbDesc.Parent = keybindCard
+
+local kbBtn = Instance.new("TextButton")
+kbBtn.Size = UDim2.new(0, 90, 0, 26)
+kbBtn.Position = UDim2.new(1, -102, 0.5, -13)
+kbBtn.BackgroundColor3 = Color3.fromRGB(32, 36, 48)
+kbBtn.Text = toggleKey.Name
+kbBtn.TextColor3 = THEME.Accent
+kbBtn.Font = Enum.Font.GothamBold
+kbBtn.TextSize = 11
+kbBtn.Parent = keybindCard
+roundCorners(kbBtn, 6)
+
+kbBtn.MouseButton1Click:Connect(function()
+	isSettingKey = true
+	kbBtn.Text = "Bas bekleniyor..."
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if isSettingKey and input.UserInputType == Enum.UserInputType.Keyboard then
+		toggleKey = input.KeyCode
+		kbBtn.Text = toggleKey.Name
+		isSettingKey = false
+		showNotification("Keybind", "Yeni tuş atandı: " .. toggleKey.Name, true)
+	elseif not gameProcessed and input.KeyCode == toggleKey then
+		hubFrame.Visible = not hubFrame.Visible
+		minLogo.Visible = not hubFrame.Visible
+	end
+end)
+
+-- 2. UI Transparency Slider
+createModernSlider(settingsTab, "UI Transparency", "Arayüz şeffaflığını ayarlar.", 0, 90, 0, function(val)
+	local alpha = val / 100
+	hubFrame.BackgroundTransparency = alpha
+	sidebar.BackgroundTransparency = alpha
+end)
+
+-- 3. Rejoin Server
+createModernButton(settingsTab, "Rejoin Server", "Bulunduğunuz sunucuya tekrar bağlanır.", function()
+	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+end)
+
+-- 4. Unload Script
+createModernButton(settingsTab, "Unload Script (Tamamen Kapat)", "Tüm sistemleri durdurur ve UI'ı siler.", function()
+	showNotification("System", "Script kaldırılıyor...", false)
+	task.wait(0.5)
+	screenGui:Destroy()
+end)
+
 ---------------------------------------------------------
 -- HİLE AKTİVASYON ALANI
 ---------------------------------------------------------
@@ -610,11 +770,11 @@ local originalSpeed = 16
 local TriggerBotEnabled = false
 local TriggerBotDelay = 0
 
-createModernToggle("TriggerBot", "Crosshair düşman üzerindeyken otomatik ateş eder.", function(Value)
+createModernToggle(combatTab, "TriggerBot", "Crosshair düşman üzerindeyken otomatik ateş eder.", function(Value)
 	TriggerBotEnabled = Value
 end)
 
-createModernSlider("TriggerBot Delay", "Ateş etme gecikmesi (ms)", 0, 500, 0, function(Value)
+createModernSlider(combatTab, "TriggerBot Delay", "Ateş etme gecikmesi (ms)", 0, 500, 0, function(Value)
 	TriggerBotDelay = Value
 end)
 
@@ -700,7 +860,7 @@ local function getClosestSilentTarget()
 	return closestTarget
 end
 
-createModernToggle("Silent Aim", "Kamerayı sarsmadan en yakın hedefe vuruş yönlendirir.", function(state)
+createModernToggle(combatTab, "Silent Aim", "Kamerayı sarsmadan en yakın hedefe vuruş yönlendirir.", function(state)
 	silentAimActive = state
 	silentAimDrawing.Visible = state
 	
@@ -728,71 +888,9 @@ createModernToggle("Silent Aim", "Kamerayı sarsmadan en yakın hedefe vuruş y�
 	end
 end)
 
-createModernSlider("Silent Aim FOV", "Silent aim etkileşim çapı", 30, 500, 150, function(value)
+createModernSlider(combatTab, "Silent Aim FOV", "Silent aim etkileşim çapı", 30, 500, 150, function(value)
 	silentAimFov = value
 	silentAimDrawing.Radius = value
-end)
-
----------------------------------------------------------
--- NETLESS & BYPASS INVISIBILITY MODULE
----------------------------------------------------------
-local RunService = game:GetService("RunService")
-local invisBypassActive = false
-local invisConnection = nil
-
-local function enableBypassInvis()
-	local char = player.Character
-	if not char then return end
-	
-	local rootPart = char:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return end
-	
-	-- Fizik motorunun karakteri fırlatmasını önleyen netless döngüsü
-	invisConnection = RunService.Heartbeat:Connect(function()
-		if not invisBypassActive or not char or not char.Parent then 
-			if invisConnection then invisConnection:Disconnect() end
-			return 
-		end
-		
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") and part ~= rootPart then
-				-- Anti-cheat hız kontrolünü (Velocity) bypass etme
-				part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-				part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-				
-				-- Görsel parçaları geçici olarak haritanın altında gizleme
-				-- (Not: Oyundaki anti-cheat'e göre Y koordinatı -5000 veya yer üstünde farklı bir nokta olabilir)
-				local currentCFrame = part.CFrame
-				part.CFrame = CFrame.new(rootPart.Position.X, -4999, rootPart.Position.Z) * currentCFrame.Rotation
-			end
-		end
-	end)
-end
-
-createModernToggle("Görünmezlik", "Anti-cheat korumalı diğerlerine görünmeme modu.", function(state)
-	invisBypassActive = state
-	
-	if invisBypassActive then
-		enableBypassInvis()
-		
-		-- Ölünüp dirildiğinde sistemin bozulmaması için yeniden tetikleme
-		local respawnConn
-		respawnConn = player.CharacterAdded:Connect(function(newChar)
-			if not invisBypassActive then 
-				respawnConn:Disconnect()
-				return 
-			end
-			task.wait(0.5)
-			enableBypassInvis()
-		end)
-	else
-		if invisConnection then
-			invisConnection:Disconnect()
-			invisConnection = nil
-		end
-		-- Karakteri normale döndürme (Reset atarak veya eski haline getirerek)
-		player.Character:BreakJoints() -- Güvenli sıfırlama
-	end
 end)
 
 -- 2. Simple Hitbox (Max 3)
@@ -800,11 +898,11 @@ local HitboxEnabled = false
 local HitboxSize = 3
 local originalHeadSizes = {}
 
-createModernToggle("Simple Hitbox", "Düşman kafalarının vuruş alanını büyütür (Maks 3).", function(Value)
+createModernToggle(combatTab, "Simple Hitbox", "Düşman kafalarının vuruş alanını büyütür (Maks 3).", function(Value)
 	HitboxEnabled = Value
 end)
 
-createModernSlider("Hitbox Size", "Kafa hitbox boyutu (Studs)", 1, 3, 3, function(Value)
+createModernSlider(combatTab, "Hitbox Size", "Kafa hitbox boyutu (Studs)", 1, 3, 3, function(Value)
 	HitboxSize = Value
 end)
 
@@ -833,221 +931,60 @@ task.spawn(function()
 	end
 end)
 
--- 3. SPEEDHACK (Düzeltilmiş, Kayıtlı ve UI Uyumlu Modül)
+---------------------------------------------------------
+-- SPEEDHACK MODULE (WorthNet UI Uyumlu)
+---------------------------------------------------------
 local speedHackActive = false
 local targetSpeedValue = 75
 local speedSpamConn = nil
 
-local speedHackContainer = Instance.new("Frame")
-speedHackContainer.Name = "SpeedHackModule"
-speedHackContainer.Size = UDim2.new(1, -10, 0, 105)
-speedHackContainer.BackgroundColor3 = THEME.Card
-speedHackContainer.BorderSizePixel = 0
-speedHackContainer.ZIndex = 7
-speedHackContainer.Parent = contentArea
-roundCorners(speedHackContainer, 8)
-
-local speedListLayout = Instance.new("UIListLayout")
-speedListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-speedListLayout.Padding = UDim.new(0, 10)
-speedListLayout.Parent = speedHackContainer
-
-local topRow = Instance.new("Frame")
-topRow.Size = UDim2.new(1, 0, 0, 28)
-topRow.BackgroundTransparency = 1
-topRow.LayoutOrder = 1
-topRow.Parent = speedHackContainer
-
-local speedTitleLabel = Instance.new("TextLabel")
-speedTitleLabel.Name = "HackyTitle"
-speedTitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-speedTitleLabel.Position = UDim2.new(0, 15, 0, 0)
-speedTitleLabel.BackgroundTransparency = 1
-speedTitleLabel.Text = "SpeedHack"
-speedTitleLabel.TextColor3 = THEME.TextMain
-speedTitleLabel.TextSize = 14
-speedTitleLabel.Font = Enum.Font.GothamBold
-speedTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedTitleLabel.ZIndex = 8
-speedTitleLabel.Parent = topRow
-
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 44, 0, 22)
-toggleBtn.Position = UDim2.new(1, -60, 0.5, -11)
-toggleBtn.BackgroundColor3 = THEME.ToggleOff
-toggleBtn.Text = ""
-toggleBtn.ZIndex = 8
-local toggleCorner = Instance.new("UICorner") 
-toggleCorner.CornerRadius = UDim.new(1, 0) 
-toggleCorner.Parent = toggleBtn
-toggleBtn.Parent = topRow
-
-local toggleCircle = Instance.new("Frame")
-toggleCircle.Size = UDim2.new(0, 18, 0, 18)
-toggleCircle.Position = UDim2.new(0, 3, 0.5, -9)
-toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-toggleCircle.ZIndex = 9
-local circleCorner = Instance.new("UICorner") 
-circleCorner.CornerRadius = UDim.new(1, 0) 
-circleCorner.Parent = toggleCircle
-toggleCircle.Parent = toggleBtn
-
-local sliderRow = Instance.new("Frame")
-sliderRow.Size = UDim2.new(1, -30, 0, 50)
-sliderRow.Position = UDim2.new(0, 15, 0, 0)
-sliderRow.BackgroundTransparency = 1
-sliderRow.LayoutOrder = 2
-sliderRow.ZIndex = 8
-sliderRow.Parent = speedHackContainer
-
-local sliderLabel = Instance.new("TextLabel")
-sliderLabel.Size = UDim2.new(1, -55, 0, 20)
-sliderLabel.BackgroundTransparency = 1
-sliderLabel.Text = "Hız Seviyesi: 75"
-sliderLabel.TextColor3 = THEME.TextDark
-sliderLabel.TextSize = 11
-sliderLabel.Font = Enum.Font.Gotham
-sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-sliderLabel.ZIndex = 8
-sliderLabel.Parent = sliderRow
-
-local valueTextBox = Instance.new("TextBox")
-valueTextBox.Size = UDim2.new(0, 45, 0, 20)
-valueTextBox.Position = UDim2.new(1, -45, 0, 0)
-valueTextBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
-valueTextBox.TextColor3 = THEME.Accent
-valueTextBox.Text = tostring(targetSpeedValue)
-valueTextBox.TextSize = 12
-valueTextBox.Font = Enum.Font.GothamBold
-valueTextBox.ClearTextOnFocus = false
-valueTextBox.ZIndex = 8
-local boxCorner = Instance.new("UICorner") 
-boxCorner.CornerRadius = UDim.new(0, 4) 
-boxCorner.Parent = valueTextBox
-valueTextBox.Parent = sliderRow
-
-local sliderTrack = Instance.new("Frame")
-sliderTrack.Size = UDim2.new(1, 0, 0, 6)
-sliderTrack.Position = UDim2.new(0, 0, 0, 34)
-sliderTrack.BackgroundColor3 = THEME.ToggleOff
-sliderTrack.BorderSizePixel = 0
-sliderTrack.ZIndex = 8
-local trackCorner = Instance.new("UICorner") 
-trackCorner.CornerRadius = UDim.new(1, 0) 
-trackCorner.Parent = sliderTrack
-sliderTrack.Parent = sliderRow
-
-local sliderFill = Instance.new("Frame")
-sliderFill.Size = UDim2.new(0, 0, 1, 0)
-sliderFill.BackgroundColor3 = THEME.Accent
-sliderFill.BorderSizePixel = 0
-sliderFill.ZIndex = 9
-local fillCorner = Instance.new("UICorner") 
-fillCorner.CornerRadius = UDim.new(1, 0) 
-fillCorner.Parent = sliderFill
-sliderFill.Parent = sliderTrack
-
-local sliderThumb = Instance.new("Frame")
-sliderThumb.Size = UDim2.new(0, 14, 0, 14)
-sliderThumb.AnchorPoint = Vector2.new(0.5, 0.5)
-sliderThumb.Position = UDim2.new(0, 0, 0.5, 0)
-sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-sliderThumb.ZIndex = 10
-local thumbCorner = Instance.new("UICorner") 
-thumbCorner.CornerRadius = UDim.new(1, 0) 
-thumbCorner.Parent = sliderThumb
-sliderThumb.Parent = sliderTrack
-
-local minVal, maxVal = 16, 500
-
-local function updateSpeed(val)
-	targetSpeedValue = math.clamp(math.floor(val), minVal, maxVal)
-	valueTextBox.Text = tostring(targetSpeedValue)
-	sliderLabel.Text = "Hız Seviyesi: " .. targetSpeedValue
-	
-	local percent = (targetSpeedValue - minVal) / (maxVal - minVal)
-	sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-	sliderThumb.Position = UDim2.new(percent, 0, 0.5, 0)
+-- Karakterin Hızını Güncelleyen Yardımcı Fonksiyon
+local function applySpeed(character, speed)
+    if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = speed
+    end
 end
 
-local draggingSlider = false
-sliderTrack.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = true
-	end
-end)
-sliderThumb.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = true
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = false
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local mousePos = UserInputService:GetMouseLocation()
-		local absPos = sliderTrack.AbsolutePosition
-		local absSize = sliderTrack.AbsoluteSize
-		local pos = math.clamp((mousePos.X - absPos.X) / absSize.X, 0, 1)
-		local newVal = minVal + (maxVal - minVal) * pos
-		updateSpeed(newVal)
-	end
+-- Toggle Entegrasyonu (moveTab)
+createModernToggle(moveTab, "SpeedHack", "Karakterinizin yürüme hızını belirlediğiniz seviyede tutar.", function(state)
+    speedHackActive = state
+    
+    if speedHackActive then
+        -- Anlık olarak hızı uygula
+        applySpeed(player.Character, targetSpeedValue)
+        
+        -- Bazı oyunlar WalkSpeed'i sürekli sıfırladığı için RenderStepped ile sabitleme
+        speedSpamConn = RunService.RenderStepped:Connect(function()
+            if speedHackActive and player.Character then
+                applySpeed(player.Character, targetSpeedValue)
+            end
+        end)
+    else
+        -- Bağlantıyı kopar ve normal hıza (16) geri dön
+        if speedSpamConn then
+            speedSpamConn:Disconnect()
+            speedSpamConn = nil
+        end
+        applySpeed(player.Character, 16)
+    end
 end)
 
-valueTextBox.FocusLost:Connect(function()
-	local num = tonumber(valueTextBox.Text)
-	if num then
-		updateSpeed(num)
-	else
-		valueTextBox.Text = tostring(targetSpeedValue)
-	end
+-- Slider Entegrasyonu (moveTab)
+createModernSlider(moveTab, "Hız Seviyesi", "SpeedHack aktifken uygulanacak yürüme hızı.", 16, 300, 75, function(value)
+    targetSpeedValue = value
+    
+    -- Eğer modül aktifse slider değiştiği an hızı canlı güncelle
+    if speedHackActive then
+        applySpeed(player.Character, targetSpeedValue)
+    end
 end)
-
--- Toggle Registry Kaydı ve Tıklama Yönetimi
-_G.toggleRegistry = _G.toggleRegistry or {}
-
-_G.toggleRegistry["SpeedHack"] = function(state, suppress)
-	if speedHackActive ~= state then
-		speedHackActive = state
-		if speedHackActive then
-			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
-			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
-			if not suppress then showNotification("SpeedHack", "Aktif edildi!", true) end
-			
-			speedSpamConn = RunService.Heartbeat:Connect(function()
-				local char = player.Character
-				local hum = char and char:FindFirstChild("Humanoid")
-				if hum and hum.WalkSpeed ~= targetSpeedValue then
-					hum.WalkSpeed = targetSpeedValue
-				end
-			end)
-		else
-			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
-			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
-			if not suppress then showNotification("SpeedHack", "Devre dışı bırakıldı.", false) end
-			
-			if speedSpamConn then speedSpamConn:Disconnect() speedSpamConn = nil end
-			local hum = player.Character and player.Character:FindFirstChild("Humanoid")
-			if hum then hum.WalkSpeed = originalSpeed end
-		end
-	end
-end
-
-toggleBtn.MouseButton1Click:Connect(function()
-	_G.toggleRegistry["SpeedHack"](not speedHackActive, false)
-end)
-
-updateSpeed(targetSpeedValue)
 
 -- -- 4. SAFE NOCLIP (Yere Düşme ve Kick Önleyici)
 local noclipConnection = nil
 
-createModernToggle("Noclip", "Duvarların içinden geçmenizi sağlar (Kick atmaz).", function(state)
+createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar (Kick atmaz).", function(state)
 	if state then
 		noclipConnection = RunService.Stepped:Connect(function()
 			local char = player.Character
@@ -1092,7 +1029,7 @@ end)
 
 -- -- 5. CFRAME FLY (Anti-Kick / Delta Style Bypass)
 local cframeFlyActive = false
-local flySpeed = 50
+local flySpeed = 35
 local flyConnection
 
 local function updateCFrameFly(state)
@@ -1148,7 +1085,7 @@ local function updateCFrameFly(state)
 	end
 end
 
-createModernToggle("Fly", "(Kick Atmaz)", "Fizik motorunu bypass eder, P tuşu ile açılır.", function(state)
+createModernToggle(moveTab, "Fly", "(Kick Atmaz)", "Fizik motorunu bypass eder, P tuşu ile açılır.", function(state)
 	updateCFrameFly(state)
 end)
 
@@ -1361,7 +1298,7 @@ local function hideFlingPlayerListWindow()
 end
 
 -- Ana Menüye Toggle Entegrasyonu
-createModernToggle("Seçmeli Fling Menüsü", "Oyuncu listesini açar, istediğini seçip fırlatırsın.", function(state)
+createModernToggle(moveTab, "Fling Menüsü", "Oyuncu listesini açar, istediğini seçip fırlatırsın.", function(state)
 	if state then
 		createFlingPlayerListWindow()
 	else
@@ -1369,338 +1306,11 @@ createModernToggle("Seçmeli Fling Menüsü", "Oyuncu listesini açar, istediği
 	end
 end)
 
--- 10. FLING EVERYONE MODULE (Sunuctaki Herkesi Fırlatma)
-local flingAllActive = false
-local flingAllConnection = nil
-
-local function updateFlingAll(state)
-	flingAllActive = state
-	local char = player.Character
-	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
-
-	if flingAllActive and rootPart then
-		showNotification("Fling All", "Herkes fırlatılmaya başlandı!", true)
-		
-		local targetIndex = 1
-		flingAllConnection = RunService.Heartbeat:Connect(function()
-			local character = player.Character
-			local currentRoot = character and character:FindFirstChild("HumanoidRootPart")
-			
-			if not flingAllActive or not currentRoot or not currentRoot.Parent then
-				if flingAllConnection then flingAllConnection:Disconnect() end
-				return
-			end
-
-			-- Sunucudaki diğer tüm oyuncuları topla
-			local targets = {}
-			for _, p in ipairs(Players:GetPlayers()) do
-				if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					table.insert(targets, p.Character.HumanoidRootPart)
-				end
-			end
-
-			if #targets > 0 then
-				if targetIndex > #targets then targetIndex = 1 end
-				local targetRoot = targets[targetIndex]
-				
-				if targetRoot and targetRoot.Parent then
-					-- Hızlıca hedefin üzerine ışınlan ve fizik motorunu patlatarak enerjiyi aktar
-					currentRoot.CFrame = targetRoot.CFrame
-					currentRoot.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-					currentRoot.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-				end
-				
-				targetIndex = targetIndex + 1
-			else
-				-- Etrafta kimse yoksa hızı sıfırla ki havada takılı kalmasın
-				currentRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-				currentRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			end
-		end)
-	else
-		if flingAllConnection then
-			flingAllConnection:Disconnect()
-			flingAllConnection = nil
-		end
-		
-		local character = player.Character
-		local currentRoot = character and character:FindFirstChild("HumanoidRootPart")
-		if currentRoot then
-			currentRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			currentRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-		end
-		
-		showNotification("Fling All", "Fling All durduruldu.", false)
-	end
-end
-
-createModernToggle("Fling Everyone", "Sunucudaki herkesi sırayla havaya uçurur.", function(state)
-	updateFlingAll(state)
-end)
-
-
--- 7. AIMBOT MODULE (UI Uyumlu, Sağ Click Basılı Tutma, Smooth Takip & Toggle Registry Kayıtlı)
-local aimbotActive = false
-local targetFovValue = 150
-local aimbotConn = nil
-
-local aimbotContainer = Instance.new("Frame")
-aimbotContainer.Name = "AimbotModule"
-aimbotContainer.Size = UDim2.new(1, -10, 0, 105)
-aimbotContainer.BackgroundColor3 = THEME.Card
-aimbotContainer.BorderSizePixel = 0
-aimbotContainer.ZIndex = 7
-aimbotContainer.Parent = contentArea
-roundCorners(aimbotContainer, 8)
-
-local aimbotListLayout = Instance.new("UIListLayout")
-aimbotListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-aimbotListLayout.Padding = UDim.new(0, 10)
-aimbotListLayout.Parent = aimbotContainer
-
-local topRow = Instance.new("Frame")
-topRow.Size = UDim2.new(1, 0, 0, 28)
-topRow.BackgroundTransparency = 1
-topRow.LayoutOrder = 1
-topRow.Parent = aimbotContainer
-
-local aimbotTitleLabel = Instance.new("TextLabel")
-aimbotTitleLabel.Name = "AimbotTitle"
-aimbotTitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
-aimbotTitleLabel.Position = UDim2.new(0, 15, 0, 0)
-aimbotTitleLabel.BackgroundTransparency = 1
-aimbotTitleLabel.Text = "Aimbot"
-aimbotTitleLabel.TextColor3 = THEME.TextMain
-aimbotTitleLabel.TextSize = 14
-aimbotTitleLabel.Font = Enum.Font.GothamBold
-aimbotTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-aimbotTitleLabel.ZIndex = 8
-aimbotTitleLabel.Parent = topRow
-
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 44, 0, 22)
-toggleBtn.Position = UDim2.new(1, -60, 0.5, -11)
-toggleBtn.BackgroundColor3 = THEME.ToggleOff
-toggleBtn.Text = ""
-toggleBtn.ZIndex = 8
-local toggleCorner = Instance.new("UICorner") 
-toggleCorner.CornerRadius = UDim.new(1, 0) 
-toggleCorner.Parent = toggleBtn
-toggleBtn.Parent = topRow
-
-local toggleCircle = Instance.new("Frame")
-toggleCircle.Size = UDim2.new(0, 18, 0, 18)
-toggleCircle.Position = UDim2.new(0, 3, 0.5, -9)
-toggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-toggleCircle.ZIndex = 9
-local circleCorner = Instance.new("UICorner") 
-circleCorner.CornerRadius = UDim.new(1, 0) 
-circleCorner.Parent = toggleCircle
-toggleCircle.Parent = toggleBtn
-
-local sliderRow = Instance.new("Frame")
-sliderRow.Size = UDim2.new(1, -30, 0, 50)
-sliderRow.Position = UDim2.new(0, 15, 0, 0)
-sliderRow.BackgroundTransparency = 1
-sliderRow.LayoutOrder = 2
-sliderRow.ZIndex = 8
-sliderRow.Parent = aimbotContainer
-
-local sliderLabel = Instance.new("TextLabel")
-sliderLabel.Size = UDim2.new(1, -55, 0, 20)
-sliderLabel.BackgroundTransparency = 1
-sliderLabel.Text = "FOV Çapı: 150"
-sliderLabel.TextColor3 = THEME.TextDark
-sliderLabel.TextSize = 11
-sliderLabel.Font = Enum.Font.Gotham
-sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-sliderLabel.ZIndex = 8
-sliderLabel.Parent = sliderRow
-
-local valueTextBox = Instance.new("TextBox")
-valueTextBox.Size = UDim2.new(0, 45, 0, 20)
-valueTextBox.Position = UDim2.new(1, -45, 0, 0)
-valueTextBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
-valueTextBox.TextColor3 = THEME.Accent
-valueTextBox.Text = tostring(targetFovValue)
-valueTextBox.TextSize = 12
-valueTextBox.Font = Enum.Font.GothamBold
-valueTextBox.ClearTextOnFocus = false
-valueTextBox.ZIndex = 8
-local boxCorner = Instance.new("UICorner") 
-boxCorner.CornerRadius = UDim.new(0, 4) 
-boxCorner.Parent = valueTextBox
-valueTextBox.Parent = sliderRow
-
-local sliderTrack = Instance.new("Frame")
-sliderTrack.Size = UDim2.new(1, 0, 0, 6)
-sliderTrack.Position = UDim2.new(0, 0, 0, 34)
-sliderTrack.BackgroundColor3 = THEME.ToggleOff
-sliderTrack.BorderSizePixel = 0
-sliderTrack.ZIndex = 8
-local trackCorner = Instance.new("UICorner") 
-trackCorner.CornerRadius = UDim.new(1, 0) 
-trackCorner.Parent = sliderTrack
-sliderTrack.Parent = sliderRow
-
-local sliderFill = Instance.new("Frame")
-sliderFill.Size = UDim2.new(0, 0, 1, 0)
-sliderFill.BackgroundColor3 = THEME.Accent
-sliderFill.BorderSizePixel = 0
-sliderFill.ZIndex = 9
-local fillCorner = Instance.new("UICorner") 
-fillCorner.CornerRadius = UDim.new(1, 0) 
-fillCorner.Parent = sliderFill
-sliderFill.Parent = sliderTrack
-
-local sliderThumb = Instance.new("Frame")
-sliderThumb.Size = UDim2.new(0, 14, 0, 14)
-sliderThumb.AnchorPoint = Vector2.new(0.5, 0.5)
-sliderThumb.Position = UDim2.new(0, 0, 0.5, 0)
-sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-sliderThumb.ZIndex = 10
-local thumbCorner = Instance.new("UICorner") 
-thumbCorner.CornerRadius = UDim.new(1, 0) 
-thumbCorner.Parent = sliderThumb
-sliderThumb.Parent = sliderTrack
-
-local minVal, maxVal = 30, 500
-
-local function updateFov(val)
-	targetFovValue = math.clamp(math.floor(val), minVal, maxVal)
-	valueTextBox.Text = tostring(targetFovValue)
-	sliderLabel.Text = "FOV Çapı: " .. targetFovValue
-	
-	local percent = (targetFovValue - minVal) / (maxVal - minVal)
-	sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-	sliderThumb.Position = UDim2.new(percent, 0, 0.5, 0)
-end
-
-local draggingSlider = false
-sliderTrack.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = true
-	end
-end)
-sliderThumb.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = true
-	end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		draggingSlider = false
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local mousePos = UserInputService:GetMouseLocation()
-		local absPos = sliderTrack.AbsolutePosition
-		local absSize = sliderTrack.AbsoluteSize
-		local pos = math.clamp((mousePos.X - absPos.X) / absSize.X, 0, 1)
-		local newVal = minVal + (maxVal - minVal) * pos
-		updateFov(newVal)
-	end
-end)
-
-valueTextBox.FocusLost:Connect(function()
-	local num = tonumber(valueTextBox.Text)
-	if num then
-		updateFov(num)
-	else
-		valueTextBox.Text = tostring(targetFovValue)
-	end
-end)
-
--- FOV Çemberi
-local fovCircle = Drawing.new("Circle")
-fovCircle.Color = Color3.fromRGB(255, 255, 255)
-fovCircle.Thickness = 1
-fovCircle.Radius = targetFovValue
-fovCircle.Filled = false
-fovCircle.Visible = false
-
-local function getClosestPlayerInFov()
-	local closestPlayer = nil
-	local shortestDistance = targetFovValue
-	local currentCamera = workspace.CurrentCamera
-	local mouseLocation = UserInputService:GetMouseLocation()
-
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-			if p.Team and p.Team == player.Team then continue end
-			
-			local hum = p.Character:FindFirstChild("Humanoid")
-			if hum and hum.Health > 0 then
-				local screenPos, onScreen = currentCamera:WorldToViewportPoint(p.Character.Head.Position)
-				
-				if onScreen then
-					local playerScreenPoint = Vector2.new(screenPos.X, screenPos.Y)
-					local screenDistance = (playerScreenPoint - mouseLocation).Magnitude
-					
-					if screenDistance < shortestDistance then
-						shortestDistance = screenDistance
-						closestPlayer = p
-					end
-				end
-			end
-		end
-	end
-	return closestPlayer
-end
-
--- Toggle Registry Kaydı ve Tıklama Yönetimi
-_G.toggleRegistry = _G.toggleRegistry or {}
-
-_G.toggleRegistry["Aimbot"] = function(state, suppress)
-	if aimbotActive ~= state then
-		aimbotActive = state
-		if aimbotActive then
-			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOn}):Play()
-			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
-			if not suppress then showNotification("Aimbot", "Aktif edildi (Sağ Click basılı tutun)!", true) end
-			
-			aimbotConn = RunService.RenderStepped:Connect(function()
-				local camera = workspace.CurrentCamera
-				local mouseLoc = UserInputService:GetMouseLocation()
-				
-				fovCircle.Radius = targetFovValue
-				fovCircle.Position = mouseLoc
-				fovCircle.Visible = true
-
-				-- Sadece Sağ Click (MouseButton2) basılı tutulduğunda kilitlen
-				if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-					local targetPlayer = getClosestPlayerInFov()
-					if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
-						local head = targetPlayer.Character.Head
-						local targetCFrame = CFrame.new(camera.CFrame.Position, head.Position)
-						camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.3)
-					end
-				end
-			end)
-		else
-			TweenService:Create(toggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.ToggleOff}):Play()
-			TweenService:Create(toggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
-			fovCircle.Visible = false
-			if not suppress then showNotification("Aimbot", "Devre dışı bırakıldı.", false) end
-			
-			if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
-		end
-	end
-end
-
-toggleBtn.MouseButton1Click:Connect(function()
-	_G.toggleRegistry["Aimbot"](not aimbotActive, false)
-end)
-
-updateFov(targetFovValue)
 
 -- -- 9. ADVANCED NAME & HEALTH ESP (Highlight + BillboardGui)
 local espActive = false
 
-createModernToggle("Name & Health ESP", "Düşmanların rengini, ismini ve canını gösterir.", function(state)
+createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve canını gösterir.", function(state)
 	espActive = state
 	
 	if espActive then
@@ -1782,7 +1392,7 @@ end)
 
 
 -- 10. ANTI-FLING
-createModernToggle("Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
+createModernToggle(moveTab, "Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
 	if state then
 		antiFlingConn = RunService.Heartbeat:Connect(function()
 			if player.Character then
@@ -1827,12 +1437,12 @@ local function bypassMap(state)
     end
 end
 
-createModernToggle("Map Bypass", "Görünmez duvarları yok et.", function(state)
+createModernToggle(mainTab, "Map Bypass", "Görünmez duvarları yok et.", function(state)
     bypassMap(state)
 end)
 
 -- 12. MM2 ESP
-createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gösterir.", function(state)
+createModernToggle(mm2Tab, "MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gösterir.", function(state)
 	mm2ESPActive = state
 	if not mm2ESPActive then
 		for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
@@ -1866,7 +1476,7 @@ createModernToggle("MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gös
 end)
 
 -- 13. INFINITE JUMP
-createModernToggle("Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
+createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
 	if state then
 		infJumpConn = UserInputService.JumpRequest:Connect(function()
 			if player.Character and player.Character:FindFirstChild("Humanoid") then
@@ -1881,7 +1491,7 @@ end)
 
 -- 15. FULLBRIGHT
 local origAmbient, origColorShift, brightLoop = nil, nil, nil
-createModernToggle("FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
+createModernToggle(visualsTab, "FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
 	if state then
 		origAmbient = Lighting.Ambient
 		origColorShift = Lighting.ColorShift_Top
@@ -1897,7 +1507,7 @@ end)
 
 -- 16. NO FOG
 local origFogStart, origFogEnd = nil, nil
-createModernToggle("No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
+createModernToggle(visualsTab, "No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
 	if state then
 		origFogStart = Lighting.FogStart
 		origFogEnd = Lighting.FogEnd
@@ -1910,7 +1520,7 @@ end)
 
 -- 17. ANTI-VOID
 local antiVoidConn = nil
-createModernToggle("Anti-Void", "Boşluğa düşerek ölmeyi engeller.", function(state)
+createModernToggle(mainTab, "Anti-Void", "Boşluğa düşerek ölmeyi engeller.", function(state)
 	if state then
 		antiVoidConn = RunService.Heartbeat:Connect(function()
 			local char = player.Character
@@ -1928,7 +1538,7 @@ end)
 
 -- 20. SPINBOT
 local spinConn = nil
-createModernToggle("SpinBot", "Etrafında çılgınca dönersin.", function(state)
+createModernToggle(moveTab, "SpinBot", "Etrafında çılgınca dönersin.", function(state)
     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if state and root then
         spinConn = RunService.RenderStepped:Connect(function()
@@ -1944,7 +1554,7 @@ end)
 local invESPActive = false
 local invTags = {}
 
-createModernToggle("Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri listeler.", function(state)
+createModernToggle(visualsTab, "Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri listeler.", function(state)
     invESPActive = state
     if not invESPActive then
         for _, tag in pairs(invTags) do if tag then tag:Destroy() end end
@@ -1989,7 +1599,7 @@ createModernToggle("Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri
 end)
 
 -- 23. TP NEAREST
-createModernToggle("TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
+createModernToggle(moveTab, "TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
     if state then
         local target = nil
         local dist = 10000
@@ -2158,7 +1768,7 @@ local function hidePlayerListWindow()
 end
 
 -- Toggle Bağlantısı
-createModernToggle("TP Player Menüsü", "Oyuncu listesi penceresini açar/kapatır.", function(state)
+createModernToggle(moveTab, "TP Player Menüsü", "Oyuncu listesi penceresini açar/kapatır.", function(state)
     if state then
         createPlayerListWindow()
     else
@@ -2169,7 +1779,7 @@ end)
 -- 26. X TUŞU İLE CLICK TP (Bypass & Anti-Rubberband Destekli)
 local clickTPXActive = false
 
-createModernToggle("Click TP (X Tuşu)", "Fareyi nereye tutarsan X tuşuna basınca oraya ışınlanırsın.", function(state)
+createModernToggle(moveTab, "Click TP (X Tuşu)", "Fareyi nereye tutarsan X tuşuna basınca oraya ışınlanırsın.", function(state)
     clickTPXActive = state
     if state then
         showNotification("Click TP", "Aktif! Nişan al ve X tuşuna bas.", true)
@@ -2206,7 +1816,7 @@ end)
 
 -- 27. AUTO FOLLOW & LOCK SYSTEM
 local followEnabled = false
-createModernToggle("Auto Follow/Lock", "En yakın oyuncuyu takip eder.", function(state)
+createModernToggle(mainTab, "Auto Follow/Lock", "En yakın oyuncuyu takip eder.", function(state)
     followEnabled = state
 end)
 
@@ -2238,7 +1848,7 @@ end)
 local antiRagdollEnabled = false
 local antiRagdollConnection = nil
 
-createModernToggle("Anti-Ragdoll", "Yere kapaklanmayı ve sersemlemeyi önler.", function(state)
+createModernToggle(mainTab, "Anti-Ragdoll", "Yere kapaklanmayı ve sersemlemeyi önler.", function(state)
     antiRagdollEnabled = state
     
     if antiRagdollEnabled then
@@ -2267,7 +1877,7 @@ end)
 
 -- 28. ANTI-AFK
 local afkConn = nil
-createModernToggle("Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
+createModernToggle(mainTab, "Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
     if state then
         afkConn = player.Idled:Connect(function()
             game:GetService("VirtualUser"):CaptureController()
@@ -2283,7 +1893,7 @@ end)
 local smoothAimActive = false
 local aimSpeed = 0.2
 
-createModernToggle("Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
+createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
     smoothAimActive = state
     task.spawn(function()
         while smoothAimActive do
@@ -2373,7 +1983,7 @@ local function getTargetPlayer()
     return closestPlayer
 end
 
-createModernToggle("MM2 Aimbot", "Silahın varsa direkt Katilin kafasına kilitlenir.", function(state)
+createModernToggle(mm2Tab, "MM2 Aimbot", "Silahın varsa direkt Katilin kafasına kilitlenir.", function(state)
     mm2AimbotEnabled = state
     crosshair.Visible = state
     
@@ -2444,7 +2054,7 @@ local function getKillerTarget()
 	return closestPlayer
 end
 
-createModernToggle("MM2 Auto Shoot", "Envanterinde Gun varsa Katile otomatik sıkar.", function(state)
+createModernToggle(mm2Tab, "MM2 Auto Shoot", "Envanterinde Gun varsa Katile otomatik sıkar.", function(state)
 	mm2AutoShootEnabled = state
 	
 	if mm2AutoShootEnabled then
