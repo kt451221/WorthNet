@@ -1246,6 +1246,98 @@ createModernToggle(moveTab, "Fling Menüsü", "Oyuncu listesini açar, istediği
 	end
 end)
 
+-- ==================== PASİF FLING (Dokununca Fırlatma) ====================
+local passiveFlingEnabled = false
+local flingConnections = {}
+
+local function applyFlingToTarget(targetChar)
+    if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return end
+    
+    local targetRoot = targetChar.HumanoidRootPart
+    local myChar = player.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    
+    if not myRoot then return end
+
+    -- Güçlü fling efekti
+    targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    targetRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+    
+    -- Senin momentumunu hedefe aktar + ekstra güç
+    local direction = (targetRoot.Position - myRoot.Position).Unit
+    targetRoot.AssemblyLinearVelocity = direction * 250 + Vector3.new(0, 80, 0)
+    targetRoot.AssemblyAngularVelocity = Vector3.new(math.random(-100,100), math.random(80000,120000), math.random(-100,100))
+    
+    -- Ekstra etki için kısa süreliğine CFrame ile yapışma
+    task.spawn(function()
+        for i = 1, 8 do
+            if targetRoot and targetRoot.Parent then
+                targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -2)
+                task.wait(0.03)
+            end
+        end
+    end)
+end
+
+local function setupPassiveFling()
+    -- Önceki bağlantıları temizle
+    for _, conn in ipairs(flingConnections) do
+        conn:Disconnect()
+    end
+    table.clear(flingConnections)
+
+    local char = player.Character
+    if not char then return end
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local conn = part.Touched:Connect(function(hit)
+                if not passiveFlingEnabled then return end
+                
+                local hitChar = hit:FindFirstAncestorWhichIsA("Model")
+                if hitChar and hitChar ~= char and hitChar:FindFirstChildOfClass("Humanoid") then
+                    applyFlingToTarget(hitChar)
+                end
+            end)
+            table.insert(flingConnections, conn)
+        end
+    end
+end
+
+-- Toggle
+createModernToggle(moveTab, "Passive Fling", "Dokunduğun/çarptığın herkesi otomatik fırlatır.", function(state)
+    passiveFlingEnabled = state
+    
+    if state then
+        setupPassiveFling()
+        
+        -- Karakter yeniden spawn olursa tekrar kur
+        local conn = player.CharacterAdded:Connect(function()
+            task.wait(1)
+            if passiveFlingEnabled then
+                setupPassiveFling()
+            end
+        end)
+        table.insert(flingConnections, conn)
+        
+        showNotification("Passive Fling", "Aktif! Dokunduğun herkesi fırlatacaksın 🔥", true)
+    else
+        for _, conn in ipairs(flingConnections) do
+            conn:Disconnect()
+        end
+        table.clear(flingConnections)
+        showNotification("Passive Fling", "Devre dışı.", false)
+    end
+end)
+
+-- Karakter yenilendiğinde fling'i tekrar kur (güvenlik)
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    if passiveFlingEnabled then
+        setupPassiveFling()
+    end
+end)
+
 
 -- -- 9. ADVANCED NAME & HEALTH ESP (Highlight + BillboardGui)
 local espActive = false
