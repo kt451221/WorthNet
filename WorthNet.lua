@@ -1,6 +1,7 @@
 -- WorthNet UI System v4.4 - Glass Bridge, Tug of War & Adjustable SpeedHack (Fixed)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
@@ -207,30 +208,11 @@ logoLabel.TextSize = 18
 logoLabel.ZIndex = 7
 logoLabel.Parent = sidebar
 
-local allHacksBtn = Instance.new("Frame")
-allHacksBtn.Size = UDim2.new(1, -20, 0, 40)
-allHacksBtn.Position = UDim2.new(0, 10, 0, 60)
-allHacksBtn.BackgroundColor3 = THEME.Card
-allHacksBtn.ZIndex = 7
-allHacksBtn.Parent = sidebar
-roundCorners(allHacksBtn, 8)
-
-local allHacksLabel = Instance.new("TextLabel")
-allHacksLabel.Size = UDim2.new(1, 0, 1, 0)
-allHacksLabel.Position = UDim2.new(0, 10, 0, 0)
-allHacksLabel.BackgroundTransparency = 1
-allHacksLabel.Text = "All Hacks"
-allHacksLabel.TextColor3 = THEME.TextMain
-allHacksLabel.Font = Enum.Font.GothamSemibold
-allHacksLabel.TextSize = 13
-allHacksLabel.TextXAlignment = Enum.TextXAlignment.Left
-allHacksLabel.ZIndex = 8
-allHacksLabel.Parent = allHacksBtn
 
 -- ARAMA KUTUSU
 local searchBox = Instance.new("TextBox")
 searchBox.Size = UDim2.new(1, -20, 0, 32)
-searchBox.Position = UDim2.new(0, 10, 0, 110)
+searchBox.Position = UDim2.new(0, 10, 0, 60)
 searchBox.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
 searchBox.Text = ""
 searchBox.PlaceholderText = "🔍 Hile Ara..."
@@ -255,53 +237,6 @@ controlContainer.BackgroundTransparency = 1
 controlContainer.ZIndex = 8
 controlContainer.Parent = sidebar
 
-local openAllBtn = Instance.new("TextButton")
-openAllBtn.Size = UDim2.new(0.5, -5, 1, 0)
-openAllBtn.Position = UDim2.new(0, 0, 0, 0)
-openAllBtn.BackgroundColor3 = Color3.fromRGB(30, 45, 35)
-openAllBtn.Text = "Open All"
-openAllBtn.Font = Enum.Font.GothamBold
-openAllBtn.TextSize = 11
-openAllBtn.TextColor3 = Color3.fromRGB(100, 220, 120)
-openAllBtn.ZIndex = 9
-openAllBtn.Parent = controlContainer
-roundCorners(openAllBtn, 6)
-
-local openStroke = Instance.new("UIStroke")
-openStroke.Color = Color3.fromRGB(50, 120, 70)
-openStroke.Thickness = 1
-openStroke.Parent = openAllBtn
-
-local closeAllBtn = Instance.new("TextButton")
-closeAllBtn.Size = UDim2.new(0.5, -5, 1, 0)
-closeAllBtn.Position = UDim2.new(0.5, 5, 0, 0)
-closeAllBtn.BackgroundColor3 = Color3.fromRGB(45, 25, 25)
-closeAllBtn.Text = "Close All"
-closeAllBtn.Font = Enum.Font.GothamBold
-closeAllBtn.TextSize = 11
-closeAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-closeAllBtn.ZIndex = 9
-closeAllBtn.Parent = controlContainer
-roundCorners(closeAllBtn, 6)
-
-local closeStroke = Instance.new("UIStroke")
-closeStroke.Color = Color3.fromRGB(150, 50, 50)
-closeStroke.Thickness = 1
-closeStroke.Parent = closeAllBtn
-
-openAllBtn.MouseButton1Click:Connect(function()
-	showNotification("System", "Tüm modüller aktif ediliyor...", true)
-	for name, setToggle in pairs(_G.toggleRegistry) do
-		pcall(function() setToggle(true, true) end)
-	end
-end)
-
-closeAllBtn.MouseButton1Click:Connect(function()
-	showNotification("System", "Tüm modüller kapatılıyor...", false)
-	for name, setToggle in pairs(_G.toggleRegistry) do
-		pcall(function() setToggle(false, true) end)
-	end
-end)
 
 -- YOUTUBE BUTONU
 local ytBtn = Instance.new("TextButton")
@@ -340,7 +275,7 @@ local tabButtons = {}
 -- Sol sidebar içine tab butonlarını dikey sıralayacak alan
 local sidebarTabContainer = Instance.new("ScrollingFrame")
 sidebarTabContainer.Size = UDim2.new(1, -20, 1, -210)
-sidebarTabContainer.Position = UDim2.new(0, 10, 0, 150)
+sidebarTabContainer.Position = UDim2.new(0, 10, 0, 100)
 sidebarTabContainer.BackgroundTransparency = 1
 sidebarTabContainer.BorderSizePixel = 0
 sidebarTabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -461,7 +396,7 @@ end)
 
 _G.toggleRegistry = _G.toggleRegistry or {}
 
-local function createModernToggle(name, description, callback)
+local function createModernToggle(parentTab, name, description, callback)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Size = UDim2.new(1, -10, 0, 55)
 	cardFrame.BackgroundColor3 = THEME.Card
@@ -543,14 +478,14 @@ local function createModernToggle(name, description, callback)
 end
 
 -- AYARLANABİLİR SLİDER (BAR) FONKSİYONU
-local function createModernSlider(name, description, min, max, default, callback)
+local function createModernSlider(parentTab, name, description, min, max, default, callback)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Name = name
 	cardFrame.Size = UDim2.new(1, -10, 0, 65)
 	cardFrame.BackgroundColor3 = THEME.Card
 	cardFrame.BorderSizePixel = 0
 	cardFrame.ZIndex = 7
-	cardFrame.Parent = contentArea
+	cardFrame.Parent = parentTab
 	roundCorners(cardFrame, 8)
 	
 	local title = Instance.new("TextLabel")
@@ -741,12 +676,12 @@ createModernSlider(settingsTab, "UI Transparency", "Arayüz şeffaflığını ay
 end)
 
 -- 3. Rejoin Server
-createModernButton(settingsTab, "Rejoin Server", "Bulunduğunuz sunucuya tekrar bağlanır.", function()
+createModernToggle(settingsTab, "Rejoin Server", "Bulunduğunuz sunucuya tekrar bağlanır.", function()
 	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
 -- 4. Unload Script
-createModernButton(settingsTab, "Unload Script (Tamamen Kapat)", "Tüm sistemleri durdurur ve UI'ı siler.", function()
+createModernToggle(settingsTab, "Unload Script (Tamamen Kapat)", "Tüm sistemleri durdurur ve UI'ı siler.", function()
 	showNotification("System", "Script kaldırılıyor...", false)
 	task.wait(0.5)
 	screenGui:Destroy()
@@ -1085,9 +1020,14 @@ local function updateCFrameFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "(Kick Atmaz)", "Fizik motorunu bypass eder, P tuşu ile açılır.", function(state)
-	updateCFrameFly(state)
-end)
+createModernToggle(
+    moveTab,
+    "Fly",
+    "Fizik motorunu bypass eder, P tuşu ile açılır.",
+    function(state)
+        updateCFrameFly(state)
+    end
+)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
