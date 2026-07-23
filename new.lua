@@ -2205,7 +2205,8 @@ createModernToggle(settingsTab, "FPS Boost", "Grafikleri düşürerek FPS'i art�
 				v.Material = state and Enum.Material.SmoothPlastic or v.Material
 			end
 		end
-		showNotification("FPS Boost", state ? "Grafikler optimize edildi!" : "Normale döndü.", true)
+		showNotification("FPS Boost", state and "Grafikler optimize edildi!" or "Normale döndü.", true)
+
 	end)
 end)
 
