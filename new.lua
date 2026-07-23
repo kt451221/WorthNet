@@ -2654,20 +2654,6 @@ createModernToggle(visualsTab, "Ghost Mode", "Karakterini tamamen şeffaf yapar.
     end)
 end)
 
--- 12. Seat Trap / Koltuktan Fırlatma (Düzeltilmiş Hali)
-createModernButton(mainTab, "Seat Trap", "Oturan herkesi koltuktan fırlatır.", function()
-    pcall(function()
-        for _, seat in ipairs(workspace:GetDescendants()) do
-            if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
-                local humanoid = seat.Occupant
-                if humanoid and humanoid:IsA("Humanoid") then
-                    humanoid.Sit = false
-                end
-            end
-        end
-        showNotification("WorthNet", "Koltuktakiler fırlatıldı!", true)
-    end)
-end)
 
 
 -- 19. FPS Unlocker (Sınır Kaldırıcı)
