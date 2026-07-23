@@ -2271,67 +2271,62 @@ createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanla
 		showNotification("Auto-Dodge", "Devre dışı bırakıldı.", false)
 	end
 end)
-
 -- WorthNet MM2 AutoCoin System
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
-_G.AutoCoinActive = _G.AutoCoinActive or false
+-- 1. Toggle Butonu (Arayüz sekmenizin olduğu yere ekleyin)
+createModernToggle(mm2Tab, "MM2 AutoCoin", "Tween ve Noclip ile yavaşça 40 coin toplar, sonra reset atar.", function(state)
+	_G.AutoCoinActive = state
+end)
 
-local function getCoinContainer()
-	-- MM2'de coinlerin bulunduğu klasör genellikle Workspace içerisindedir
-	return Workspace:FindFirstChild("CoinContainer") or Workspace:FindFirstChild("Coins")
-end
-
+-- 2. Ana AutoCoin Döngüsü
 task.spawn(function()
-	while true do
-		task.wait(1)
+	local collectedCount = 0
+	
+	while task.wait(0.5) do
 		if _G.AutoCoinActive then
 			local char = player.Character
-			if char and char:FindFirstChild("HumanoidRootPart") then
-				local hrp = char.HumanoidRootPart
-				local coinContainer = getCoinContainer()
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			
+			if hrp then
+				-- Noclip aktif tutma (Çarpmaları kapatma)
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
 				
-				if coinContainer then
-					local collectedCount = 0
+				-- Coinleri tarama
+				for _, coinPart in ipairs(Workspace:GetChildren()) do
+					if not _G.AutoCoinActive then break end
 					
-					for _, coin in ipairs(coinContainer:GetChildren()) do
-						if not _G.AutoCoinActive then break end
+					if coinPart.Name == "Coin" and coinPart:IsA("BasePart") then
+						-- Tween ile yumuşak uçuş (mesafeye göre hız ayarı)
+						local distance = (hrp.Position - coinPart.Position).Magnitude
+						local speed = 25 -- Hız birimi
+						local tweenTime = distance / speed
 						
-						-- Coin görsel objesini bul (Genellikle "Coin_Server" veya taban part olur)
-						local coinPart = coin:FindFirstChild("CoinVisual") or coin:FindFirstChildOfClass("BasePart")
+						local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+						local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
 						
-						if coinPart then
-							-- Noclip aktifken yere takılmamak için
-							for _, p in ipairs(char:GetDescendants()) do
-								if p:IsA("BasePart") then p.CanCollide = false end
+						tween:Play()
+						tween.Completed:Wait()
+						
+						collectedCount = collectedCount + 1
+						task.wait(0.2) -- Coinlerin sunucu tarafından kaydedilmesi için küçük gecikme
+						
+						-- 40 coin limitine ulaşınca reset at
+						if collectedCount >= 40 then
+							local humanoid = char:FindFirstChildOfClass("Humanoid")
+							if humanoid then
+								humanoid.Health = 0
 							end
-							
-							-- Tween ile yumuşak uçuş (mesafeye göre hız ayarı)
-							local distance = (hrp.Position - coinPart.Position).Magnitude
-							local speed = 25 -- Hız birimi
-							local tweenTime = distance / speed
-							
-							local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-							local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
-							
-							tween:Play()
-							tween.Completed:Wait()
-							
-							collectedCount = collectedCount + 1
-							task.wait(0.2) -- Coinlerin sunucu tarafından kaydedilmesi için küçük gecikme
-							
-							-- 40 coin limitine ulaşınca reset at
-							if collectedCount >= 40 then
-								local humanoid = char:FindFirstChildOfClass("Humanoid")
-								if humanoid then
-									humanoid.Health = 0
-								end
-								task.wait(3) -- Yeniden doğma süresi bekle
-								break
-							end
+							collectedCount = 0 -- Sayacı sıfırla
+							task.wait(3) -- Yeniden doğma süresi bekle
+							break
 						end
 					end
 				end
@@ -2339,6 +2334,197 @@ task.spawn(function()
 		end
 	end
 end)
+
+-- Part/Lag Machine & Weld/Constraint Crash
+_G.PartSpamActive = false
+createModernToggle(combatTab, "Part/Lag Machine", "Haritaya seri parça yığarak fizik motorunu zorlar.", function(state)
+    _G.PartSpamActive = state
+    task.spawn(function()
+        while _G.PartSpamActive do
+            local p = Instance.new("Part")
+            p.Size = Vector3.new(5, 5, 5)
+            p.Position = player.Character.HumanoidRootPart.Position + Vector3.new(math.random(-20,20), 5, math.random(-20,20))
+            p.Parent = workspace
+            game:GetService("Debris"):AddItem(p, 5)
+            task.wait(0.05)
+        end
+    end)
+end)
+
+-- Auto Remote Event Spam & Argument Flooding
+_G.RemoteFloodActive = false
+createModernToggle(combatTab, "Remote & Arg Flood", "ReplicatedStorage'daki eventlere büyük veriler spamler.", function(state)
+    _G.RemoteFloodActive = state
+    task.spawn(function()
+        while _G.RemoteFloodActive do
+            for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                if v:IsA("RemoteEvent") then
+                    pcall(function()
+                        v:FireServer(string.rep("SwoxTech", 5000), math.huge, {})
+                    end)
+                end
+            end
+            task.wait()
+        end
+    end)
+end)
+
+-- Global Sound Spam
+_G.SoundSpamActive = false
+createModernToggle(mainTab, "Global Sound Spam", "Sunucudaki sesleri son ses spamler.", function(state)
+    _G.SoundSpamActive = state
+    task.spawn(function()
+        while _G.SoundSpamActive do
+            for _, s in ipairs(workspace:GetDescendants()) do
+                if s:IsA("Sound") then
+                    pcall(function()
+                        s.Volume = 10
+                        s:Play()
+                    end)
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+end)
+
+
+-- Tool Reach Extender
+_G.ReachEnabled = false
+createModernToggle(combatTab, "Tool Reach Extender", "Elindeki silah/kılıç menzilini uzatır.", function(state)
+    _G.ReachEnabled = state
+    task.spawn(function()
+        while _G.ReachEnabled do
+            local char = player.Character
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            if tool then
+                for _, handle in ipairs(tool:GetDescendants()) do
+                    if handle:IsA("BasePart") then
+                        handle.Size = Vector3.new(4, 4, 15)
+                        handle.Transparency = 0.8
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end)
+
+-- Custom FOV
+local Camera = workspace.CurrentCamera
+createModernSlider(visualsTab, "Custom FOV", 70, 120, function(value)
+    Camera.FieldOfView = value
+end)
+
+
+-- Map Editor / Part Deleter
+_G.PartDeleterActive = false
+createModernToggle(visualsTab, "Click Part Deleter", "Üzerine tıkladığın harita parçasını siler.", function(state)
+    _G.PartDeleterActive = state
+    local mouse = player:GetMouse()
+    mouse.Button1Down:Connect(function()
+        if _G.PartDeleterActive and mouse.Target then
+            mouse.Target:Destroy()
+        end
+    end)
+end)
+
+-- Gravity Changer
+createModernSlider(movementTab, "Gravity Changer", 0, 196, function(val)
+    workspace.Gravity = val
+end)
+
+-- Chat Logger
+game:GetService("Players").PlayerAdded:Connect(function(p)
+    p.Chatted:Connect(function(msg)
+        print("[SwoxTech ChatLogger] " .. p.Name .. ": " .. msg)
+    end)
+end)
+
+-- Freecam / Camera Lock
+_G.FreecamActive = false
+createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız serbest gezdirir.", function(state)
+    _G.FreecamActive = state
+    if state then
+        Camera.CameraType = Enum.CameraType.Scriptable
+    else
+        Camera.CameraType = Enum.CameraType.Custom
+    end
+end)
+
+-- Metatable Hook & Anti-Kick / Korumalar
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "Kick" and self == player then
+         print("[SwoxTech Security] Kick denemesi engellendi!")
+         return
+    end
+    
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- UI Toggle Key (Sağ Shift ile menüyü gizleme/açma)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        -- Kendi arayüz değişkenine göre MainUI durumunu ayarlayabilirsin
+    end
+end)
+
+-- Basic Remote Spy
+_G.RemoteSpyActive = false
+createModernToggle(settingsTab, "Basic Remote Spy", "Giden eventleri F9 konsoluna yazdırır.", function(state)
+    _G.RemoteSpyActive = state
+end)
+
+-- Otomatik Remote Tarayıcı ve Spammer
+_G.RemoteSpamActive = false
+
+local function getRemotes()
+    local remotes = {}
+    local possibleNames = {"Remotes", "RemoteEvents", "RemoteFunction", "Events", "Network", "Packages"}
+    
+    -- ReplicatedStorage altındaki klasörleri ve remote'ları tara
+    for _, child in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+        if child:IsA("RemoteEvent") then
+            table.insert(remotes, child)
+        end
+    end
+    
+    return remotes
+end
+
+-- Arayüze eklenecek toggle (Settings veya ayrı bir Troll sekmesine koyabilirsin)
+createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm eventleri bulur ve spamler.", function(state)
+    _G.RemoteSpamActive = state
+    
+    if _G.RemoteSpamActive then
+        task.spawn(function()
+            while _G.RemoteSpamActive do
+                local foundRemotes = getRemotes()
+                
+                for _, remote in ipairs(foundRemotes) do
+                    if not _G.RemoteSpamActive then break end
+                    
+                    -- Güvenli bir şekilde spam at (Hata verip scripti durdurmaması için pcall kullanıyoruz)
+                    pcall(function()
+                        remote:FireServer("SwoxTechSpam", math.random(1, 999999), {}, true)
+                    end)
+                end
+                
+                task.wait() -- Hızlı döngü
+            end
+        end)
+    end
+end)
+
 
 
 -- Xeno ve Executor Uyumluluk Metatable Koruması
