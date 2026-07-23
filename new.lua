@@ -30,17 +30,18 @@ screenGui.Name = "WorthNetSystem"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
-local THEME = {
-	Background = Color3.fromRGB(10, 10, 15),       -- Derin Gece Mavisi/Siyah
-	Sidebar    = Color3.fromRGB(15, 15, 22),       -- Yan Menü
-	Card       = Color3.fromRGB(22, 22, 32),       -- Kart Arka Planı
-	Accent     = Color3.fromRGB(236, 72, 153),     -- Neon Pembe / Fuşya Vurgu
-	AccentGlow = Color3.fromRGB(244, 114, 182),   -- Parlak Pembe
+Local THEME = {
+	Background = Color3.fromRGB(10, 8, 8),         -- Çok Koyu Kan Siyahı
+	Sidebar    = Color3.fromRGB(16, 12, 12),       -- Yan Menü Arka Planı
+	Card       = Color3.fromRGB(24, 18, 18),       -- Kart Arka Planı
+	Accent     = Color3.fromRGB(239, 68, 68),     -- Parlak Kan Kırmızı Vurgu
+	AccentGlow = Color3.fromRGB(248, 113, 113),   -- Neon / Parlak Açık Kırmızı
 	TextMain   = Color3.fromRGB(255, 255, 255),   -- Saf Beyaz
-	TextDark   = Color3.fromRGB(140, 145, 165),   -- Parlak Gri
-	ToggleOn   = Color3.fromRGB(236, 72, 153),     -- Açık Buton (Neon Pembe)
-	ToggleOff  = Color3.fromRGB(45, 45, 60)        -- Kapalı Buton
+	TextDark   = Color3.fromRGB(150, 135, 135),   -- Soluk Gri-Kırmızı
+	ToggleOn   = Color3.fromRGB(239, 68, 68),     -- Açık Buton (Parlak Kırmızı)
+	ToggleOff  = Color3.fromRGB(45, 30, 30)        -- Kapalı Buton (Koyu Bordo/Gri)
 }
+
 
 local function roundCorners(obj, radius)
 	local uiCorner = Instance.new("UICorner")
