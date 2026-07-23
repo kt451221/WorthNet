@@ -2412,9 +2412,10 @@ end)
 
 -- Custom FOV
 local Camera = workspace.CurrentCamera
-createModernSlider(visualsTab, "Custom FOV", 70, 120, function(value)
+createModernSlider(visualsTab, "Custom FOV", "Görüş açınızı (FOV) ayarlar.", 70, 120, 70, function(value)
     Camera.FieldOfView = value
 end)
+
 
 
 -- Map Editor / Part Deleter
@@ -2431,7 +2432,7 @@ end)
 
 -- Gravity Changer
 createModernSlider(movementTab, "Gravity Changer", 0, 196, function(val)
-    workspace.Gravity = val
+    workspace.Gravity = value
 end)
 
 -- Chat Logger
