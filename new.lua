@@ -2430,10 +2430,11 @@ createModernToggle(visualsTab, "Click Part Deleter", "Üzerine tıkladığın ha
     end)
 end)
 
--- Gravity Changer
-createModernSlider(moveTab, "Gravity Changer", 0, 196, function(val)
+-- Gravity Changer (Düzeltilmiş Hali)
+createModernSlider(moveTab, "Gravity Changer", "Dünyanın yerçekimi kuvvetini ayarlar.", 0, 196, 196, function(val)
     workspace.Gravity = val
 end)
+
 
 -- Chat Logger
 game:GetService("Players").PlayerAdded:Connect(function(p)
