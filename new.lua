@@ -2272,6 +2272,75 @@ createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanla
 	end
 end)
 
+-- WorthNet MM2 AutoCoin System
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+_G.AutoCoinActive = _G.AutoCoinActive or false
+
+local function getCoinContainer()
+	-- MM2'de coinlerin bulunduğu klasör genellikle Workspace içerisindedir
+	return Workspace:FindFirstChild("CoinContainer") or Workspace:FindFirstChild("Coins")
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if _G.AutoCoinActive then
+			local char = player.Character
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				local hrp = char.HumanoidRootPart
+				local coinContainer = getCoinContainer()
+				
+				if coinContainer then
+					local collectedCount = 0
+					
+					for _, coin in ipairs(coinContainer:GetChildren()) do
+						if not _G.AutoCoinActive then break end
+						
+						-- Coin görsel objesini bul (Genellikle "Coin_Server" veya taban part olur)
+						local coinPart = coin:FindFirstChild("CoinVisual") or coin:FindFirstChildOfClass("BasePart")
+						
+						if coinPart then
+							-- Noclip aktifken yere takılmamak için
+							for _, p in ipairs(char:GetDescendants()) do
+								if p:IsA("BasePart") then p.CanCollide = false end
+							end
+							
+							-- Tween ile yumuşak uçuş (mesafeye göre hız ayarı)
+							local distance = (hrp.Position - coinPart.Position).Magnitude
+							local speed = 25 -- Hız birimi
+							local tweenTime = distance / speed
+							
+							local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+							local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
+							
+							tween:Play()
+							tween.Completed:Wait()
+							
+							collectedCount = collectedCount + 1
+							task.wait(0.2) -- Coinlerin sunucu tarafından kaydedilmesi için küçük gecikme
+							
+							-- 40 coin limitine ulaşınca reset at
+							if collectedCount >= 40 then
+								local humanoid = char:FindFirstChildOfClass("Humanoid")
+								if humanoid then
+									humanoid.Health = 0
+								end
+								task.wait(3) -- Yeniden doğma süresi bekle
+								break
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+
 -- Xeno ve Executor Uyumluluk Metatable Koruması
 pcall(function()
 	local metatable = getrawmetatable(game)
