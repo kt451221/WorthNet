@@ -30,7 +30,7 @@ screenGui.Name = "WorthNetSystem"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
-Local THEME = {
+local THEME = {
 	Background = Color3.fromRGB(10, 8, 8),         -- Çok Koyu Kan Siyahı
 	Sidebar    = Color3.fromRGB(16, 12, 12),       -- Yan Menü Arka Planı
 	Card       = Color3.fromRGB(24, 18, 18),       -- Kart Arka Planı
@@ -2527,6 +2527,213 @@ createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm
         end)
     end
 end)
+
+createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapatarak FPS'i artırır.", function(state)
+    if state then
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 9e9
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Material = Enum.Material.SmoothPlastic
+                    v.Reflectance = 0
+                end
+            end
+            showNotification("FPS Booster", "Grafikler optimize edildi!", true)
+        end)
+    end
+end)
+
+-- 3. Air Swim (Havada Yüzme)
+local airSwimActive = false
+createModernToggle(moveTab, "Air Swim", "Yerçekimini yok edip havada yüzmeni sağlar.", function(state)
+    airSwimActive = state
+    task.spawn(function()
+        while airSwimActive do
+            task.wait()
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.Velocity = Vector3.new(char.HumanoidRootPart.Velocity.X, 2, char.HumanoidRootPart.Velocity.Z)
+            end
+        end
+    end)
+end)
+
+-- 4. Wall Climb (Duvara Tırmanma)
+local wallClimbActive = false
+createModernToggle(moveTab, "Wall Climb", "Düz duvarlara tırmanmanı sağlar.", function(state)
+    wallClimbActive = state
+    task.spawn(function()
+        while wallClimbActive do
+            task.wait()
+            pcall(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.MoveDirection.Magnitude > 0 then
+                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (hum.MoveDirection * 0.5)
+                end
+            end)
+        end
+    end)
+end)
+
+-- 11. Auto-Climb Ladders (Otomatik Merdiven)
+createModernToggle(moveTab, "Auto-Climb Ladders", "Merdivenlere dokunmadan anında tırmanır.", function(state)
+    if state then
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Climbing) end
+    end
+end)
+
+-- 17. Anti-Slowdown (Yavaşlatma Koruması)
+local antiSlowActive = false
+createModernToggle(moveTab, "Anti-Slowdown", "Yavaşlatma ve stun efektlerini engeller.", function(state)
+    antiSlowActive = state
+    task.spawn(function()
+        while antiSlowActive do
+            task.wait(0.5)
+            pcall(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.WalkSpeed = 16 -- Varsayılan hızı sabitler
+                    hum.JumpPower = 50
+                end
+            end)
+        end
+    end)
+end)
+
+-- 5. Rainbow Lighting (Gökkuşağı Işıklandırma)
+local rainbowLightActive = false
+createModernToggle(visualsTab, "Rainbow Lighting", "Haritayı parti ortamına çevirir.", function(state)
+    rainbowLightActive = state
+    task.spawn(function()
+        while rainbowLightActive do
+            for i = 0, 1, 0.01 do
+                if not rainbowLightActive then break end
+                Lighting.Ambient = Color3.fromHSV(i, 1, 1)
+                task.wait(0.1)
+            end
+        end
+        Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+    end)
+end)
+
+-- 7. Custom Crosshair (Özel Nişangah)
+local crosshairGui
+createModernToggle(visualsTab, "Custom Crosshair", "Ekrana özel nişangah sabitler.", function(state)
+    if state then
+        crosshairGui = Instance.new("ScreenGui", game.CoreGui)
+        local dot = Instance.new("Frame", crosshairGui)
+        dot.Size = UDim2.new(0, 6, 0, 6)
+        dot.Position = UDim2.new(0.5, -3, 0.5, -3)
+        dot.BackgroundColor3 = Color3.fromRGB(0, 255, 128)
+        dot.BorderSizePixel = 0
+        dot.Name = "WorthNetCrosshair"
+    else
+        if crosshairGui then crosshairGui:Destroy() end
+    end
+end)
+
+-- 15. Ghost Mode (Hayalet Modu)
+local ghostActive = false
+createModernToggle(visualsTab, "Ghost Mode", "Karakterini tamamen şeffaf yapar.", function(state)
+    ghostActive = state
+    pcall(function()
+        local char = player.Character
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") or v:IsA("Part") then
+                v.Transparency = ghostActive and 0.7 or 0
+            elseif v:IsA("Decal") then
+                v.Transparency = ghostActive and 0.7 or 0
+            end
+        end
+    end)
+end)
+
+-- 12. Seat Trap / Koltuktan Fırlatma
+createModernButton(mainTab, "Seat Trap", "Oturan herkesi koltuktan fırlatır.", function()
+    pcall(function()
+        for _, seat in ipairs(workspace:GetDescendants()) do
+            if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
+                if seat.Occupant then
+                    seat.Occupant.Sit = false
+                end
+            end
+        end
+    end)
+end)
+
+-- 19. FPS Unlocker (Sınır Kaldırıcı)
+createModernButton(settingsTab, "FPS Unlocker", "Roblox'un 60 FPS sınırını kırar.", function()
+    pcall(function()
+        setfpscap(9999)
+        showNotification("WorthNet", "FPS sınırı kaldırıldı!", true)
+    end)
+end)
+
+-- 20. Crash Protection (Sunucu Çökme Koruması)
+createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı korur.", function(state)
+    if state then
+        local mt = getrawmetatable(game)
+        setreadonly(mt, false)
+        local old = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "Kick" and self == player then
+                return
+            end
+            return old(self, ...)
+        end)
+        setreadonly(mt, true)
+        showNotification("WorthNet", "Crash koruması aktif!", true)
+    end
+end)
+
+-- Server Hop (Düşük oyunculu sunucu)
+createModernButton(mainTab, "Server Hop", "En sakin sunucuya geçiş yapar.", function()
+    pcall(function()
+        local Http = game:GetService("HttpService")
+        local TPS = game:GetService("TeleportService")
+        local Servers = Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+        for _, s in ipairs(Servers.data) do
+            if s.playing < s.maxPlayers - 2 then
+                TPS:TeleportToPlaceInstance(game.PlaceId, s.id, player)
+                break
+            end
+        end
+    end)
+end)
+
+-- 18. Command Bar (Gizli Komut Satırı)
+createModernButton(settingsTab, "Command Bar", "Ekranın altına komut çubuğu ekler.", function()
+    pcall(function()
+        if game.CoreGui:FindFirstChild("WorthNetCmd") then return end
+        local gui = Instance.new("ScreenGui", game.CoreGui)
+        gui.Name = "WorthNetCmd"
+        local box = Instance.new("TextBox", gui)
+        box.Size = UDim2.new(0, 300, 0, 30)
+        box.Position = UDim2.new(0.5, -150, 1, -40)
+        box.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        box.TextColor3 = Color3.fromRGB(255, 255, 255)
+        box.PlaceholderText = "Komut yaz (örn: speed 100)"
+        box.Text = ""
+        box.FocusLost:Connect(function(enter)
+            if enter then
+                local cmd = box.Text
+                if cmd:sub(1,6) == "speed " then
+                    local val = tonumber(cmd:sub(7))
+                    if val then player.Character.Humanoid.WalkSpeed = val end
+                end
+                box.Text = ""
+            end
+        end)
+    end)
+end)
+
 
 
 
