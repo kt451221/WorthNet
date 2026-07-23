@@ -2165,50 +2165,6 @@ createModernToggle(visualsTab, "Custom Skybox", "Gökyüzünü şık bir uzay te
 	end
 end)
 
--- Headless Hack
-createModernToggle(visualsTab, "Headless Hack", "Karakterinizin kafasını gizler.", function(state)
-	pcall(function()
-		local char = player.Character
-		if char then
-			local head = char:FindFirstChild("Head")
-			if head then
-				head.Transparency = state and 1 or 0
-				local face = head:FindFirstChild("face")
-				if face then face.Transparency = state and 1 or 0 end
-				
-				-- Aksesuarları da gizle (Şapka vb.)
-				for _, acc in ipairs(char:GetChildren()) do
-					if acc:IsA("Accessory") then
-						local handle = acc:FindFirstChild("Handle")
-						if handle then
-							handle.Transparency = state and 1 or 0
-						end
-					end
-				end
-				
-				-- Hata veren satır düzeltildi: C++ stili (? :) yerine Lua stili (and/or) kullanıldı
-				local mesaj = state and "Kafa gizlendi!" or "Kafa eski haline döndü."
-				showNotification("Headless", mesaj, true)
-			end
-		end
-	end)
-end)
-
--- FPS Boost (Settings)
-createModernToggle(settingsTab, "FPS Boost", "Grafikleri düşürerek FPS'i artırır.", function(state)
-	pcall(function()
-		local lighting = game:GetService("Lighting")
-		lighting.GlobalShadows = not state
-		lighting.FogEnd = state and 999999 or 100000
-		for _, v in ipairs(workspace:GetDescendants()) do
-			if v:IsA("BasePart") then
-				v.Material = state and Enum.Material.SmoothPlastic or v.Material
-			end
-		end
-		showNotification("FPS Boost", state and "Grafikler optimize edildi!" or "Normale döndü.", true)
-
-	end)
-end)
 
 -- Purchase Spoofing (Ücretsiz satın alma simülasyonu)
 createModernToggle(mainTab, "Purchase Spoofing", "Mağaza satın alım eventlerini manipüle eder.", function(state)
