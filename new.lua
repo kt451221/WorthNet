@@ -2654,18 +2654,21 @@ createModernToggle(visualsTab, "Ghost Mode", "Karakterini tamamen şeffaf yapar.
     end)
 end)
 
--- 12. Seat Trap / Koltuktan Fırlatma
+-- 12. Seat Trap / Koltuktan Fırlatma (Düzeltilmiş Hali)
 createModernButton(mainTab, "Seat Trap", "Oturan herkesi koltuktan fırlatır.", function()
     pcall(function()
         for _, seat in ipairs(workspace:GetDescendants()) do
             if seat:IsA("Seat") or seat:IsA("VehicleSeat") then
-                if seat.Occupant then
-                    seat.Occupant.Sit = false
+                local humanoid = seat.Occupant
+                if humanoid and humanoid:IsA("Humanoid") then
+                    humanoid.Sit = false
                 end
             end
         end
+        showNotification("WorthNet", "Koltuktakiler fırlatıldı!", true)
     end)
 end)
+
 
 -- 19. FPS Unlocker (Sınır Kaldırıcı)
 createModernButton(settingsTab, "FPS Unlocker", "Roblox'un 60 FPS sınırını kırar.", function()
@@ -2733,6 +2736,70 @@ createModernButton(settingsTab, "Command Bar", "Ekranın altına komut çubuğu 
         end)
     end)
 end)
+
+-- Arsenal Silent Aim & Wallbang Entegresi
+local silentAimActive = false
+createModernToggle(combatTab, "Arsenal Silent Aim", "Nişan almadan mermileri düşmana kilitler.", function(state)
+    silentAimActive = state
+    
+    local Camera = workspace.CurrentCamera
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- En yakın düşmanı bulma fonksiyonu
+    local function getClosestPlayer()
+        local target = nil
+        local shortestDist = math.huge
+        for _, v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
+                if v.Character.Humanoid.Health > 0 then
+                    -- Takım kontrolü (Arsenal için TeamCheck)
+                    if v.Team ~= LocalPlayer.Team then
+                        local pos, onScreen = Camera:WorldToViewportPoint(v.Character.Head.Position)
+                        local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            target = v.Character.Head
+                        end
+                    end
+                end
+            end
+        end
+        return target
+    end
+
+    -- Hook metodu ile mermi yönünü değiştirme
+    task.spawn(function()
+        local mt = getrawmetatable(game)
+        setreadonly(mt, false)
+        local oldNamecall = mt.__namecall
+        
+        mt.__namecall = newcclosure(function(self, ...)
+            local args = {...}
+            local method = getnamecallmethod()
+            
+            if silentAimActive and method == "FireServer" then
+                -- Arsenal mermi atış remote'larını yakalama
+                if self.Name:lower():find("fire") or self.Name:lower():find("shoot") or self.Name:lower():find("hit") then
+                    local targetHead = getClosestPlayer()
+                    if targetHead then
+                        for i, v in ipairs(args) do
+                            if typeof(v) == "Vector3" then
+                                args[i] = targetHead.Position + Vector3.new(0, 0, 0) -- Duvar arkası için pozisyon zorlaması
+                            elseif typeof(v) == "Instance" and v:IsA("BasePart") then
+                                args[i] = targetHead
+                            end
+                        end
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    end)
+end)
+
 
 
 
