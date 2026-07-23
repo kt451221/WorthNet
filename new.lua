@@ -2431,14 +2431,14 @@ createModernToggle(visualsTab, "Click Part Deleter", "Üzerine tıkladığın ha
 end)
 
 -- Gravity Changer
-createModernSlider(movementTab, "Gravity Changer", 0, 196, function(val)
-    workspace.Gravity = value
+createModernSlider(moveTab, "Gravity Changer", 0, 196, function(val)
+    workspace.Gravity = val
 end)
 
 -- Chat Logger
 game:GetService("Players").PlayerAdded:Connect(function(p)
     p.Chatted:Connect(function(msg)
-        print("[SwoxTech ChatLogger] " .. p.Name .. ": " .. msg)
+        print("[WorthNet ChatLogger] " .. p.Name .. ": " .. msg)
     end)
 end)
 
@@ -2463,7 +2463,7 @@ mt.__namecall = newcclosure(function(self, ...)
     local args = {...}
     
     if method == "Kick" and self == player then
-         print("[SwoxTech Security] Kick denemesi engellendi!")
+         print("[WorthNet Security] Kick denemesi engellendi!")
          return
     end
     
