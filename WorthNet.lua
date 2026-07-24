@@ -1,4 +1,4 @@
--- WorthNet UI System v4.4 - Glass Bridge, Tug of War & Adjustable SpeedHack (Fixed)
+-- WorthNet UI System v4.4 - Glass Bridge, Tug of War & Adjustable SpeedHack (Fixed & Xeno Compatible)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -30,18 +30,18 @@ screenGui.Name = "WorthNetSystem"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
--- PREMIUM MIDNIGHT CYBER TEMA RENKLERİ
 local THEME = {
-	Background = Color3.fromRGB(13, 14, 18),      -- Derin Siyah / Lacivert Tonu
-	Sidebar    = Color3.fromRGB(18, 20, 26),      -- Yan Menü
-	Card       = Color3.fromRGB(24, 27, 36),      -- Kart Arka Planı
-	Accent     = Color3.fromRGB(99, 102, 241),    -- Modern Neon Mor/Mavi (Indigo)
-	AccentGlow = Color3.fromRGB(129, 140, 248),   -- İkincil Vurgu
-	TextMain   = Color3.fromRGB(240, 242, 245),   -- Keskin Beyaz Text
-	TextDark   = Color3.fromRGB(110, 115, 130),   -- Mat Gri Text
-	ToggleOn   = Color3.fromRGB(99, 102, 241),    -- Açık Buton
-	ToggleOff  = Color3.fromRGB(40, 44, 55)       -- Kapalı Buton
+	Background = Color3.fromRGB(10, 8, 8),         -- Çok Koyu Kan Siyahı
+	Sidebar    = Color3.fromRGB(16, 12, 12),       -- Yan Menü Arka Planı
+	Card       = Color3.fromRGB(24, 18, 18),       -- Kart Arka Planı
+	Accent     = Color3.fromRGB(239, 68, 68),     -- Parlak Kan Kırmızı Vurgu
+	AccentGlow = Color3.fromRGB(248, 113, 113),   -- Neon / Parlak Açık Kırmızı
+	TextMain   = Color3.fromRGB(255, 255, 255),   -- Saf Beyaz
+	TextDark   = Color3.fromRGB(150, 135, 135),   -- Soluk Gri-Kırmızı
+	ToggleOn   = Color3.fromRGB(239, 68, 68),     -- Açık Buton (Parlak Kırmızı)
+	ToggleOff  = Color3.fromRGB(45, 30, 30)        -- Kapalı Buton (Koyu Bordo/Gri)
 }
+
 
 local function roundCorners(obj, radius)
 	local uiCorner = Instance.new("UICorner")
@@ -84,6 +84,7 @@ local function makeDraggable(frame)
 		end
 	end)
 end
+
 ---------------------------------------------------------
 -- MERKEZİ BİLDİRİM SİSTEMİ
 ---------------------------------------------------------
@@ -208,7 +209,6 @@ logoLabel.TextSize = 18
 logoLabel.ZIndex = 7
 logoLabel.Parent = sidebar
 
-
 -- ARAMA KUTUSU
 local searchBox = Instance.new("TextBox")
 searchBox.Size = UDim2.new(1, -20, 0, 32)
@@ -228,15 +228,6 @@ local searchStroke = Instance.new("UIStroke")
 searchStroke.Color = Color3.fromRGB(50, 50, 55)
 searchStroke.Thickness = 1
 searchStroke.Parent = searchBox
-
--- TOPLU KONTROL BUTONLARI
-local controlContainer = Instance.new("Frame")
-controlContainer.Size = UDim2.new(1, -20, 0, 30)
-controlContainer.Position = UDim2.new(0, 10, 0, 150)
-controlContainer.BackgroundTransparency = 1
-controlContainer.ZIndex = 8
-controlContainer.Parent = sidebar
-
 
 -- YOUTUBE BUTONU
 local ytBtn = Instance.new("TextButton")
@@ -272,7 +263,6 @@ end)
 local activeTabs = {}
 local tabButtons = {}
 
--- Sol sidebar içine tab butonlarını dikey sıralayacak alan
 local sidebarTabContainer = Instance.new("ScrollingFrame")
 sidebarTabContainer.Size = UDim2.new(1, -20, 1, -210)
 sidebarTabContainer.Position = UDim2.new(0, 10, 0, 100)
@@ -289,7 +279,6 @@ sidebarLayout.Padding = UDim.new(0, 6)
 sidebarLayout.Parent = sidebarTabContainer
 
 local function createTab(tabName, iconSymbol)
-	-- 1. Sol Menü Butonu (Sidebar)
 	local tabBtn = Instance.new("TextButton")
 	tabBtn.Size = UDim2.new(1, 0, 0, 36)
 	tabBtn.BackgroundColor3 = THEME.Card
@@ -302,7 +291,6 @@ local function createTab(tabName, iconSymbol)
 	tabBtn.Parent = sidebarTabContainer
 	roundCorners(tabBtn, 8)
 
-	-- 2. Sağ İçerik Alanı (O Sekmeye Özel ScrollingFrame)
 	local tabFrame = Instance.new("ScrollingFrame")
 	tabFrame.Size = UDim2.new(1, -180, 1, -60)
 	tabFrame.Position = UDim2.new(0, 170, 0, 50)
@@ -313,7 +301,7 @@ local function createTab(tabName, iconSymbol)
 	tabFrame.ScrollBarThickness = 4
 	tabFrame.ScrollBarImageColor3 = THEME.Accent
 	tabFrame.ZIndex = 6
-	tabFrame.Visible = false -- Başlangıçta gizli
+	tabFrame.Visible = false
 	tabFrame.Parent = hubFrame
 
 	local uiListLayout = Instance.new("UIListLayout")
@@ -324,7 +312,6 @@ local function createTab(tabName, iconSymbol)
 	table.insert(activeTabs, tabFrame)
 	table.insert(tabButtons, tabBtn)
 
-	-- Sekme Değiştirme Mantığı
 	tabBtn.MouseButton1Click:Connect(function()
 		for _, frame in ipairs(activeTabs) do
 			frame.Visible = false
@@ -341,6 +328,7 @@ local function createTab(tabName, iconSymbol)
 
 	return tabFrame
 end
+
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	local searchText = string.lower(searchBox.Text)
 	for _, tabFrame in ipairs(activeTabs) do
@@ -477,7 +465,6 @@ local function createModernToggle(parentTab, name, description, callback)
 	_G.toggleRegistry[name] = updateState
 end
 
--- AYARLANABİLİR SLİDER (BAR) FONKSİYONU
 local function createModernSlider(parentTab, name, description, min, max, default, callback)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Name = name
@@ -499,7 +486,7 @@ local function createModernSlider(parentTab, name, description, min, max, defaul
 	title.TextSize = 14
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.ZIndex = 8
-	title.Parent = parentTab
+	title.Parent = cardFrame
 	
 	local desc = Instance.new("TextLabel")
 	desc.Size = UDim2.new(0, 250, 0, 15)
@@ -595,7 +582,6 @@ local moveTab     = createTab("Movement", "⚡")
 local mm2Tab      = createTab("MM2 Special", "🎯")
 local settingsTab = createTab("Settings", "⚙")
 
--- Varsayılan Olarak İlk Sekmeyi Açık Yapma
 if activeTabs[1] then
 	activeTabs[1].Visible = true
 	tabButtons[1].TextColor3 = THEME.TextMain
@@ -605,8 +591,6 @@ end
 ---------------------------------------------------------
 -- SETTINGS TAB (AYARLAR SEKME İÇERİĞİ)
 ---------------------------------------------------------
-
--- 1. Custom Toggle Keybind
 local toggleKey = Enum.KeyCode.RightShift
 local isSettingKey = false
 
@@ -668,20 +652,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- 2. UI Transparency Slider
 createModernSlider(settingsTab, "UI Transparency", "Arayüz şeffaflığını ayarlar.", 0, 90, 0, function(val)
 	local alpha = val / 100
 	hubFrame.BackgroundTransparency = alpha
 	sidebar.BackgroundTransparency = alpha
 end)
 
--- 3. Rejoin Server
 createModernToggle(settingsTab, "Rejoin Server", "Bulunduğunuz sunucuya tekrar bağlanır.", function()
 	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
--- 4. Unload Script
-createModernToggle(settingsTab, "Unload Script (Tamamen Kapat)", "Tüm sistemleri durdurur ve UI'ı siler.", function()
+createModernToggle(settingsTab, "Unload Script", "Tüm sistemleri durdurur ve UI'ı siler.", function()
 	showNotification("System", "Script kaldırılıyor...", false)
 	task.wait(0.5)
 	screenGui:Destroy()
@@ -695,13 +676,8 @@ local mm2ESPActive = false
 local mm2Highlights = {}
 local infJumpConn = nil
 local bhopConn = nil
-local originalSpeed = 16
 
-
----------------------------------------------------------
--- TRIGGERBOT & SIMPLE HITBOX ÖZELLİKLERİ
----------------------------------------------------------
-
+-- TriggerBot
 local TriggerBotEnabled = false
 local TriggerBotDelay = 0
 
@@ -715,7 +691,7 @@ end)
 
 task.spawn(function()
 	while true do
-		task.wait(0.01) -- Tarama hızını artırmak için süreyi düşürdük
+		task.wait(0.01)
 		if TriggerBotEnabled and isAlive() then
 			local viewportSize = camera.ViewportSize
 			local ray = camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
@@ -740,11 +716,11 @@ task.spawn(function()
 								mouse1click() 
 							elseif VirtualInputManager then 
 								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, true, game, 0)
-								task.wait(0.01) -- Tuşun basılı kalma süresini kısalttık
+								task.wait(0.01)
 								VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, false, game, 0)
 							end
 							
-							task.wait(0.02) -- Ard arda hızlı sıkabilmesi için atış sonu gecikmesini azalttık
+							task.wait(0.02)
 						end
 					end
 				end
@@ -753,9 +729,7 @@ task.spawn(function()
 	end
 end)
 
----------------------------------------------------------
--- SILENT AIM MODULE (WorthNet UI Uyumlu)
----------------------------------------------------------
+-- Silent Aim
 local silentAimActive = false
 local silentAimFov = 150
 local silentAimConn = nil
@@ -807,7 +781,6 @@ createModernToggle(combatTab, "Silent Aim", "Kamerayı sarsmadan en yakın hedef
 			
 			local targetHead = getClosestSilentTarget()
 			if targetHead then
-				-- Hedef kafayı global değişkene atıyoruz (Oyun içi mermi scriptleri burayı okuyabilir)
 				_G.WorthNetSilentTarget = targetHead
 			else
 				_G.WorthNetSilentTarget = nil
@@ -828,7 +801,7 @@ createModernSlider(combatTab, "Silent Aim FOV", "Silent aim etkileşim çapı", 
 	silentAimDrawing.Radius = value
 end)
 
--- 2. Simple Hitbox (Max 3)
+-- Simple Hitbox
 local HitboxEnabled = false
 local HitboxSize = 3
 local originalHeadSizes = {}
@@ -866,14 +839,11 @@ task.spawn(function()
 	end
 end)
 
----------------------------------------------------------
--- SPEEDHACK MODULE (WorthNet UI Uyumlu)
----------------------------------------------------------
+-- SpeedHack
 local speedHackActive = false
 local targetSpeedValue = 75
 local speedSpamConn = nil
 
--- Karakterin Hızını Güncelleyen Yardımcı Fonksiyon
 local function applySpeed(character, speed)
     if not character then return end
     local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -882,22 +852,16 @@ local function applySpeed(character, speed)
     end
 end
 
--- Toggle Entegrasyonu (moveTab)
 createModernToggle(moveTab, "SpeedHack", "Karakterinizin yürüme hızını belirlediğiniz seviyede tutar.", function(state)
     speedHackActive = state
-    
     if speedHackActive then
-        -- Anlık olarak hızı uygula
         applySpeed(player.Character, targetSpeedValue)
-        
-        -- Bazı oyunlar WalkSpeed'i sürekli sıfırladığı için RenderStepped ile sabitleme
         speedSpamConn = RunService.RenderStepped:Connect(function()
             if speedHackActive and player.Character then
                 applySpeed(player.Character, targetSpeedValue)
             end
         end)
     else
-        -- Bağlantıyı kopar ve normal hıza (16) geri dön
         if speedSpamConn then
             speedSpamConn:Disconnect()
             speedSpamConn = nil
@@ -906,37 +870,29 @@ createModernToggle(moveTab, "SpeedHack", "Karakterinizin yürüme hızını beli
     end
 end)
 
--- Slider Entegrasyonu (moveTab)
 createModernSlider(moveTab, "Hız Seviyesi", "SpeedHack aktifken uygulanacak yürüme hızı.", 16, 300, 75, function(value)
     targetSpeedValue = value
-    
-    -- Eğer modül aktifse slider değiştiği an hızı canlı güncelle
     if speedHackActive then
         applySpeed(player.Character, targetSpeedValue)
     end
 end)
 
--- -- 4. SAFE NOCLIP (Yere Düşme ve Kick Önleyici)
+-- Noclip
 local noclipConnection = nil
 
-createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar (Kick atmaz).", function(state)
+createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar.", function(state)
 	if state then
 		noclipConnection = RunService.Stepped:Connect(function()
 			local char = player.Character
 			if char then
 				local root = char:FindFirstChild("HumanoidRootPart")
-				
-				-- Karakterin tüm parçalarının çarpışmasını kapat
 				for _, part in ipairs(char:GetDescendants()) do
 					if part:IsA("BasePart") and part.CanCollide then 
 						part.CanCollide = false 
 					end
 				end
-				
-				-- Yerin dibine düşüp anti-cheat'e yakalanmamak için hızı ve yerçekimini dengeliyoruz
 				if root then
 					local currentVel = root.AssemblyLinearVelocity
-					-- Eğer aşağıya doğru hızlı bir düşüş varsa bunu sıfırlayarak kicklenmeyi önlüyoruz
 					if currentVel.Y < -5 then
 						root.AssemblyLinearVelocity = Vector3.new(currentVel.X, 0, currentVel.Z)
 					end
@@ -948,8 +904,6 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar (
 			noclipConnection:Disconnect() 
 			noclipConnection = nil 
 		end
-		
-		-- Kapatıldığında eski haline döndür
 		local char = player.Character
 		if char then
 			for _, part in ipairs(char:GetDescendants()) do
@@ -961,8 +915,7 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar (
 	end
 end)
 
-
--- -- 5. CFRAME FLY (Anti-Kick / Delta Style Bypass)
+-- Fly
 local cframeFlyActive = false
 local flySpeed = 35
 local flyConnection
@@ -975,15 +928,12 @@ local function updateCFrameFly(state)
 
 	if cframeFlyActive and root and hum then
 		hum.PlatformStand = true
-		
-		-- Fizik motorunu devre dışı bırakıp tamamen CFrame ile kontrolü ele alıyoruz
 		flyConnection = RunService.RenderStepped:Connect(function(dt)
 			if not cframeFlyActive or not root or not root.Parent then
 				if flyConnection then flyConnection:Disconnect() end
 				return
 			end
 			
-			-- Çarpışmaları kapat ki duvarlara takılma
 			for _, part in ipairs(char:GetDescendants()) do
 				if part:IsA("BasePart") then
 					part.CanCollide = false
@@ -1004,7 +954,6 @@ local function updateCFrameFly(state)
 				moveDirection = moveDirection.Unit
 			end
 			
-			-- Pozisyonu direkt güncelliyoruz ve sunucu hız algılamasın diye Velocity'yi sıfırlıyoruz
 			root.CFrame = root.CFrame + (moveDirection * flySpeed * dt)
 			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
@@ -1020,14 +969,9 @@ local function updateCFrameFly(state)
 	end
 end
 
-createModernToggle(
-    moveTab,
-    "Fly",
-    "Fizik motorunu bypass eder, P tuşu ile açılır.",
-    function(state)
-        updateCFrameFly(state)
-    end
-)
+createModernToggle(moveTab, "Fly", "Fizik motorunu bypass eder, P tuşu ile açılır.", function(state)
+	updateCFrameFly(state)
+end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
@@ -1035,8 +979,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- 8. FLING MODULE (UI Uyumlu createModernToggle İle)
--- Oyuncu Listesi Fling Penceresini Yöneten Değişkenler
+-- Fling Menüsü
 local flingPlayerListGui = nil
 local flingScrollingRef = nil
 local flingPlayerConns = {}
@@ -1049,9 +992,8 @@ local function createFlingPlayerListWindow()
 		return
 	end
 
-	-- Ana Ekran GUI'si
 	flingPlayerListGui = Instance.new("ScreenGui")
-	flingPlayerListGui.Name = "SwoxTechFlingPlayerListMenu"
+	flingPlayerListGui.Name = "WorthNetFlingPlayerListMenu"
 	
 	local success = pcall(function()
 		flingPlayerListGui.Parent = game:GetService("CoreGui")
@@ -1060,7 +1002,6 @@ local function createFlingPlayerListWindow()
 		flingPlayerListGui.Parent = player.PlayerGui
 	end
 
-	-- Ana Çerçeve (Kutu)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Size = UDim2.new(0, 240, 0, 320)
 	mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
@@ -1074,7 +1015,6 @@ local function createFlingPlayerListWindow()
 	frameCorner.CornerRadius = UDim.new(0, 10)
 	frameCorner.Parent = mainFrame
 
-	-- Başlık
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0, 40)
 	titleLabel.BackgroundTransparency = 1
@@ -1084,7 +1024,6 @@ local function createFlingPlayerListWindow()
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.Parent = mainFrame
 
-	-- Kaydırma Alanı (ScrollingFrame)
 	local scrollingFrame = Instance.new("ScrollingFrame")
 	scrollingFrame.Size = UDim2.new(1, -16, 1, -50)
 	scrollingFrame.Position = UDim2.new(0, 8, 0, 42)
@@ -1101,11 +1040,9 @@ local function createFlingPlayerListWindow()
 	uiListLayout.Padding = UDim.new(0, 6)
 	uiListLayout.Parent = scrollingFrame
 
-	-- Listeyi Doldurma Fonksiyonu
 	local function refreshFlingList()
 		if not flingScrollingRef then return end
 		
-		-- Eski elemanları temizle
 		for _, child in ipairs(flingScrollingRef:GetChildren()) do
 			if child:IsA("Frame") then
 				child:Destroy()
@@ -1124,7 +1061,6 @@ local function createFlingPlayerListWindow()
 				rowCorner.CornerRadius = UDim.new(0, 6)
 				rowCorner.Parent = itemRow
 
-				-- Oyuncu Adı
 				local nameLabel = Instance.new("TextLabel")
 				nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
 				nameLabel.Position = UDim2.new(0, 8, 0, 0)
@@ -1136,7 +1072,6 @@ local function createFlingPlayerListWindow()
 				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 				nameLabel.Parent = itemRow
 
-				-- Fling Butonu
 				local flingButton = Instance.new("TextButton")
 				flingButton.Size = UDim2.new(0.38, 0, 0.75, 0)
 				flingButton.Position = UDim2.new(0.60, 0, 0.125, 0)
@@ -1152,10 +1087,8 @@ local function createFlingPlayerListWindow()
 				btnCorner.CornerRadius = UDim.new(0, 5)
 				btnCorner.Parent = flingButton
 
-				-- Fling Butonuna Basıldığında Çalışacak Mantık
 				flingButton.MouseButton1Click:Connect(function()
 					if currentlyFlingingTarget == targetPlayer then
-						-- Eğer zaten bu kişiye fling atılıyorsa durdur
 						if activeFlingConnection then
 							activeFlingConnection:Disconnect()
 							activeFlingConnection = nil
@@ -1172,7 +1105,6 @@ local function createFlingPlayerListWindow()
 						showNotification("Fling", targetPlayer.Name .. " serbest bırakıldı.", false)
 						refreshFlingList()
 					else
-						-- Önceki aktif fling'i durdur
 						if activeFlingConnection then
 							activeFlingConnection:Disconnect()
 							activeFlingConnection = nil
@@ -1182,7 +1114,6 @@ local function createFlingPlayerListWindow()
 						showNotification("Fling", targetPlayer.Name .. " hedeflendi ve fırlatılıyor!", true)
 						refreshFlingList()
 
-						-- Fizik motorunu patlatarak seçilen kişiye yapışma döngüsü (Çalışan sağlam altyapı)
 						activeFlingConnection = RunService.Heartbeat:Connect(function()
 							local character = player.Character
 							local rootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -1193,7 +1124,6 @@ local function createFlingPlayerListWindow()
 								rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
 								rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
 							else
-								-- Hedef oyundan çıkarsa veya ölürse durdur
 								if activeFlingConnection then
 									activeFlingConnection:Disconnect()
 									activeFlingConnection = nil
@@ -1237,7 +1167,6 @@ local function hideFlingPlayerListWindow()
 	end
 end
 
--- Ana Menüye Toggle Entegrasyonu
 createModernToggle(moveTab, "Fling Menüsü", "Oyuncu listesini açar, istediğini seçip fırlatırsın.", function(state)
 	if state then
 		createFlingPlayerListWindow()
@@ -1246,7 +1175,7 @@ createModernToggle(moveTab, "Fling Menüsü", "Oyuncu listesini açar, istediği
 	end
 end)
 
--- ==================== PASİF FLING (Dokununca Fırlatma) ====================
+-- Passive Fling
 local passiveFlingEnabled = false
 local flingConnections = {}
 
@@ -1259,16 +1188,13 @@ local function applyFlingToTarget(targetChar)
     
     if not myRoot then return end
 
-    -- Güçlü fling efekti
     targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
     targetRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
     
-    -- Senin momentumunu hedefe aktar + ekstra güç
     local direction = (targetRoot.Position - myRoot.Position).Unit
     targetRoot.AssemblyLinearVelocity = direction * 250 + Vector3.new(0, 80, 0)
     targetRoot.AssemblyAngularVelocity = Vector3.new(math.random(-100,100), math.random(80000,120000), math.random(-100,100))
     
-    -- Ekstra etki için kısa süreliğine CFrame ile yapışma
     task.spawn(function()
         for i = 1, 8 do
             if targetRoot and targetRoot.Parent then
@@ -1280,7 +1206,6 @@ local function applyFlingToTarget(targetChar)
 end
 
 local function setupPassiveFling()
-    -- Önceki bağlantıları temizle
     for _, conn in ipairs(flingConnections) do
         conn:Disconnect()
     end
@@ -1304,14 +1229,10 @@ local function setupPassiveFling()
     end
 end
 
--- Toggle
 createModernToggle(moveTab, "Passive Fling", "Dokunduğun/çarptığın herkesi otomatik fırlatır.", function(state)
     passiveFlingEnabled = state
-    
     if state then
         setupPassiveFling()
-        
-        -- Karakter yeniden spawn olursa tekrar kur
         local conn = player.CharacterAdded:Connect(function()
             task.wait(1)
             if passiveFlingEnabled then
@@ -1319,7 +1240,6 @@ createModernToggle(moveTab, "Passive Fling", "Dokunduğun/çarptığın herkesi 
             end
         end)
         table.insert(flingConnections, conn)
-        
         showNotification("Passive Fling", "Aktif! Dokunduğun herkesi fırlatacaksın 🔥", true)
     else
         for _, conn in ipairs(flingConnections) do
@@ -1330,7 +1250,6 @@ createModernToggle(moveTab, "Passive Fling", "Dokunduğun/çarptığın herkesi 
     end
 end)
 
--- Karakter yenilendiğinde fling'i tekrar kur (güvenlik)
 player.CharacterAdded:Connect(function()
     task.wait(1)
     if passiveFlingEnabled then
@@ -1338,8 +1257,7 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
-
--- -- 9. ADVANCED NAME & HEALTH ESP (Highlight + BillboardGui)
+-- Player ESP
 local espActive = false
 
 createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve canını gösterir.", function(state)
@@ -1356,7 +1274,6 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 						local hum = char:FindFirstChild("Humanoid")
 						
 						if head and hum and hum.Health > 0 then
-							-- 1. Highlight (Karakter Renklendirme ve Parlatma)
 							local highlight = char:FindFirstChild("WorthNet_Highlight")
 							if not highlight then
 								highlight = Instance.new("Highlight")
@@ -1365,11 +1282,10 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 								highlight.Parent = char
 							end
 							highlight.Enabled = true
-							highlight.FillColor = Color3.fromRGB(255, 50, 50) -- Kırmızı dolgu rengi
-							highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- Beyaz çerçeve
+							highlight.FillColor = Color3.fromRGB(255, 50, 50)
+							highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
 							highlight.FillTransparency = 0.5
 							
-							-- 2. BillboardGui (İsim ve Can Göstergesi)
 							local billboard = head:FindFirstChild("WorthNet_ESPBill")
 							local textLabel
 							
@@ -1386,7 +1302,7 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 								textLabel.Size = UDim2.new(1, 0, 1, 0)
 								textLabel.BackgroundTransparency = 1
 								textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-								textLabel.TextStrokeTransparency = 0 -- Okunabilirlik için siyah kenar
+								textLabel.TextStrokeTransparency = 0
 								textLabel.TextSize = 14
 								textLabel.Font = Enum.Font.SourceSansBold
 								textLabel.Parent = billboard
@@ -1394,7 +1310,6 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 								textLabel = billboard:FindFirstChild("InfoText")
 							end
 							
-							-- Can yüzdesini hesapla ve yazdır
 							if textLabel then
 								local healthPercent = math.floor((hum.Health / hum.MaxHealth) * 100)
 								textLabel.Text = p.Name .. " [" .. healthPercent .. "%]"
@@ -1402,11 +1317,10 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 						end
 					end
 				end
-				task.wait(0.3) -- Performans için optimize edilmiş tarama aralığı
+				task.wait(0.3)
 			end
 		end)
 	else
-		-- Kapatıldığında tüm ESP ögelerini temizle
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p.Character then
 				local highlight = p.Character:FindFirstChild("WorthNet_Highlight")
@@ -1422,8 +1336,7 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 	end
 end)
 
-
--- 10. ANTI-FLING
+-- Anti-Fling
 createModernToggle(moveTab, "Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
 	if state then
 		antiFlingConn = RunService.Heartbeat:Connect(function()
@@ -1449,7 +1362,7 @@ createModernToggle(moveTab, "Anti-Fling", "Sizi haritadan uçurmaya çalışanla
 	end
 end)
 
--- 11. MAP BYPASS
+-- Map Bypass
 local function bypassMap(state)
     _G.BypassEnabled = state
     if state then
@@ -1473,7 +1386,7 @@ createModernToggle(mainTab, "Map Bypass", "Görünmez duvarları yok et.", funct
     bypassMap(state)
 end)
 
--- 12. MM2 ESP
+-- MM2 ESP
 createModernToggle(mm2Tab, "MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gösterir.", function(state)
 	mm2ESPActive = state
 	if not mm2ESPActive then
@@ -1507,7 +1420,7 @@ createModernToggle(mm2Tab, "MM2 ESP", "Murder Mystery 2 rollerini duvar arkasın
 	end
 end)
 
--- 13. INFINITE JUMP
+-- Infinite Jump
 createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
 	if state then
 		infJumpConn = UserInputService.JumpRequest:Connect(function()
@@ -1520,8 +1433,7 @@ createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı s
 	end
 end)
 
-
--- 15. FULLBRIGHT
+-- FullBright
 local origAmbient, origColorShift, brightLoop = nil, nil, nil
 createModernToggle(visualsTab, "FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
 	if state then
@@ -1537,7 +1449,7 @@ createModernToggle(visualsTab, "FullBright", "Haritadaki tüm karanlık ve gölg
 	end
 end)
 
--- 16. NO FOG
+-- No Fog
 local origFogStart, origFogEnd = nil, nil
 createModernToggle(visualsTab, "No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
 	if state then
@@ -1550,7 +1462,7 @@ createModernToggle(visualsTab, "No Fog", "Görüş mesafesini düşüren tüm si
 	end
 end)
 
--- 17. ANTI-VOID
+-- Anti-Void
 local antiVoidConn = nil
 createModernToggle(mainTab, "Anti-Void", "Boşluğa düşerek ölmeyi engeller.", function(state)
 	if state then
@@ -1567,8 +1479,7 @@ createModernToggle(mainTab, "Anti-Void", "Boşluğa düşerek ölmeyi engeller."
 	end
 end)
 
-
--- 20. SPINBOT
+-- SpinBot
 local spinConn = nil
 createModernToggle(moveTab, "SpinBot", "Etrafında çılgınca dönersin.", function(state)
     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -1581,8 +1492,7 @@ createModernToggle(moveTab, "SpinBot", "Etrafında çılgınca dönersin.", func
     end
 end)
 
-
--- 22. INVENTORY ESP
+-- Inventory ESP
 local invESPActive = false
 local invTags = {}
 
@@ -1630,7 +1540,7 @@ createModernToggle(visualsTab, "Inventory ESP", "Oyuncuların elindeki/sırtınd
     end
 end)
 
--- 23. TP NEAREST
+-- TP Nearest
 createModernToggle(moveTab, "TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
     if state then
         local target = nil
@@ -1658,7 +1568,7 @@ createModernToggle(moveTab, "TP Nearest", "En yakındaki oyuncunun yanına ış�
     end
 end)
 
--- Oyuncu Listesi Penceresini Yöneten Değişkenler
+-- Oyuncu Listesi Penceresi (TP)
 local playerListGui = nil
 local scrollingFrameRef = nil
 local playerConnections = {}
@@ -1669,10 +1579,8 @@ local function createPlayerListWindow()
         return
     end
 
-    -- Ana Ekran GUI'si
     playerListGui = Instance.new("ScreenGui")
-    playerListGui.Name = "SwoxTechPlayerListMenu"
-    -- Güvenli bir şekilde CoreGui'ye ekleyelim (yoksa PlayerGui)
+    playerListGui.Name = "WorthNetPlayerListMenu"
     local success = pcall(function()
         playerListGui.Parent = game:GetService("CoreGui")
     end)
@@ -1680,21 +1588,19 @@ local function createPlayerListWindow()
         playerListGui.Parent = player.PlayerGui
     end
 
-    -- Ana Çerçeve (Kutu)
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 240, 0, 320)
-    mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0) -- Ekranın sol orta kısmı
+    mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
-    mainFrame.Draggable = true -- İsteğe bağlı sürüklenebilir olsun
+    mainFrame.Draggable = true
     mainFrame.Parent = playerListGui
 
     local frameCorner = Instance.new("UICorner")
     frameCorner.CornerRadius = UDim.new(0, 10)
     frameCorner.Parent = mainFrame
 
-    -- Başlık
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, 0, 0, 40)
     titleLabel.BackgroundTransparency = 1
@@ -1704,7 +1610,6 @@ local function createPlayerListWindow()
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.Parent = mainFrame
 
-    -- Kaydırma Alanı (ScrollingFrame)
     local scrollingFrame = Instance.new("ScrollingFrame")
     scrollingFrame.Size = UDim2.new(1, -16, 1, -50)
     scrollingFrame.Position = UDim2.new(0, 8, 0, 42)
@@ -1721,11 +1626,9 @@ local function createPlayerListWindow()
     uiListLayout.Padding = UDim.new(0, 6)
     uiListLayout.Parent = scrollingFrame
 
-    -- Listeyi Doldurma Fonksiyonu
     local function refreshList()
         if not scrollingFrameRef then return end
         
-        -- Eski elemanları temizle
         for _, child in ipairs(scrollingFrameRef:GetChildren()) do
             if child:IsA("Frame") then
                 child:Destroy()
@@ -1734,7 +1637,6 @@ local function createPlayerListWindow()
 
         for _, targetPlayer in ipairs(Players:GetPlayers()) do
             if targetPlayer ~= player then
-                -- Her oyuncu için satır
                 local itemRow = Instance.new("Frame")
                 itemRow.Size = UDim2.new(1, 0, 0, 32)
                 itemRow.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -1745,7 +1647,6 @@ local function createPlayerListWindow()
                 rowCorner.CornerRadius = UDim.new(0, 6)
                 rowCorner.Parent = itemRow
 
-                -- Oyuncu Adı
                 local nameLabel = Instance.new("TextLabel")
                 nameLabel.Size = UDim2.new(0.65, 0, 1, 0)
                 nameLabel.Position = UDim2.new(0, 8, 0, 0)
@@ -1757,7 +1658,6 @@ local function createPlayerListWindow()
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.Parent = itemRow
 
-                -- TP Butonu
                 local tpButton = Instance.new("TextButton")
                 tpButton.Size = UDim2.new(0.28, 0, 0.75, 0)
                 tpButton.Position = UDim2.new(0.70, 0, 0.125, 0)
@@ -1773,7 +1673,6 @@ local function createPlayerListWindow()
                 btnCorner.CornerRadius = UDim.new(0, 5)
                 btnCorner.Parent = tpButton
 
-                -- TP Butonuna Basıldığında Çalışacak Kod
                 tpButton.MouseButton1Click:Connect(function()
                     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
                         local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -1788,7 +1687,6 @@ local function createPlayerListWindow()
 
     refreshList()
 
-    -- Oyuncu giriş/çıkışlarında listeyi otomatik güncelle
     table.insert(playerConnections, Players.PlayerAdded:Connect(refreshList))
     table.insert(playerConnections, Players.PlayerRemoving:Connect(refreshList))
 end
@@ -1799,7 +1697,6 @@ local function hidePlayerListWindow()
     end
 end
 
--- Toggle Bağlantısı
 createModernToggle(moveTab, "TP Player Menüsü", "Oyuncu listesi penceresini açar/kapatır.", function(state)
     if state then
         createPlayerListWindow()
@@ -1808,7 +1705,7 @@ createModernToggle(moveTab, "TP Player Menüsü", "Oyuncu listesi penceresini a�
     end
 end)
 
--- 26. X TUŞU İLE CLICK TP (Bypass & Anti-Rubberband Destekli)
+-- Click TP (X Tuşu)
 local clickTPXActive = false
 
 createModernToggle(moveTab, "Click TP (X Tuşu)", "Fareyi nereye tutarsan X tuşuna basınca oraya ışınlanırsın.", function(state)
@@ -1829,14 +1726,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
-                    -- Anti-cheat'in velocity (hız) algoritmalarını kandırmak için hızı sıfırlıyoruz
                     hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                     hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                    
-                    -- Yerin içine gömülmemek için hafif yukarıda başlatıyoruz
                     hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
-                    
-                    -- Pozisyon değiştikten sonra hızı tekrar sıfırlayarak geri atılmayı (rubber-band) azaltıyoruz
                     task.defer(function()
                         hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                     end)
@@ -1846,7 +1738,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- 27. AUTO FOLLOW & LOCK SYSTEM
+-- Auto Follow / Lock
 local followEnabled = false
 createModernToggle(mainTab, "Auto Follow/Lock", "En yakın oyuncuyu takip eder.", function(state)
     followEnabled = state
@@ -1876,13 +1768,12 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Anti-Ragdoll System
+-- Anti-Ragdoll
 local antiRagdollEnabled = false
 local antiRagdollConnection = nil
 
 createModernToggle(mainTab, "Anti-Ragdoll", "Yere kapaklanmayı ve sersemlemeyi önler.", function(state)
     antiRagdollEnabled = state
-    
     if antiRagdollEnabled then
         if not antiRagdollConnection then
             antiRagdollConnection = RunService.RenderStepped:Connect(function()
@@ -1907,7 +1798,7 @@ createModernToggle(mainTab, "Anti-Ragdoll", "Yere kapaklanmayı ve sersemlemeyi 
     end
 end)
 
--- 28. ANTI-AFK
+-- Anti-AFK
 local afkConn = nil
 createModernToggle(mainTab, "Anti-AFK", "Sunucudan atılmayı engeller.", function(state)
     if state then
@@ -1920,8 +1811,7 @@ createModernToggle(mainTab, "Anti-AFK", "Sunucudan atılmayı engeller.", functi
     end
 end)
 
-
--- 30. SMOOTH AIM
+-- Smooth Aim
 local smoothAimActive = false
 local aimSpeed = 0.2
 
@@ -1952,19 +1842,17 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
     end)
 end)
 
--- 31. MM2 ÖZEL AIMBOT & CROSSHAIR
+-- MM2 Aimbot
 local mm2AimbotEnabled = false
 local mm2AimbotConnection = nil
 
--- Küçük bir crosshair oluşturalım (Drawing Kütüphanesi)
 local crosshair = Drawing.new("Circle")
 crosshair.Visible = false
 crosshair.Radius = 3
 crosshair.Filled = true
-crosshair.Color = Color3.fromRGB(0, 255, 255) -- Cyan / Mavi tonlarında şık bir crosshair
+crosshair.Color = Color3.fromRGB(0, 255, 255)
 crosshair.Transparency = 0.9
 
--- Yerel oyuncunun elinde/envanterinde Gun var mı kontrol eden fonksiyon
 local function localHasGun()
     local localChar = player.Character
     local localBack = player:FindFirstChild("Backpack")
@@ -1987,12 +1875,11 @@ local function getTargetPlayer()
             local char = targetPlayer.Character
             local back = targetPlayer:FindFirstChild("Backpack")
             local hum = char:FindFirstChild("Humanoid")
-            local head = char:FindFirstChild("Head") -- Doğrudan kafa hedef alınır
+            local head = char:FindFirstChild("Head")
 
             local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
             local targetHasGun = (char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun")))
 
-            -- Eğer bizim elimizde Gun varsa, sadece Knife olan kişiye (Katile) odaklan
             local isValidTarget = false
             if hasGun then
                 isValidTarget = targetHasKnife
@@ -2021,7 +1908,6 @@ createModernToggle(mm2Tab, "MM2 Aimbot", "Silahın varsa direkt Katilin kafasın
     
     if mm2AimbotEnabled then
         mm2AimbotConnection = RunService.RenderStepped:Connect(function()
-            -- Crosshair'i ekranın tam merkezine sabitle
             local screenSize = workspace.CurrentCamera.ViewportSize
             crosshair.Position = screenSize / 2
 
@@ -2042,15 +1928,9 @@ createModernToggle(mm2Tab, "MM2 Aimbot", "Silahın varsa direkt Katilin kafasın
     end
 end)
 
--- MM2 AUTO SHOOT (Elinde Gun varsa Katile otomatik sıkma)
+-- MM2 Auto Shoot
 local mm2AutoShootEnabled = false
 local mm2AutoShootConn = nil
-
-local function localHasGun()
-	local localChar = player.Character
-	local localBack = player:FindFirstChild("Backpack")
-	return (localChar and localChar:FindFirstChild("Gun")) or (localBack and localBack:FindFirstChild("Gun"))
-end
 
 local function getKillerTarget()
 	local closestPlayer = nil
@@ -2068,7 +1948,6 @@ local function getKillerTarget()
 			local hum = char:FindFirstChild("Humanoid")
 			local head = char:FindFirstChild("Head")
 
-			-- Sadece Katili (Knife taşıyanı) hedef al
 			local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
 
 			if targetHasKnife and head and hum and hum.Health > 0 then
@@ -2098,19 +1977,17 @@ createModernToggle(mm2Tab, "MM2 Auto Shoot", "Envanterinde Gun varsa Katile otom
 				local head = killer.Character.Head
 				local camera = workspace.CurrentCamera
 				
-				-- Katilin kafasına kamerayı sabitle
 				camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
 				
-				-- Silahı ele al ve ateş et
 				local localChar = player.Character
 				local gun = localChar:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
 				
 				if gun then
 					if gun.Parent ~= localChar then
-						gun.Parent = localChar -- Silahı eline ver
+						gun.Parent = localChar
 					end
 					pcall(function()
-						gun:Activate() -- Otomatik ateş et
+						gun:Activate()
 					end)
 				end
 			end
@@ -2123,7 +2000,797 @@ createModernToggle(mm2Tab, "MM2 Auto Shoot", "Envanterinde Gun varsa Katile otom
 	end
 end)
 
--- Metatable Bypass
+-- UI Viewer / Dex Explorer
+createModernToggle(visualsTab, "UI Viewer (Dex)", "Arayüzü ve oyun ağacını incelemek için Explorer açar.", function(state)
+	if state then
+		pcall(function()
+			loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+		end)
+		showNotification("UI Viewer", "Dex Explorer yüklendi!", true)
+	end
+end)
+
+-- Remote Event Spam
+local remoteSpamActive = false
+local targetRemoteName = "RemoteEvent" -- İstediğin event adıyla değiştirebilirsin
+
+createModernToggle(mainTab, "Remote Event Spam", "Seçilen RemoteEvent'i sürekli tetikler.", function(state)
+	remoteSpamActive = state
+	if state then
+		task.spawn(function()
+			while remoteSpamActive do
+				task.wait(0.05)
+				pcall(function()
+					for _, v in pairs(workspace:GetDescendants()) do
+						if v.Name == targetRemoteName and v:IsA("RemoteEvent") then
+							v:FireServer()
+						end
+					end
+				end)
+			end
+		end)
+		showNotification("Remote Spam", "Spam başlatıldı!", true)
+	else
+		showNotification("Remote Spam", "Durduruldu.", false)
+	end
+end)
+
+-- Fling ile Kendine Çekme
+local pullFlingActive = false
+
+createModernToggle(moveTab, "Fling ile Kendine Çek", "Herkesi fırlatarak yanına toplar.", function(state)
+	pullFlingActive = state
+	if state then
+		task.spawn(function()
+			while pullFlingActive do
+				task.wait(0.1)
+				pcall(function()
+					local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					if myRoot then
+						for _, p in ipairs(Players:GetPlayers()) do
+							if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+								local enemyRoot = p.Character.HumanoidRootPart
+								local direction = (myRoot.Position - enemyRoot.Position).Unit
+								enemyRoot.AssemblyLinearVelocity = direction * 300 + Vector3.new(0, 50, 0)
+								enemyRoot.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+							end
+						end
+					end
+				end)
+			end
+		end)
+		showNotification("Pull Fling", "Oyuncular çekiliyor!", true)
+	else
+		showNotification("Pull Fling", "Durduruldu.", false)
+	end
+end)
+
+-- Tekme Atarak Fırlat (Kick Fling)
+local kickFlingActive = false
+local kickConn = nil
+
+createModernToggle(moveTab, "Tekme Atarak Fırlat", "Temas ettiğin oyunculara tekme etkisi verip uçurur.", function(state)
+	kickFlingActive = state
+	if state then
+		local char = player.Character
+		if char then
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if root then
+				kickConn = root.Touched:Connect(function(hit)
+					if not kickFlingActive then return end
+					local hitChar = hit.FindFirstAncestorWhichIsA(hit, "Model")
+					if hitChar and hitChar ~= char and hitChar:FindFirstChild("HumanoidRootPart") then
+						local enemyRoot = hitChar.HumanoidRootPart
+						local lookVector = root.CFrame.LookVector
+						enemyRoot.AssemblyLinearVelocity = (lookVector * 400) + Vector3.new(0, 150, 0)
+						enemyRoot.AssemblyAngularVelocity = Vector3.new(50000, 50000, 50000)
+					end
+				end)
+			end
+		end
+		showNotification("Kick Fling", "Tekme modu aktif! Çarptığını uçur.", true)
+	else
+		if kickConn then
+			kickConn:Disconnect()
+			kickConn = nil
+		end
+		showNotification("Kick Fling", "Kapatıldı.", false)
+	end
+end)
+
+-- Tool Stealer
+createModernToggle(mainTab, "Tool Stealer", "Yakındaki oyuncuların elindeki eşyaları kopyalar.", function(state)
+	if state then
+		task.spawn(function()
+			pcall(function()
+				local myChar = player.Character
+				if not myChar then return end
+				
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= player and p.Character then
+						for _, tool in ipairs(p.Character:GetChildren()) do
+							if tool:IsA("Tool") then
+								local cloneTool = tool:Clone()
+								cloneTool.Parent = player.Backpack
+								showNotification("Tool Stealer", tool.Name .. " çalındı!", true)
+							end
+						end
+					end
+				end
+			end)
+		end)
+	end
+end)
+
+-- Free Gamepass UI / Shop Bypass
+createModernToggle(mainTab, "Free Gamepass UI", "Kilitli oyun içi mağaza ve gamepass arayüzlerini açar.", function(state)
+	if state then
+		pcall(function()
+			for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+				if gui:IsA("Frame") or gui:IsA("ScrollingFrame") then
+					local name = gui.Name:lower()
+					if name:find("shop") or name:find("pass") or name:find("store") or name:find("premium") or name:find("buy") then
+						gui.Visible = true
+					end
+				end
+			end
+			showNotification("Shop Bypass", "Mağaza pencereleri zorla açıldı!", true)
+		end)
+	end
+end)
+
+-- Custom Skybox
+createModernToggle(visualsTab, "Custom Skybox", "Gökyüzünü şık bir uzay temasıyla değiştirir.", function(state)
+	if state then
+		pcall(function()
+			local lighting = game:GetService("Lighting")
+			for _, obj in ipairs(lighting:GetChildren()) do
+				if obj:IsA("Sky") then obj:Destroy() end
+			end
+			local sky = Instance.new("Sky")
+			sky.Name = "WorthNetSky"
+			sky.SkyboxBk = "rbxassetid://159454286"
+			sky.SkyboxDn = "rbxassetid://159454296"
+			sky.SkyboxFt = "rbxassetid://159454293"
+			sky.SkyboxLf = "rbxassetid://159454283"
+			sky.SkyboxRt = "rbxassetid://159454300"
+			sky.SkyboxUp = "rbxassetid://159454288"
+			sky.Parent = lighting
+			showNotification("Skybox", "Özel gökyüzü uygulandı!", true)
+		end)
+	else
+		pcall(function()
+			local sky = game:GetService("Lighting"):FindFirstChild("WorthNetSky")
+			if sky then sky:Destroy() end
+		end)
+	end
+end)
+
+
+-- Purchase Spoofing (Ücretsiz satın alma simülasyonu)
+createModernToggle(mainTab, "Purchase Spoofing", "Mağaza satın alım eventlerini manipüle eder.", function(state)
+	if state then
+		pcall(function()
+			for _, v in ipairs(workspace:GetDescendants()) do
+				if v:IsA("RemoteEvent") and (v.Name:lower():find("buy") or v.Name:lower():find("purchase") or v.Name:lower():find("shop")) then
+					v:FireServer("Free", true, 0, 999999)
+				end
+			end
+			showNotification("Purchase Spoofing", "Satın alımlar manipüle edildi!", true)
+		end)
+	end
+end)
+
+-- Give Items Hack (Envantere güçlü silahlar ekleme)
+createModernToggle(mainTab, "Give Items Hack", "Sunucu eşya verme fonksiyonunu tetikler.", function(state)
+	if state then
+		pcall(function()
+			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+				if v:IsA("RemoteEvent") and (v.Name:lower():find("give") or v.Name:lower():find("item") or v.Name:lower():find("weapon")) then
+					v:FireServer("All", "Godkiller", 999)
+				end
+			end
+			showNotification("Give Items", "Eşya talebi gönderildi!", true)
+		end)
+	end
+end)
+
+-- FireServer Spoofing (Örn: Miktar = 999999)
+createModernToggle(mainTab, "FireServer Spoofing", "Remote fonksiyonlara sahte parametreler yollar.", function(state)
+	if state then
+		pcall(function()
+			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+				if v:IsA("RemoteEvent") then
+					v:FireServer(999999, "WorthNet_Exploit", true)
+				end
+			end
+			showNotification("FireServer", "Sahte parametreler fırlatıldı!", true)
+		end)
+	end
+end)
+
+-- Bring All Players (Herkesi kendine çekme)
+createModernToggle(moveTab, "Bring All Players", "Zayıf remote kodlarını kullanarak herkesi yanına ışınlar.", function(state)
+	if state then
+		pcall(function()
+			local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if myRoot then
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						p.Character.HumanoidRootPart.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
+					end
+				end
+				showNotification("Bring All", "Tüm oyuncular yanına çekildi!", true)
+			end
+		end)
+	end
+end)
+
+-- Kill All Players (Herkesin canını düşürme eventini tetikle)
+createModernToggle(combatTab, "Kill All Players", "Can azaltma Remote Event'ini herkes için tetikler.", function(state)
+	if state then
+		pcall(function()
+			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+				if v:IsA("RemoteEvent") and (v.Name:lower():find("damage") or v.Name:lower():find("hit") or v.Name:lower():find("attack")) then
+					for _, p in ipairs(Players:GetPlayers()) do
+						if p ~= player then
+							v:FireServer(p, 999999)
+						end
+					end
+				end
+			end
+			showNotification("Kill All", "Herkes için ölüm paketi gönderildi!", true)
+		end)
+	end
+end)
+
+-- Auto-Dodge (Gelen alan hasarlarından/yeteneklerden otomatik kaçma)
+local autoDodgeActive = false
+createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanlardan otomatik kaçar.", function(state)
+	autoDodgeActive = state
+	if state then
+		task.spawn(function()
+			while autoDodgeActive do
+				task.wait(0.05)
+				pcall(function()
+					local char = player.Character
+					local hrp = char and char:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						for _, obj in ipairs(workspace:GetChildren()) do
+							if obj:IsA("Part") and obj.Name:lower():find("bullet") or obj.Name:lower():find("spell") or obj.Name:lower():find("aoe") then
+								if (obj.Position - hrp.Position).Magnitude < 15 then
+									hrp.CFrame = hrp.CFrame + Vector3.new(math.random(-10, 10), 5, math.random(-10, 10))
+								end
+							end
+						end
+					end
+				end)
+			end
+		end)
+		showNotification("Auto-Dodge", "Aktif! Tehlikelerden kaçılıyor.", true)
+	else
+		showNotification("Auto-Dodge", "Devre dışı bırakıldı.", false)
+	end
+end)
+-- WorthNet MM2 AutoCoin System
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+-- 1. Toggle Butonu (Arayüz sekmenizin olduğu yere ekleyin)
+createModernToggle(mm2Tab, "MM2 AutoCoin", "Tween ve Noclip ile yavaşça 40 coin toplar, sonra reset atar.", function(state)
+	_G.AutoCoinActive = state
+end)
+
+-- 2. Ana AutoCoin Döngüsü
+task.spawn(function()
+	local collectedCount = 0
+	
+	while task.wait(0.5) do
+		if _G.AutoCoinActive then
+			local char = player.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			
+			if hrp then
+				-- Noclip aktif tutma (Çarpmaları kapatma)
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+				
+				-- Coinleri tarama
+				for _, coinPart in ipairs(Workspace:GetChildren()) do
+					if not _G.AutoCoinActive then break end
+					
+					if coinPart.Name == "Coin" and coinPart:IsA("BasePart") then
+						-- Tween ile yumuşak uçuş (mesafeye göre hız ayarı)
+						local distance = (hrp.Position - coinPart.Position).Magnitude
+						local speed = 25 -- Hız birimi
+						local tweenTime = distance / speed
+						
+						local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+						local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
+						
+						tween:Play()
+						tween.Completed:Wait()
+						
+						collectedCount = collectedCount + 1
+						task.wait(0.2) -- Coinlerin sunucu tarafından kaydedilmesi için küçük gecikme
+						
+						-- 40 coin limitine ulaşınca reset at
+						if collectedCount >= 40 then
+							local humanoid = char:FindFirstChildOfClass("Humanoid")
+							if humanoid then
+								humanoid.Health = 0
+							end
+							collectedCount = 0 -- Sayacı sıfırla
+							task.wait(3) -- Yeniden doğma süresi bekle
+							break
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- Part/Lag Machine & Weld/Constraint Crash
+_G.PartSpamActive = false
+createModernToggle(combatTab, "Part/Lag Machine", "Haritaya seri parça yığarak fizik motorunu zorlar.", function(state)
+    _G.PartSpamActive = state
+    task.spawn(function()
+        while _G.PartSpamActive do
+            local p = Instance.new("Part")
+            p.Size = Vector3.new(5, 5, 5)
+            p.Position = player.Character.HumanoidRootPart.Position + Vector3.new(math.random(-20,20), 5, math.random(-20,20))
+            p.Parent = workspace
+            game:GetService("Debris"):AddItem(p, 5)
+            task.wait(0.05)
+        end
+    end)
+end)
+
+-- Auto Remote Event Spam & Argument Flooding
+_G.RemoteFloodActive = false
+createModernToggle(combatTab, "Remote & Arg Flood", "ReplicatedStorage'daki eventlere büyük veriler spamler.", function(state)
+    _G.RemoteFloodActive = state
+    task.spawn(function()
+        while _G.RemoteFloodActive do
+            for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                if v:IsA("RemoteEvent") then
+                    pcall(function()
+                        v:FireServer(string.rep("SwoxTech", 5000), math.huge, {})
+                    end)
+                end
+            end
+            task.wait()
+        end
+    end)
+end)
+
+-- Global Sound Spam
+_G.SoundSpamActive = false
+createModernToggle(mainTab, "Global Sound Spam", "Sunucudaki sesleri son ses spamler.", function(state)
+    _G.SoundSpamActive = state
+    task.spawn(function()
+        while _G.SoundSpamActive do
+            for _, s in ipairs(workspace:GetDescendants()) do
+                if s:IsA("Sound") then
+                    pcall(function()
+                        s.Volume = 10
+                        s:Play()
+                    end)
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+end)
+
+
+-- Tool Reach Extender
+_G.ReachEnabled = false
+createModernToggle(combatTab, "Tool Reach Extender", "Elindeki silah/kılıç menzilini uzatır.", function(state)
+    _G.ReachEnabled = state
+    task.spawn(function()
+        while _G.ReachEnabled do
+            local char = player.Character
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            if tool then
+                for _, handle in ipairs(tool:GetDescendants()) do
+                    if handle:IsA("BasePart") then
+                        handle.Size = Vector3.new(4, 4, 15)
+                        handle.Transparency = 0.8
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end)
+
+-- Custom FOV
+local Camera = workspace.CurrentCamera
+createModernSlider(visualsTab, "Custom FOV", "Görüş açınızı (FOV) ayarlar.", 70, 120, 70, function(value)
+    Camera.FieldOfView = value
+end)
+
+
+
+-- Map Editor / Part Deleter
+_G.PartDeleterActive = false
+createModernToggle(visualsTab, "Click Part Deleter", "Üzerine tıkladığın harita parçasını siler.", function(state)
+    _G.PartDeleterActive = state
+    local mouse = player:GetMouse()
+    mouse.Button1Down:Connect(function()
+        if _G.PartDeleterActive and mouse.Target then
+            mouse.Target:Destroy()
+        end
+    end)
+end)
+
+-- Gravity Changer (Düzeltilmiş Hali)
+createModernSlider(moveTab, "Gravity Changer", "Dünyanın yerçekimi kuvvetini ayarlar.", 0, 196, 196, function(val)
+    workspace.Gravity = val
+end)
+
+
+-- Chat Logger
+game:GetService("Players").PlayerAdded:Connect(function(p)
+    p.Chatted:Connect(function(msg)
+        print("[WorthNet ChatLogger] " .. p.Name .. ": " .. msg)
+    end)
+end)
+
+-- Freecam / Camera Lock
+_G.FreecamActive = false
+createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız serbest gezdirir.", function(state)
+    _G.FreecamActive = state
+    if state then
+        Camera.CameraType = Enum.CameraType.Scriptable
+    else
+        Camera.CameraType = Enum.CameraType.Custom
+    end
+end)
+
+-- Metatable Hook & Anti-Kick / Korumalar
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if method == "Kick" and self == player then
+         print("[WorthNet Security] Kick denemesi engellendi!")
+         return
+    end
+    
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- UI Toggle Key (Sağ Shift ile menüyü gizleme/açma)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        -- Kendi arayüz değişkenine göre MainUI durumunu ayarlayabilirsin
+    end
+end)
+
+-- Basic Remote Spy
+_G.RemoteSpyActive = false
+createModernToggle(settingsTab, "Basic Remote Spy", "Giden eventleri F9 konsoluna yazdırır.", function(state)
+    _G.RemoteSpyActive = state
+end)
+
+-- Otomatik Remote Tarayıcı ve Spammer
+_G.RemoteSpamActive = false
+
+local function getRemotes()
+    local remotes = {}
+    local possibleNames = {"Remotes", "RemoteEvents", "RemoteFunction", "Events", "Network", "Packages"}
+    
+    -- ReplicatedStorage altındaki klasörleri ve remote'ları tara
+    for _, child in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+        if child:IsA("RemoteEvent") then
+            table.insert(remotes, child)
+        end
+    end
+    
+    return remotes
+end
+
+-- Arayüze eklenecek toggle (Settings veya ayrı bir Troll sekmesine koyabilirsin)
+createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm eventleri bulur ve spamler.", function(state)
+    _G.RemoteSpamActive = state
+    
+    if _G.RemoteSpamActive then
+        task.spawn(function()
+            while _G.RemoteSpamActive do
+                local foundRemotes = getRemotes()
+                
+                for _, remote in ipairs(foundRemotes) do
+                    if not _G.RemoteSpamActive then break end
+                    
+                    -- Güvenli bir şekilde spam at (Hata verip scripti durdurmaması için pcall kullanıyoruz)
+                    pcall(function()
+                        remote:FireServer("SwoxTechSpam", math.random(1, 999999), {}, true)
+                    end)
+                end
+                
+                task.wait() -- Hızlı döngü
+            end
+        end)
+    end
+end)
+
+createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapatarak FPS'i artırır.", function(state)
+    if state then
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 9e9
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Material = Enum.Material.SmoothPlastic
+                    v.Reflectance = 0
+                end
+            end
+            showNotification("FPS Booster", "Grafikler optimize edildi!", true)
+        end)
+    end
+end)
+
+-- 3. Air Swim (Havada Yüzme)
+local airSwimActive = false
+createModernToggle(moveTab, "Air Swim", "Yerçekimini yok edip havada yüzmeni sağlar.", function(state)
+    airSwimActive = state
+    task.spawn(function()
+        while airSwimActive do
+            task.wait()
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.Velocity = Vector3.new(char.HumanoidRootPart.Velocity.X, 2, char.HumanoidRootPart.Velocity.Z)
+            end
+        end
+    end)
+end)
+
+-- 4. Wall Climb (Duvara Tırmanma)
+local wallClimbActive = false
+createModernToggle(moveTab, "Wall Climb", "Düz duvarlara tırmanmanı sağlar.", function(state)
+    wallClimbActive = state
+    task.spawn(function()
+        while wallClimbActive do
+            task.wait()
+            pcall(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.MoveDirection.Magnitude > 0 then
+                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (hum.MoveDirection * 0.5)
+                end
+            end)
+        end
+    end)
+end)
+
+-- 11. Auto-Climb Ladders (Otomatik Merdiven)
+createModernToggle(moveTab, "Auto-Climb Ladders", "Merdivenlere dokunmadan anında tırmanır.", function(state)
+    if state then
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Climbing) end
+    end
+end)
+
+-- 17. Anti-Slowdown (Yavaşlatma Koruması)
+local antiSlowActive = false
+createModernToggle(moveTab, "Anti-Slowdown", "Yavaşlatma ve stun efektlerini engeller.", function(state)
+    antiSlowActive = state
+    task.spawn(function()
+        while antiSlowActive do
+            task.wait(0.5)
+            pcall(function()
+                local char = player.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.WalkSpeed = 16 -- Varsayılan hızı sabitler
+                    hum.JumpPower = 50
+                end
+            end)
+        end
+    end)
+end)
+
+-- 5. Rainbow Lighting (Gökkuşağı Işıklandırma)
+local rainbowLightActive = false
+createModernToggle(visualsTab, "Rainbow Lighting", "Haritayı parti ortamına çevirir.", function(state)
+    rainbowLightActive = state
+    task.spawn(function()
+        while rainbowLightActive do
+            for i = 0, 1, 0.01 do
+                if not rainbowLightActive then break end
+                Lighting.Ambient = Color3.fromHSV(i, 1, 1)
+                task.wait(0.1)
+            end
+        end
+        Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+    end)
+end)
+
+-- 7. Custom Crosshair (Özel Nişangah)
+local crosshairGui
+createModernToggle(visualsTab, "Custom Crosshair", "Ekrana özel nişangah sabitler.", function(state)
+    if state then
+        crosshairGui = Instance.new("ScreenGui", game.CoreGui)
+        local dot = Instance.new("Frame", crosshairGui)
+        dot.Size = UDim2.new(0, 6, 0, 6)
+        dot.Position = UDim2.new(0.5, -3, 0.5, -3)
+        dot.BackgroundColor3 = Color3.fromRGB(0, 255, 128)
+        dot.BorderSizePixel = 0
+        dot.Name = "WorthNetCrosshair"
+    else
+        if crosshairGui then crosshairGui:Destroy() end
+    end
+end)
+
+-- 15. Ghost Mode (Hayalet Modu)
+local ghostActive = false
+createModernToggle(visualsTab, "Ghost Mode", "Karakterini tamamen şeffaf yapar.", function(state)
+    ghostActive = state
+    pcall(function()
+        local char = player.Character
+        for _, v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") or v:IsA("Part") then
+                v.Transparency = ghostActive and 0.7 or 0
+            elseif v:IsA("Decal") then
+                v.Transparency = ghostActive and 0.7 or 0
+            end
+        end
+    end)
+end)
+
+
+
+-- 19. FPS Unlocker (Sınır Kaldırıcı)
+createModernButton(settingsTab, "FPS Unlocker", "Roblox'un 60 FPS sınırını kırar.", function()
+    pcall(function()
+        setfpscap(9999)
+        showNotification("WorthNet", "FPS sınırı kaldırıldı!", true)
+    end)
+end)
+
+-- 20. Crash Protection (Sunucu Çökme Koruması)
+createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı korur.", function(state)
+    if state then
+        local mt = getrawmetatable(game)
+        setreadonly(mt, false)
+        local old = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "Kick" and self == player then
+                return
+            end
+            return old(self, ...)
+        end)
+        setreadonly(mt, true)
+        showNotification("WorthNet", "Crash koruması aktif!", true)
+    end
+end)
+
+-- Server Hop (Düşük oyunculu sunucu)
+createModernButton(mainTab, "Server Hop", "En sakin sunucuya geçiş yapar.", function()
+    pcall(function()
+        local Http = game:GetService("HttpService")
+        local TPS = game:GetService("TeleportService")
+        local Servers = Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+        for _, s in ipairs(Servers.data) do
+            if s.playing < s.maxPlayers - 2 then
+                TPS:TeleportToPlaceInstance(game.PlaceId, s.id, player)
+                break
+            end
+        end
+    end)
+end)
+
+-- 18. Command Bar (Gizli Komut Satırı)
+createModernButton(settingsTab, "Command Bar", "Ekranın altına komut çubuğu ekler.", function()
+    pcall(function()
+        if game.CoreGui:FindFirstChild("WorthNetCmd") then return end
+        local gui = Instance.new("ScreenGui", game.CoreGui)
+        gui.Name = "WorthNetCmd"
+        local box = Instance.new("TextBox", gui)
+        box.Size = UDim2.new(0, 300, 0, 30)
+        box.Position = UDim2.new(0.5, -150, 1, -40)
+        box.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        box.TextColor3 = Color3.fromRGB(255, 255, 255)
+        box.PlaceholderText = "Komut yaz (örn: speed 100)"
+        box.Text = ""
+        box.FocusLost:Connect(function(enter)
+            if enter then
+                local cmd = box.Text
+                if cmd:sub(1,6) == "speed " then
+                    local val = tonumber(cmd:sub(7))
+                    if val then player.Character.Humanoid.WalkSpeed = val end
+                end
+                box.Text = ""
+            end
+        end)
+    end)
+end)
+
+-- Arsenal Silent Aim & Wallbang Entegresi
+local silentAimActive = false
+createModernToggle(combatTab, "Arsenal Silent Aim", "Nişan almadan mermileri düşmana kilitler.", function(state)
+    silentAimActive = state
+    
+    local Camera = workspace.CurrentCamera
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- En yakın düşmanı bulma fonksiyonu
+    local function getClosestPlayer()
+        local target = nil
+        local shortestDist = math.huge
+        for _, v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
+                if v.Character.Humanoid.Health > 0 then
+                    -- Takım kontrolü (Arsenal için TeamCheck)
+                    if v.Team ~= LocalPlayer.Team then
+                        local pos, onScreen = Camera:WorldToViewportPoint(v.Character.Head.Position)
+                        local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            target = v.Character.Head
+                        end
+                    end
+                end
+            end
+        end
+        return target
+    end
+
+    -- Hook metodu ile mermi yönünü değiştirme
+    task.spawn(function()
+        local mt = getrawmetatable(game)
+        setreadonly(mt, false)
+        local oldNamecall = mt.__namecall
+        
+        mt.__namecall = newcclosure(function(self, ...)
+            local args = {...}
+            local method = getnamecallmethod()
+            
+            if silentAimActive and method == "FireServer" then
+                -- Arsenal mermi atış remote'larını yakalama
+                if self.Name:lower():find("fire") or self.Name:lower():find("shoot") or self.Name:lower():find("hit") then
+                    local targetHead = getClosestPlayer()
+                    if targetHead then
+                        for i, v in ipairs(args) do
+                            if typeof(v) == "Vector3" then
+                                args[i] = targetHead.Position + Vector3.new(0, 0, 0) -- Duvar arkası için pozisyon zorlaması
+                            elseif typeof(v) == "Instance" and v:IsA("BasePart") then
+                                args[i] = targetHead
+                            end
+                        end
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    end)
+end)
+
+
+
+
+
+-- Xeno ve Executor Uyumluluk Metatable Koruması
 pcall(function()
 	local metatable = getrawmetatable(game)
 	local namecall = metatable.__namecall
