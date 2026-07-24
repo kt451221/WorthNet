@@ -2380,30 +2380,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Basic Remote Spy
-_G.RemoteSpyActive = false
-
-createModernToggle(settingsTab, "Basic Remote Spy", "Giden eventleri F9 konsoluna yazdırır.", function(state)
-    _G.RemoteSpyActive = state
-end)
-
--- Metamethod Hook ile giden Remote'ları Yakalama
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    -- Eğer RemoteSpy açıksa ve giden metod FireServer ise
-    if _G.RemoteSpyActive and (method == "FireServer" or method == "InvokeServer") then
-        if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
-            print("[WorthNet Spy] -> Remote:", self:GetFullName())
-            print("Args:", unpack(args))
-        end
-    end
-    
-    return oldNamecall(self, ...)
-end)
-
 -- Arayüze eklenecek toggle (Settings veya ayrı bir Troll sekmesine koyabilirsin)
 createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm eventleri bulur ve spamler.", function(state)
     _G.RemoteSpamActive = state
