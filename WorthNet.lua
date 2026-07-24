@@ -1851,7 +1851,7 @@ local function getTargetPlayer()
     return closestPlayer
 end
 
-createModernToggle(mm2Tab, "MM2 Aimbot (Pro)", "Sadece silahın varsa katile kilitlenir ve hareket tahminli vurur.", function(state)
+createModernToggle(mm2Tab, "MM2 Aimbot", "Sadece silahın varsa katile kilitlenir ve hareket tahminli vurur.", function(state)
     mm2AimbotEnabled = state
     crosshair.Visible = state
     
@@ -1899,7 +1899,7 @@ local mm2AutoShootConn = nil
 local lastShot = 0
 local shootDelay = 0.4 -- Ateş etme aralığı (Saniye)
 
-createModernToggle(mm2Tab, "MM2 Auto Shoot (Pro)", "Yumuşak nişan alma ve tahmin özellikli otomatik katil vurucu.", function(state)
+createModernToggle(mm2Tab, "MM2 Auto Shoot", "Yumuşak nişan alma ve tahmin özellikli otomatik katil vurucu.", function(state)
     mm2AutoShootEnabled = state
     
     if mm2AutoShootEnabled then
@@ -2114,14 +2114,25 @@ createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanla
 		showNotification("Auto-Dodge", "Devre dışı bırakıldı.", false)
 	end
 end)
--- WorthNet MM2 AutoCoin System (Fixed)
+-- WorthNet MM2 AutoCoin System (Fixed & Dynamic)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
+-- Aktif harita içindeki CoinContainer'ı dinamik olarak bulan fonksiyon
+local function getCoinContainer()
+    for _, child in ipairs(Workspace:GetChildren()) do
+        local container = child:FindFirstChild("CoinContainer")
+        if container then
+            return container
+        end
+    end
+    return nil
+end
+
 -- 1. Toggle Butonu
-createModernToggle(mm2Tab, "MM2 AutoCoin", "Tween ve Noclip ile yavaşça coin toplar, sonra reset atar.", function(state)
+createModernToggle(mm2Tab, "MM2 AutoCoin", "Dinamik harita algılayarak coin toplar, limit dolunca reset atar.", function(state)
     _G.AutoCoinActive = state
 end)
 
@@ -2142,42 +2153,44 @@ task.spawn(function()
                     end
                 end
                 
-                -- Haritadaki tüm nesnelerin içinden (Workspace altındaki klasörlerden) coinleri tara
-                for _, coinPart in ipairs(Workspace:GetDescendants()) do
-                    if not _G.AutoCoinActive then break end
-                    
-                    -- MM2'de coin'lerin adı genellikle "Coin" veya modelin içinde parça olarak bulunur
-                    if coinPart.Name == "Coin" and coinPart:IsA("BasePart") then
-                        -- Tween ile yumuşak uçuş
-                        local distance = (hrp.Position - coinPart.Position).Magnitude
-                        local speed = 35 -- Hızı biraz artırdık
-                        local tweenTime = distance / speed
+                -- O anki aktif haritanın coin konteynerini bul
+                local coinContainer = getCoinContainer()
+                
+                if coinContainer then
+                    for _, coinPart in ipairs(coinContainer:GetChildren()) do
+                        if not _G.AutoCoinActive then break end
                         
-                        local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-                        local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
-                        
-                        tween:Play()
-                        
-                        -- Tween sırasında toggle kapatılırsa veya coin silinirse takılı kalmasın
-                        local connection
-                        connection = tween.Completed:Connect(function()
-                            if connection then connection:Disconnect() end
-                        end)
-                        
-                        tween.Completed:Wait()
-                        
-                        collectedCount = collectedCount + 1
-                        task.wait(0.1)
-                        
-                        -- 40 coin limitine ulaşınca reset at
-                        if collectedCount >= 40 then
-                            local humanoid = char:FindFirstChildOfClass("Humanoid")
-                            if humanoid then
-                                humanoid.Health = 0
+                        -- Doğru coin ismi: Coin_Server
+                        if coinPart.Name == "Coin_Server" and coinPart:IsA("BasePart") then
+                            local distance = (hrp.Position - coinPart.Position).Magnitude
+                            local speed = 20
+                            local tweenTime = distance / speed
+                            
+                            local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+                            local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
+                            
+                            tween:Play()
+                            
+                            local connection
+                            connection = tween.Completed:Connect(function()
+                                if connection then connection:Disconnect() end
+                            end)
+                            
+                            tween.Completed:Wait()
+                            
+                            collectedCount = collectedCount + 1
+                            task.wait(0.1)
+                            
+                            -- 40 coin limitine ulaşınca reset at
+                            if collectedCount >= 38 then
+                                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                                if humanoid then
+                                    humanoid.Health = 0
+                                end
+                                collectedCount = 0
+                                task.wait(3)
+                                break
                             end
-                            collectedCount = 0
-                            task.wait(3)
-                            break
                         end
                     end
                 end
