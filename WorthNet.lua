@@ -2371,23 +2371,6 @@ createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız ser
     end
 end)
 
--- Metatable Hook & Anti-Kick / Korumalar
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if method == "Kick" and self == player then
-         print("[WorthNet Security] Kick denemesi engellendi!")
-         return
-    end
-    
-    return oldNamecall(self, ...)
-end)
-setreadonly(mt, true)
 
 -- UI Toggle Key (Sağ Shift ile menüyü gizleme/açma)
 local UserInputService = game:GetService("UserInputService")
