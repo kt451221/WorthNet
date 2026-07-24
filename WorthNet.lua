@@ -2136,9 +2136,10 @@ createModernToggle(mm2Tab, "MM2 AutoCoin", "Dinamik harita algılayarak coin top
     _G.AutoCoinActive = state
 end)
 
--- 2. Ana AutoCoin Döngüsü
+-- 2. Ana AutoCoin Döngüsü (Güncellenmiş Versiyon)
 task.spawn(function()
     local collectedCount = 0
+    local RunService = game:GetService("RunService")
     
     while task.wait(0.5) do
         if _G.AutoCoinActive then
@@ -2160,28 +2161,30 @@ task.spawn(function()
                     for _, coinPart in ipairs(coinContainer:GetChildren()) do
                         if not _G.AutoCoinActive then break end
                         
-                        -- Doğru coin ismi: Coin_Server
                         if coinPart.Name == "Coin_Server" and coinPart:IsA("BasePart") then
-                            local distance = (hrp.Position - coinPart.Position).Magnitude
-                            local speed = 20
-                            local tweenTime = distance / speed
-                            
-                            local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-                            local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
-                            
-                            tween:Play()
-                            
-                            local connection
-                            connection = tween.Completed:Connect(function()
-                                if connection then connection:Disconnect() end
-                            end)
-                            
-                            tween.Completed:Wait()
+                            -- Karakter coine ulaşana kadar CFrame ile akıcı şekilde taşıyalış
+                            while coinPart and coinPart.Parent and _G.AutoCoinActive do
+                                local distance = (hrp.Position - coinPart.Position).Magnitude
+                                if distance < 3 then 
+                                    break -- Coine çok yaklaştıysa döngüden çık (toplanmış sayılır)
+                                end
+                                
+                             -- Hız ayarı (Saniyedeki Stud birimi)
+                                local speed = 30 
+                                local step = RunService.Heartbeat:Wait()
+                                
+                                -- Direkt coinin üstüne doğru lineer ilerleme
+                                local direction = (coinPart.Position - hrp.Position).Unit
+                                hrp.CFrame = hrp.CFrame + (direction * math.min(speed * step, distance))
+                                
+                                -- Hız sabitlemek için sıfırlama
+                                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                            end
                             
                             collectedCount = collectedCount + 1
                             task.wait(0.1)
                             
-                            -- 40 coin limitine ulaşınca reset at
+                            -- 38-40 coin limitine ulaşınca reset at
                             if collectedCount >= 38 then
                                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                                 if humanoid then
@@ -2198,7 +2201,6 @@ task.spawn(function()
         end
     end
 end)
-
 
 -- Auto Remote Event Spam & Argument Flooding
 _G.RemoteFloodActive = false
