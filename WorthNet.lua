@@ -801,42 +801,53 @@ createModernSlider(combatTab, "Silent Aim FOV", "Silent aim etkileşim çapı", 
 	silentAimDrawing.Radius = value
 end)
 
--- Simple Hitbox
+-- Simple Hitbox (Fixli & Titremeyen Versiyon)
 local HitboxEnabled = false
 local HitboxSize = 3
 local originalHeadSizes = {}
+local hitboxConnection = nil
 
 createModernToggle(combatTab, "Simple Hitbox", "Düşman kafalarının vuruş alanını büyütür (Maks 3).", function(Value)
-	HitboxEnabled = Value
+    HitboxEnabled = Value
+    
+    -- Toggle kapatıldığında kafaları hemen eski haline döndür
+    if not HitboxEnabled then
+        for head, originalSize in pairs(originalHeadSizes) do
+            if head and head.Parent then
+                head.Size = originalSize
+                head.Transparency = 0
+            end
+        end
+        table.clear(originalHeadSizes)
+    end
 end)
 
-createModernSlider(combatTab, "Hitbox Size", "Kafa hitbox boyutu (Studs)", 1, 3, 3, function(Value)
-	HitboxSize = Value
+createModernSlider(combatTab, "Hitbox Size", "Kafa hitbox boyutu (Studs)", 1, 5, 3, function(Value)
+    HitboxSize = Value
 end)
 
-task.spawn(function()
-	while task.wait(0.5) do
-		local enemyFolder = getEnemyFolder()
-		if enemyFolder then
-			for _, enemy in ipairs(enemyFolder:GetChildren()) do
-				local head = enemy:FindFirstChild("Head")
-				local hum = enemy:FindFirstChildOfClass("Humanoid")
-				if head and hum and hum.Health > 0 then
-					if not originalHeadSizes[head] then originalHeadSizes[head] = head.Size end
-					if HitboxEnabled then
-						head.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-						head.CanCollide = false
-						head.Transparency = 0.5
-					else
-						if originalHeadSizes[head] and head.Size ~= originalHeadSizes[head] then
-							head.Size = originalHeadSizes[head]
-							head.Transparency = 0
-						end
-					end
-				end
-			end
-		end
-	end
+-- Yarım saniyelik yavaş döngü yerine hızlı ve kesintisiz RenderStepped kullanıyoruz
+hitboxConnection = RunService.RenderStepped:Connect(function()
+    if not HitboxEnabled then return end
+    
+    local enemyFolder = getEnemyFolder()
+    if enemyFolder then
+        for _, enemy in ipairs(enemyFolder:GetChildren()) do
+            local head = enemy:FindFirstChild("Head")
+            local hum = enemy:FindFirstChildOfClass("Humanoid")
+            if head and hum and hum.Health > 0 then
+                -- Orijinal boyutunu kaydet
+                if not originalHeadSizes[head] then
+                    originalHeadSizes[head] = head.Size
+                end
+                
+                -- Boyutu sürekli büyük tut (oyun sıfırlasa bile anında tekrar büyütür)
+                head.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+                head.CanCollide = false
+                head.Transparency = 0.5
+            end
+        end
+    end
 end)
 
 -- SpeedHack
@@ -1175,87 +1186,6 @@ createModernToggle(moveTab, "Fling Menüsü", "Oyuncu listesini açar, istediği
 	end
 end)
 
--- Passive Fling
-local passiveFlingEnabled = false
-local flingConnections = {}
-
-local function applyFlingToTarget(targetChar)
-    if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return end
-    
-    local targetRoot = targetChar.HumanoidRootPart
-    local myChar = player.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    
-    if not myRoot then return end
-
-    targetRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    targetRoot.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-    
-    local direction = (targetRoot.Position - myRoot.Position).Unit
-    targetRoot.AssemblyLinearVelocity = direction * 250 + Vector3.new(0, 80, 0)
-    targetRoot.AssemblyAngularVelocity = Vector3.new(math.random(-100,100), math.random(80000,120000), math.random(-100,100))
-    
-    task.spawn(function()
-        for i = 1, 8 do
-            if targetRoot and targetRoot.Parent then
-                targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -2)
-                task.wait(0.03)
-            end
-        end
-    end)
-end
-
-local function setupPassiveFling()
-    for _, conn in ipairs(flingConnections) do
-        conn:Disconnect()
-    end
-    table.clear(flingConnections)
-
-    local char = player.Character
-    if not char then return end
-
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            local conn = part.Touched:Connect(function(hit)
-                if not passiveFlingEnabled then return end
-                
-                local hitChar = hit:FindFirstAncestorWhichIsA("Model")
-                if hitChar and hitChar ~= char and hitChar:FindFirstChildOfClass("Humanoid") then
-                    applyFlingToTarget(hitChar)
-                end
-            end)
-            table.insert(flingConnections, conn)
-        end
-    end
-end
-
-createModernToggle(moveTab, "Passive Fling", "Dokunduğun/çarptığın herkesi otomatik fırlatır.", function(state)
-    passiveFlingEnabled = state
-    if state then
-        setupPassiveFling()
-        local conn = player.CharacterAdded:Connect(function()
-            task.wait(1)
-            if passiveFlingEnabled then
-                setupPassiveFling()
-            end
-        end)
-        table.insert(flingConnections, conn)
-        showNotification("Passive Fling", "Aktif! Dokunduğun herkesi fırlatacaksın 🔥", true)
-    else
-        for _, conn in ipairs(flingConnections) do
-            conn:Disconnect()
-        end
-        table.clear(flingConnections)
-        showNotification("Passive Fling", "Devre dışı.", false)
-    end
-end)
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    if passiveFlingEnabled then
-        setupPassiveFling()
-    end
-end)
 
 -- Player ESP
 local espActive = false
@@ -1336,88 +1266,103 @@ createModernToggle(visualsTab, "Player ESP", "Düşmanların rengini, ismini ve 
 	end
 end)
 
--- Anti-Fling
-createModernToggle(moveTab, "Anti-Fling", "Sizi haritadan uçurmaya çalışanları engeller.", function(state)
-	if state then
-		antiFlingConn = RunService.Heartbeat:Connect(function()
-			if player.Character then
-				for _, p in ipairs(Players:GetPlayers()) do
-					if p ~= player and p.Character then
-						local enemyRoot = p.Character:FindFirstChild("HumanoidRootPart")
-						if enemyRoot and (enemyRoot.Velocity.Magnitude > 75 or enemyRoot.RotVelocity.Magnitude > 75) then
-							for _, part in ipairs(p.Character:GetDescendants()) do
-								if part:IsA("BasePart") then
-									part.CanCollide = false
-									part.Velocity = Vector3.new(0,0,0)
-									part.RotVelocity = Vector3.new(0,0,0)
-								end
-							end
-						end
-					end
-				end
-			end
-		end)
-	else
-		if antiFlingConn then antiFlingConn:Disconnect() antiFlingConn = nil end
-	end
-end)
+-- WorthNet Anti-Fling (Gelişmiş & Güncel Pro Versiyon)
+local antiFlingConn = nil
 
--- Map Bypass
-local function bypassMap(state)
-    _G.BypassEnabled = state
+createModernToggle(moveTab, "Anti-Fling ", "Seni uçurmaya çalışanların hızını ve çarpışmasını engeller.", function(state)
     if state then
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                if obj.Transparency == 1 and obj.CanCollide == true then
-                    obj.CanCollide = false
-                end
-                if obj.Name:lower():find("barrier") or obj.Name:lower():find("wall") or obj.Name:lower():find("invisiblewall") then
-                    obj.CanCollide = false
+        antiFlingConn = RunService.Heartbeat:Connect(function()
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            
+            -- 1. Kendi karakterimizi ani dış fizik itmelerine karşı sabitle
+            if root then
+                -- Eğer normalin çok üstünde bir hızla fırlatılıyorsan hızını sıfırla
+                if root.AssemblyLinearVelocity.Magnitude > 250 then
+                    root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                 end
             end
-        end
-        showNotification("Map Bypass", "Görünmez duvarlar kaldırıldı!", true)
+            
+            -- 2. Yakındaki oyuncuları tara ve fling yapanların hızını kes
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character then
+                    local enemyRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                    if enemyRoot then
+                        -- Güncel hız ve açısal hız (RotVelocity yerine AssemblyAngularVelocity)
+                        local linearSpeed = enemyRoot.AssemblyLinearVelocity.Magnitude
+                        local rotSpeed = enemyRoot.AssemblyAngularVelocity.Magnitude
+                        
+                        -- Eğer birisi fling yapmak için hızlanıyorsa
+                        if linearSpeed > 75 or rotSpeed > 75 then
+                            for _, part in ipairs(p.Character:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                    part.CanCollide = false
+                                    part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                                    part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        showNotification("Anti-Fling", "Gelişmiş Anti-Fling aktif!", true)
     else
-        showNotification("Map Bypass", "Kapatıldı.", false)
+        if antiFlingConn then 
+            antiFlingConn:Disconnect() 
+            antiFlingConn = nil 
+        end
+        showNotification("Anti-Fling", "Durduruldu.", false)
     end
-end
-
-createModernToggle(mainTab, "Map Bypass", "Görünmez duvarları yok et.", function(state)
-    bypassMap(state)
 end)
 
--- MM2 ESP
-createModernToggle(mm2Tab, "MM2 ESP", "Murder Mystery 2 rollerini duvar arkasından gösterir.", function(state)
-	mm2ESPActive = state
-	if not mm2ESPActive then
-		for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
-		table.clear(mm2Highlights)
-	else
-		task.spawn(function()
-			while mm2ESPActive do
-				task.wait(0.4)
-				for _, p in ipairs(Players:GetPlayers()) do
-					if not mm2ESPActive then break end
-					if p ~= player and p.Character then
-						local char = p.Character
-						local back = p:FindFirstChild("Backpack")
-						local isMurderer = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
-						local isSheriff = (char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun")))
-						
-						local color = isMurderer and Color3.fromRGB(255, 0, 0) or (isSheriff and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(0, 255, 0))
-						
-						if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= char then
-							if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
-							local hl = Instance.new("Highlight", char)
-							hl.FillTransparency = 0.5
-							mm2Highlights[p.Name] = hl
-						end
-						mm2Highlights[p.Name].FillColor = color
-					end
-				end
-			end
-		end)
-	end
+
+-- WorthNet MM2 ESP (Tur Başlar Başlamaz / Anlık Yakalayan Versiyon)
+local mm2Highlights = {}
+
+createModernToggle(mm2Tab, "MM2 ESP (Fast)", "Roller dağıtıldığı an katil ve şerifi anında renklendirir.", function(state)
+    mm2ESPActive = state
+    if not mm2ESPActive then
+        for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
+        table.clear(mm2Highlights)
+    else
+        task.spawn(function()
+            while mm2ESPActive do
+                task.wait(0.1) -- Tarama hızını artırdık (0.4'ten 0.1'e düşürdük ki anında yakalasın)
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if not mm2ESPActive then break end
+                    if p ~= player and p.Character then
+                        local char = p.Character
+                        local back = p:FindFirstChild("Backpack")
+                        
+                        -- Hem karakterin üstünde hem çantasında hem de elinde arama yapar
+                        local isMurderer = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")) or char:FindFirstChild("Revolver") and false) -- Bıçak kontrolü
+                        
+                        -- Alternatif olarak MM2'nin bazı sürümlerinde roller değer (Value) olarak tutulur:
+                        local roleVal = p:FindFirstChild("Role") or (char:FindFirstChild("HumanoidRootPart") and p:FindFirstChild("Data"))
+                        
+                        -- Bıçak veya tabanca kontrolünü daha geniş tutuyoruz
+                        local hasKnife = char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife"))
+                        local hasGun = char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun"))
+                        local droppedGun = workspace:FindFirstChild("GunDrop") -- Yere düşen şerif tabancası
+                        
+                        local color = hasKnife and Color3.fromRGB(255, 0, 0) or (hasGun and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(0, 255, 0))
+                        
+                        -- Eğer şerif öldüyse ve yerde tabancası duruyorsa şerif rengini nötr yapabiliriz
+                        if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= char then
+                            if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
+                            local hl = Instance.new("Highlight", char)
+                            hl.FillTransparency = 0.5
+                            hl.OutlineTransparency = 0
+                            mm2Highlights[p.Name] = hl
+                        end
+                        mm2Highlights[p.Name].FillColor = color
+                        mm2Highlights[p.Name].OutlineColor = color
+                    end
+                end
+            end
+        end)
+    end
 end)
 
 -- Infinite Jump
@@ -1544,7 +1489,7 @@ end)
 createModernToggle(moveTab, "TP Nearest", "En yakındaki oyuncunun yanına ışınlanırsın.", function(state)
     if state then
         local target = nil
-        local dist = 10000
+        local dist = 100000
         
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -1768,33 +1713,43 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Anti-Ragdoll
+-- Anti-Ragdoll (Gelişmiş & Fizik Bağlantı Temizleyici)
 local antiRagdollEnabled = false
 local antiRagdollConnection = nil
 
-createModernToggle(mainTab, "Anti-Ragdoll", "Yere kapaklanmayı ve sersemlemeyi önler.", function(state)
+createModernToggle(mainTab, "Anti-Ragdoll (Pro)", "Özel ragdoll ve fizik eklemlerini bozar.", function(state)
     antiRagdollEnabled = state
     if antiRagdollEnabled then
         if not antiRagdollConnection then
             antiRagdollConnection = RunService.RenderStepped:Connect(function()
                 local char = player.Character
-                local hum = char and char:FindFirstChild("Humanoid")
+                if not char then return end
+                
+                local hum = char:FindFirstChild("Humanoid")
                 if hum then
-                    if hum.PlatformStand then
-                        hum.PlatformStand = false
-                    end
+                    hum.PlatformStand = false
                     local currentState = hum:GetState()
                     if currentState == Enum.HumanoidStateType.Ragdoll or currentState == Enum.HumanoidStateType.FallingDown then
                         hum:ChangeState(Enum.HumanoidStateType.GettingUp)
                     end
                 end
+                
+                -- Özel oyunların eklediği Ragdoll fizik eklemlerini (BallSocket) yok et
+                for _, descendant in ipairs(char:GetDescendants()) do
+                    if descendant:IsA("BallSocketConstraint") or descendant:IsA("HingeConstraint") then
+                        -- Eğer ragdoll için eklenmiş bir eklemse yok et veya devre dışı bırak
+                        descendant:Destroy()
+                    end
+                end
             end)
         end
+        showNotification("Anti-Ragdoll", "Gelişmiş koruma aktif!", true)
     else
         if antiRagdollConnection then
             antiRagdollConnection:Disconnect()
             antiRagdollConnection = nil
         end
+        showNotification("Anti-Ragdoll", "Durduruldu.", false)
     end
 end)
 
@@ -1842,7 +1797,7 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
     end)
 end)
 
--- MM2 Aimbot
+-- WorthNet MM2 Aimbot (Fixli & Tahminli Pro Versiyon)
 local mm2AimbotEnabled = false
 local mm2AimbotConnection = nil
 
@@ -1860,6 +1815,9 @@ local function localHasGun()
 end
 
 local function getTargetPlayer()
+    -- 1. KONTROL: Eğer elimizde silah YOKSA, hiç kimseyi hedef alma!
+    if not localHasGun() then return nil end
+
     local closestPlayer = nil
     local shortestDistance = math.huge
     local currentCamera = workspace.CurrentCamera
@@ -1868,8 +1826,6 @@ local function getTargetPlayer()
 
     if not localRoot then return nil end
 
-    local hasGun = localHasGun()
-
     for _, targetPlayer in ipairs(Players:GetPlayers()) do
         if targetPlayer ~= player and targetPlayer.Character then
             local char = targetPlayer.Character
@@ -1877,17 +1833,10 @@ local function getTargetPlayer()
             local hum = char:FindFirstChild("Humanoid")
             local head = char:FindFirstChild("Head")
 
+            -- Sadece elinde Bıçak olan kişiyi (Katili) hedef seç
             local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
-            local targetHasGun = (char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun")))
 
-            local isValidTarget = false
-            if hasGun then
-                isValidTarget = targetHasKnife
-            else
-                isValidTarget = targetHasKnife or targetHasGun
-            end
-
-            if isValidTarget and head and hum and hum.Health > 0 then
+            if targetHasKnife and head and hum and hum.Health > 0 then
                 local _, onScreen = currentCamera:WorldToViewportPoint(head.Position)
                 if onScreen then
                     local distance = (head.Position - localRoot.Position).Magnitude
@@ -1902,7 +1851,7 @@ local function getTargetPlayer()
     return closestPlayer
 end
 
-createModernToggle(mm2Tab, "MM2 Aimbot", "Silahın varsa direkt Katilin kafasına kilitlenir.", function(state)
+createModernToggle(mm2Tab, "MM2 Aimbot (Pro)", "Sadece silahın varsa katile kilitlenir ve hareket tahminli vurur.", function(state)
     mm2AimbotEnabled = state
     crosshair.Visible = state
     
@@ -1914,90 +1863,89 @@ createModernToggle(mm2Tab, "MM2 Aimbot", "Silahın varsa direkt Katilin kafasın
             local targetPlayer = getTargetPlayer()
             local char = targetPlayer and targetPlayer.Character
             local head = char and char:FindFirstChild("Head")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
             
-            if head then
+            if head and hrp then
                 local camera = workspace.CurrentCamera
-                camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+                
+                -- 2. HAREKET TAHMİNİ (Prediction): Katil koşarken merminin boşa gitmemesi için öne nişan alır
+                local predictedPos = head.Position + (hrp.AssemblyLinearVelocity * 0.09)
+                
+                -- Kamerayı yumuşak ve isabetli şekilde kilitler
+                local targetCFrame = CFrame.new(camera.CFrame.Position, predictedPos)
+                camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.5)
             end
         end)
+        showNotification("MM2 Aimbot", "Akıllı Aimbot aktif!", true)
     else
         if mm2AimbotConnection then
             mm2AimbotConnection:Disconnect()
             mm2AimbotConnection = nil
         end
+        crosshair.Visible = false
+        showNotification("MM2 Aimbot", "Durduruldu.", false)
     end
 end)
 
--- MM2 Auto Shoot
+
+-- WorthNet MM2 Auto Shoot (Geliştirilmiş & Akıllı Versiyon)
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local workspace = game:GetService("Workspace")
+
 local mm2AutoShootEnabled = false
 local mm2AutoShootConn = nil
+local lastShot = 0
+local shootDelay = 0.4 -- Ateş etme aralığı (Saniye)
 
-local function getKillerTarget()
-	local closestPlayer = nil
-	local shortestDistance = math.huge
-	local currentCamera = workspace.CurrentCamera
-	local localChar = player.Character
-	local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-
-	if not localRoot then return nil end
-
-	for _, targetPlayer in ipairs(Players:GetPlayers()) do
-		if targetPlayer ~= player and targetPlayer.Character then
-			local char = targetPlayer.Character
-			local back = targetPlayer:FindFirstChild("Backpack")
-			local hum = char:FindFirstChild("Humanoid")
-			local head = char:FindFirstChild("Head")
-
-			local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
-
-			if targetHasKnife and head and hum and hum.Health > 0 then
-				local _, onScreen = currentCamera:WorldToViewportPoint(head.Position)
-				if onScreen then
-					local distance = (head.Position - localRoot.Position).Magnitude
-					if distance < shortestDistance then
-						shortestDistance = distance
-						closestPlayer = targetPlayer
-					end
-				end
-			end
-		end
-	end
-	return closestPlayer
-end
-
-createModernToggle(mm2Tab, "MM2 Auto Shoot", "Envanterinde Gun varsa Katile otomatik sıkar.", function(state)
-	mm2AutoShootEnabled = state
-	
-	if mm2AutoShootEnabled then
-		mm2AutoShootConn = RunService.RenderStepped:Connect(function()
-			if not localHasGun() then return end
-			
-			local killer = getKillerTarget()
-			if killer and killer.Character and killer.Character:FindFirstChild("Head") then
-				local head = killer.Character.Head
-				local camera = workspace.CurrentCamera
-				
-				camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
-				
-				local localChar = player.Character
-				local gun = localChar:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
-				
-				if gun then
-					if gun.Parent ~= localChar then
-						gun.Parent = localChar
-					end
-					pcall(function()
-						gun:Activate()
-					end)
-				end
-			end
-		end)
-	else
-		if mm2AutoShootConn then
-			mm2AutoShootConn:Disconnect()
-			mm2AutoShootConn = nil
-		end
-	end
+createModernToggle(mm2Tab, "MM2 Auto Shoot (Pro)", "Yumuşak nişan alma ve tahmin özellikli otomatik katil vurucu.", function(state)
+    mm2AutoShootEnabled = state
+    
+    if mm2AutoShootEnabled then
+        mm2AutoShootConn = RunService.RenderStepped:Connect(function()
+            if not localHasGun() then return end
+            
+            local killer = getKillerTarget()
+            if killer and killer.Character and killer.Character:FindFirstChild("Head") and killer.Character:FindFirstChild("HumanoidRootPart") then
+                local head = killer.Character.Head
+                local hrp = killer.Character.HumanoidRootPart
+                local camera = workspace.CurrentCamera
+                
+                -- 1. Hareket Tahmini (Prediction): Katilin koşu yönüne göre hafif öne nişan al
+                local predictedPos = head.Position + (hrp.AssemblyLinearVelocity * 0.08)
+                
+                -- 2. Smooth LookAt (Ekranın titrememesi için yumuşak kamera geçişi)
+                local targetCFrame = CFrame.new(camera.CFrame.Position, predictedPos)
+                camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.4)
+                
+                -- Silahı kontrol et ve eline al
+                local localChar = player.Character
+                local gun = localChar:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+                
+                if gun then
+                    if gun.Parent ~= localChar then
+                        gun.Parent = localChar
+                    end
+                    
+                    -- 3. Cooldown Kontrolü (Gereksiz spamı önlemek için)
+                    if tick() - lastShot > shootDelay then
+                        lastShot = tick()
+                        pcall(function()
+                            gun:Activate()
+                        end)
+                    end
+                end
+            end
+        end)
+        showNotification("Auto Shoot", "Gelişmiş Auto Shoot aktif!", true)
+    else
+        if mm2AutoShootConn then
+            mm2AutoShootConn:Disconnect()
+            mm2AutoShootConn = nil
+        end
+        showNotification("Auto Shoot", "Durduruldu.", false)
+    end
 end)
 
 -- UI Viewer / Dex Explorer
