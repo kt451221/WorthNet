@@ -2010,161 +2010,46 @@ createModernToggle(visualsTab, "UI Viewer (Dex)", "Arayüzü ve oyun ağacını 
 	end
 end)
 
--- Remote Event Spam
+-- Çoklu Remote Event Spam Sistemi
 local remoteSpamActive = false
-local targetRemoteName = "RemoteEvent" -- İstediğin event adıyla değiştirebilirsin
 
-createModernToggle(mainTab, "Remote Event Spam", "Seçilen RemoteEvent'i sürekli tetikler.", function(state)
-	remoteSpamActive = state
-	if state then
-		task.spawn(function()
-			while remoteSpamActive do
-				task.wait(0.05)
-				pcall(function()
-					for _, v in pairs(workspace:GetDescendants()) do
-						if v.Name == targetRemoteName and v:IsA("RemoteEvent") then
-							v:FireServer()
-						end
-					end
-				end)
-			end
-		end)
-		showNotification("Remote Spam", "Spam başlatıldı!", true)
-	else
-		showNotification("Remote Spam", "Durduruldu.", false)
-	end
+-- Spam yapmak istediğin farklı event isimlerini buraya ekleyebilirsin
+local targetRemotes = {
+    "RemoteEvent",
+    "GiveItemEvent",
+    "BuyItem",
+    "RewardClaim",
+    "TestData"
+}
+
+createModernToggle(mainTab, "Multi Remote Spam", "Listedeki tüm remote eventleri sürekli tetikler.", function(state)
+    remoteSpamActive = state
+    if state then
+        task.spawn(function()
+            while remoteSpamActive do
+                task.wait(0.05)
+                pcall(function()
+                    -- Workspace ve ReplicatedStorage içindeki her şeyi tara
+                    for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+                        if v:IsA("RemoteEvent") then
+                            -- Tablodaki isimlerden biriyle eşleşiyor mu diye kontrol et
+                            for _, targetName in ipairs(targetRemotes) do
+                                if v.Name == targetName then
+                                    v:FireServer()
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+        showNotification("Multi Spam", "Çoklu spam başlatıldı!", true)
+    else
+        showNotification("Multi Spam", "Durduruldu.", false)
+    end
 end)
 
--- Fling ile Kendine Çekme
-local pullFlingActive = false
 
-createModernToggle(moveTab, "Fling ile Kendine Çek", "Herkesi fırlatarak yanına toplar.", function(state)
-	pullFlingActive = state
-	if state then
-		task.spawn(function()
-			while pullFlingActive do
-				task.wait(0.1)
-				pcall(function()
-					local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-					if myRoot then
-						for _, p in ipairs(Players:GetPlayers()) do
-							if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-								local enemyRoot = p.Character.HumanoidRootPart
-								local direction = (myRoot.Position - enemyRoot.Position).Unit
-								enemyRoot.AssemblyLinearVelocity = direction * 300 + Vector3.new(0, 50, 0)
-								enemyRoot.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-							end
-						end
-					end
-				end)
-			end
-		end)
-		showNotification("Pull Fling", "Oyuncular çekiliyor!", true)
-	else
-		showNotification("Pull Fling", "Durduruldu.", false)
-	end
-end)
-
--- Tekme Atarak Fırlat (Kick Fling)
-local kickFlingActive = false
-local kickConn = nil
-
-createModernToggle(moveTab, "Tekme Atarak Fırlat", "Temas ettiğin oyunculara tekme etkisi verip uçurur.", function(state)
-	kickFlingActive = state
-	if state then
-		local char = player.Character
-		if char then
-			local root = char:FindFirstChild("HumanoidRootPart")
-			if root then
-				kickConn = root.Touched:Connect(function(hit)
-					if not kickFlingActive then return end
-					local hitChar = hit.FindFirstAncestorWhichIsA(hit, "Model")
-					if hitChar and hitChar ~= char and hitChar:FindFirstChild("HumanoidRootPart") then
-						local enemyRoot = hitChar.HumanoidRootPart
-						local lookVector = root.CFrame.LookVector
-						enemyRoot.AssemblyLinearVelocity = (lookVector * 400) + Vector3.new(0, 150, 0)
-						enemyRoot.AssemblyAngularVelocity = Vector3.new(50000, 50000, 50000)
-					end
-				end)
-			end
-		end
-		showNotification("Kick Fling", "Tekme modu aktif! Çarptığını uçur.", true)
-	else
-		if kickConn then
-			kickConn:Disconnect()
-			kickConn = nil
-		end
-		showNotification("Kick Fling", "Kapatıldı.", false)
-	end
-end)
-
--- Tool Stealer
-createModernToggle(mainTab, "Tool Stealer", "Yakındaki oyuncuların elindeki eşyaları kopyalar.", function(state)
-	if state then
-		task.spawn(function()
-			pcall(function()
-				local myChar = player.Character
-				if not myChar then return end
-				
-				for _, p in ipairs(Players:GetPlayers()) do
-					if p ~= player and p.Character then
-						for _, tool in ipairs(p.Character:GetChildren()) do
-							if tool:IsA("Tool") then
-								local cloneTool = tool:Clone()
-								cloneTool.Parent = player.Backpack
-								showNotification("Tool Stealer", tool.Name .. " çalındı!", true)
-							end
-						end
-					end
-				end
-			end)
-		end)
-	end
-end)
-
--- Free Gamepass UI / Shop Bypass
-createModernToggle(mainTab, "Free Gamepass UI", "Kilitli oyun içi mağaza ve gamepass arayüzlerini açar.", function(state)
-	if state then
-		pcall(function()
-			for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
-				if gui:IsA("Frame") or gui:IsA("ScrollingFrame") then
-					local name = gui.Name:lower()
-					if name:find("shop") or name:find("pass") or name:find("store") or name:find("premium") or name:find("buy") then
-						gui.Visible = true
-					end
-				end
-			end
-			showNotification("Shop Bypass", "Mağaza pencereleri zorla açıldı!", true)
-		end)
-	end
-end)
-
--- Custom Skybox
-createModernToggle(visualsTab, "Custom Skybox", "Gökyüzünü şık bir uzay temasıyla değiştirir.", function(state)
-	if state then
-		pcall(function()
-			local lighting = game:GetService("Lighting")
-			for _, obj in ipairs(lighting:GetChildren()) do
-				if obj:IsA("Sky") then obj:Destroy() end
-			end
-			local sky = Instance.new("Sky")
-			sky.Name = "WorthNetSky"
-			sky.SkyboxBk = "rbxassetid://159454286"
-			sky.SkyboxDn = "rbxassetid://159454296"
-			sky.SkyboxFt = "rbxassetid://159454293"
-			sky.SkyboxLf = "rbxassetid://159454283"
-			sky.SkyboxRt = "rbxassetid://159454300"
-			sky.SkyboxUp = "rbxassetid://159454288"
-			sky.Parent = lighting
-			showNotification("Skybox", "Özel gökyüzü uygulandı!", true)
-		end)
-	else
-		pcall(function()
-			local sky = game:GetService("Lighting"):FindFirstChild("WorthNetSky")
-			if sky then sky:Destroy() end
-		end)
-	end
-end)
 
 
 -- Purchase Spoofing (Ücretsiz satın alma simülasyonu)
@@ -2181,18 +2066,43 @@ createModernToggle(mainTab, "Purchase Spoofing", "Mağaza satın alım eventleri
 	end
 end)
 
--- Give Items Hack (Envantere güçlü silahlar ekleme)
-createModernToggle(mainTab, "Give Items Hack", "Sunucu eşya verme fonksiyonunu tetikler.", function(state)
-	if state then
-		pcall(function()
-			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-				if v:IsA("RemoteEvent") and (v.Name:lower():find("give") or v.Name:lower():find("item") or v.Name:lower():find("weapon")) then
-					v:FireServer("All", "Godkiller", 999)
-				end
-			end
-			showNotification("Give Items", "Eşya talebi gönderildi!", true)
-		end)
-	end
+
+createModernToggle(mainTab, "Give Items", "Birden fazla silah/eşya ID'sini sırayla dener.", function(state)
+    if state then
+        pcall(function()
+            -- Denemek istediğin eşya adlarının veya ID'lerinin listesi
+            local itemsToTry = {
+                "Godkiller",
+                "Sword",
+                "AK47",
+                "AdminGun",
+                "Knife",
+                "Gun",
+				"Hammer",
+				"SuperGun",
+				"SuperKnife",
+				"SuperHammer",
+				"BanKnife",
+				"Flashlight",
+                "BanHammer",
+                "SuperWeapon"
+            }
+            
+            for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+                if v:IsA("RemoteEvent") and (v.Name:lower():find("give") or v.Name:lower():find("giveweapon") or v.Name:lower():find("giveitem")  or v.Name:lower():find("item") or v.Name:lower():find("weapon")) then
+                    
+                    -- Tablodaki her bir eşyayı sırayla döner ve fırlatır
+                    for _, itemName in ipairs(itemsToTry) do
+                        v:FireServer("All", itemName, 1)
+                        task.wait(0.05) -- Sunucuyu anında çökertmemek/kick yememek için mini gecikme
+                    end
+                    
+                end
+            end
+            
+            showNotification("Item Give", "Tüm eşya kombinasyonları fırlatıldı!", true)
+        end)
+    end
 end)
 
 -- FireServer Spoofing (Örn: Miktar = 999999)
@@ -2209,29 +2119,13 @@ createModernToggle(mainTab, "FireServer Spoofing", "Remote fonksiyonlara sahte p
 	end
 end)
 
--- Bring All Players (Herkesi kendine çekme)
-createModernToggle(moveTab, "Bring All Players", "Zayıf remote kodlarını kullanarak herkesi yanına ışınlar.", function(state)
-	if state then
-		pcall(function()
-			local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			if myRoot then
-				for _, p in ipairs(Players:GetPlayers()) do
-					if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-						p.Character.HumanoidRootPart.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
-					end
-				end
-				showNotification("Bring All", "Tüm oyuncular yanına çekildi!", true)
-			end
-		end)
-	end
-end)
 
 -- Kill All Players (Herkesin canını düşürme eventini tetikle)
 createModernToggle(combatTab, "Kill All Players", "Can azaltma Remote Event'ini herkes için tetikler.", function(state)
 	if state then
 		pcall(function()
 			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-				if v:IsA("RemoteEvent") and (v.Name:lower():find("damage") or v.Name:lower():find("hit") or v.Name:lower():find("attack")) then
+				if v:IsA("RemoteEvent") and (v.Name:lower():find("damage") or v.Name:lower():find("hit") or v.Name:lower():find("kill") or v.Name:lower():find("attack")) then
 					for _, p in ipairs(Players:GetPlayers()) do
 						if p ~= player then
 							v:FireServer(p, 999999)
@@ -2272,85 +2166,78 @@ createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanla
 		showNotification("Auto-Dodge", "Devre dışı bırakıldı.", false)
 	end
 end)
--- WorthNet MM2 AutoCoin System
+-- WorthNet MM2 AutoCoin System (Fixed)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
--- 1. Toggle Butonu (Arayüz sekmenizin olduğu yere ekleyin)
-createModernToggle(mm2Tab, "MM2 AutoCoin", "Tween ve Noclip ile yavaşça 40 coin toplar, sonra reset atar.", function(state)
-	_G.AutoCoinActive = state
+-- 1. Toggle Butonu
+createModernToggle(mm2Tab, "MM2 AutoCoin", "Tween ve Noclip ile yavaşça coin toplar, sonra reset atar.", function(state)
+    _G.AutoCoinActive = state
 end)
 
 -- 2. Ana AutoCoin Döngüsü
 task.spawn(function()
-	local collectedCount = 0
-	
-	while task.wait(0.5) do
-		if _G.AutoCoinActive then
-			local char = player.Character
-			local hrp = char and char:FindFirstChild("HumanoidRootPart")
-			
-			if hrp then
-				-- Noclip aktif tutma (Çarpmaları kapatma)
-				for _, part in ipairs(char:GetDescendants()) do
-					if part:IsA("BasePart") then
-						part.CanCollide = false
-					end
-				end
-				
-				-- Coinleri tarama
-				for _, coinPart in ipairs(Workspace:GetChildren()) do
-					if not _G.AutoCoinActive then break end
-					
-					if coinPart.Name == "Coin" and coinPart:IsA("BasePart") then
-						-- Tween ile yumuşak uçuş (mesafeye göre hız ayarı)
-						local distance = (hrp.Position - coinPart.Position).Magnitude
-						local speed = 25 -- Hız birimi
-						local tweenTime = distance / speed
-						
-						local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-						local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
-						
-						tween:Play()
-						tween.Completed:Wait()
-						
-						collectedCount = collectedCount + 1
-						task.wait(0.2) -- Coinlerin sunucu tarafından kaydedilmesi için küçük gecikme
-						
-						-- 40 coin limitine ulaşınca reset at
-						if collectedCount >= 40 then
-							local humanoid = char:FindFirstChildOfClass("Humanoid")
-							if humanoid then
-								humanoid.Health = 0
-							end
-							collectedCount = 0 -- Sayacı sıfırla
-							task.wait(3) -- Yeniden doğma süresi bekle
-							break
-						end
-					end
-				end
-			end
-		end
-	end
+    local collectedCount = 0
+    
+    while task.wait(0.5) do
+        if _G.AutoCoinActive then
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if hrp then
+                -- Noclip aktif tutma
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+                
+                -- Haritadaki tüm nesnelerin içinden (Workspace altındaki klasörlerden) coinleri tara
+                for _, coinPart in ipairs(Workspace:GetDescendants()) do
+                    if not _G.AutoCoinActive then break end
+                    
+                    -- MM2'de coin'lerin adı genellikle "Coin" veya modelin içinde parça olarak bulunur
+                    if coinPart.Name == "Coin" and coinPart:IsA("BasePart") then
+                        -- Tween ile yumuşak uçuş
+                        local distance = (hrp.Position - coinPart.Position).Magnitude
+                        local speed = 35 -- Hızı biraz artırdık
+                        local tweenTime = distance / speed
+                        
+                        local info = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+                        local tween = TweenService:Create(hrp, info, {CFrame = coinPart.CFrame + Vector3.new(0, 2, 0)})
+                        
+                        tween:Play()
+                        
+                        -- Tween sırasında toggle kapatılırsa veya coin silinirse takılı kalmasın
+                        local connection
+                        connection = tween.Completed:Connect(function()
+                            if connection then connection:Disconnect() end
+                        end)
+                        
+                        tween.Completed:Wait()
+                        
+                        collectedCount = collectedCount + 1
+                        task.wait(0.1)
+                        
+                        -- 40 coin limitine ulaşınca reset at
+                        if collectedCount >= 40 then
+                            local humanoid = char:FindFirstChildOfClass("Humanoid")
+                            if humanoid then
+                                humanoid.Health = 0
+                            end
+                            collectedCount = 0
+                            task.wait(3)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
 end)
 
--- Part/Lag Machine & Weld/Constraint Crash
-_G.PartSpamActive = false
-createModernToggle(combatTab, "Part/Lag Machine", "Haritaya seri parça yığarak fizik motorunu zorlar.", function(state)
-    _G.PartSpamActive = state
-    task.spawn(function()
-        while _G.PartSpamActive do
-            local p = Instance.new("Part")
-            p.Size = Vector3.new(5, 5, 5)
-            p.Position = player.Character.HumanoidRootPart.Position + Vector3.new(math.random(-20,20), 5, math.random(-20,20))
-            p.Parent = workspace
-            game:GetService("Debris"):AddItem(p, 5)
-            task.wait(0.05)
-        end
-    end)
-end)
 
 -- Auto Remote Event Spam & Argument Flooding
 _G.RemoteFloodActive = false
@@ -2361,30 +2248,11 @@ createModernToggle(combatTab, "Remote & Arg Flood", "ReplicatedStorage'daki even
             for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
                 if v:IsA("RemoteEvent") then
                     pcall(function()
-                        v:FireServer(string.rep("SwoxTech", 5000), math.huge, {})
+                        v:FireServer(string.rep("WorthNet", 5000), math.huge, {})
                     end)
                 end
             end
             task.wait()
-        end
-    end)
-end)
-
--- Global Sound Spam
-_G.SoundSpamActive = false
-createModernToggle(mainTab, "Global Sound Spam", "Sunucudaki sesleri son ses spamler.", function(state)
-    _G.SoundSpamActive = state
-    task.spawn(function()
-        while _G.SoundSpamActive do
-            for _, s in ipairs(workspace:GetDescendants()) do
-                if s:IsA("Sound") then
-                    pcall(function()
-                        s.Volume = 10
-                        s:Play()
-                    end)
-                end
-            end
-            task.wait(0.5)
         end
     end)
 end)
@@ -2419,16 +2287,42 @@ end)
 
 
 
--- Map Editor / Part Deleter
+-- Map Editor / Part Inspector & Deleter
 _G.PartDeleterActive = false
-createModernToggle(visualsTab, "Click Part Deleter", "Üzerine tıkladığın harita parçasını siler.", function(state)
+
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local mouse = localPlayer:GetMouse()
+
+-- Nesnenin tam hiyerarşisini (iskelet yolunu) çıkaran fonksiyon
+local function getFullPath(obj)
+    local path = obj.Name
+    local current = obj.Parent
+    while current and current ~= game do
+        path = current.Name .." . ".. path
+        current = current.Parent
+    end
+    return path
+end
+
+createModernToggle(visualsTab, "Click Part Deleter", "Tıkladığın parçanın bilgisini F9'a yazdırır ve siler.", function(state)
     _G.PartDeleterActive = state
-    local mouse = player:GetMouse()
-    mouse.Button1Down:Connect(function()
-        if _G.PartDeleterActive and mouse.Target then
-            mouse.Target:Destroy()
-        end
-    end)
+end)
+
+-- Mouse tıklama olayını tek bir kez dinleyiciye bağlıyoruz (Çift tetiklenmeyi önlemek için)
+mouse.Button1Down:Connect(function()
+    if _G.PartDeleterActive and mouse.Target then
+        local targetPart = mouse.Target
+        
+        print("--------------------PART BULUNDU--------------------")
+        print("İsim       : " .. targetPart.Name)
+        print("Sınıf (Tür): " .. targetPart.ClassName)
+        print("İskelet Yolu: " .. getFullPath(targetPart))
+        print("--------------------------------------------------")
+        
+        -- Parçayı oyundan tamamen siler
+        targetPart:Destroy()
+    end
 end)
 
 -- Gravity Changer (Düzeltilmiş Hali)
@@ -2437,21 +2331,80 @@ createModernSlider(moveTab, "Gravity Changer", "Dünyanın yerçekimi kuvvetini 
 end)
 
 
--- Chat Logger
-game:GetService("Players").PlayerAdded:Connect(function(p)
+-- Chat Logger (Mevcut + Yeni Oyuncular)
+local Players = game:GetService("Players")
+
+local function monitorPlayer(p)
     p.Chatted:Connect(function(msg)
         print("[WorthNet ChatLogger] " .. p.Name .. ": " .. msg)
     end)
-end)
+end
+
+-- 1. Oyunda şu an bulunan herkesi ekle
+for _, p in ipairs(Players:GetPlayers()) do
+    monitorPlayer(p)
+end
+
+-- 2. Oyuna sonradan girecek olanları dinle
+Players.PlayerAdded:Connect(monitorPlayer)
 
 -- Freecam / Camera Lock
 _G.FreecamActive = false
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local freecamPos = Vector3.new(0, 0, 0)
+local freecamAngles = Vector2.new(0, 0)
+
 createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız serbest gezdirir.", function(state)
     _G.FreecamActive = state
+    
     if state then
+        -- Kameranın mevcut pozisyonunu ve açısını al başlangıç yap
+        freecamPos = Camera.CFrame.Position
+        local rot = Camera.CFrame - Camera.CFrame.Position
+        -- İsteğe bağlı: Karakterin hareketini dondurmak için WalkSpeed'i 0 yapabilirsin
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 0
+        end
+        
         Camera.CameraType = Enum.CameraType.Scriptable
+        
+        -- Her karede kamerayı hareket ettiren döngü
+        RunService:BindToRenderStep("WorthNetFreecam", Enum.RenderPriority.Camera.Value + 1, function(dt)
+            if not _G.FreecamActive then
+                RunService:UnbindFromRenderStep("WorthNetFreecam")
+                return
+            end
+            
+            local moveVector = Vector3.new(0, 0, 0)
+            
+            -- WASD / Yön Tuşları Kontrolü
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVector = moveVector + Vector3.new(0, 0, -1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVector = moveVector + Vector3.new(0, 0, 1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVector = moveVector + Vector3.new(-1, 0, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVector = moveVector + Vector3.new(1, 0, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.E) then moveVector = moveVector + Vector3.new(0, 1, 0) end -- Yukarı
+            if UserInputService:IsKeyDown(Enum.KeyCode.Q) then moveVector = moveVector + Vector3.new(0, -1, 0) end -- Aşağı
+            
+            -- Kameranın bakış açısına göre vektörü yönlendir ve pozisyonu güncelle
+            local camCFrame = Camera.CFrame
+            moveVector = camCFrame:VectorToWorldSpace(moveVector) * (60 * dt * 2) -- Hız çarpanı
+            freecamPos = freecamPos + moveVector
+            
+            Camera.CFrame = CFrame.new(freecamPos) * (camCFrame - camCFrame.Position)
+        end)
     else
+        -- Kapatıldığında eski haline döndür
+        RunService:UnbindFromRenderStep("SwoxTechFreecam")
         Camera.CameraType = Enum.CameraType.Custom
+        
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Normal hıza döndür
+        end
     end
 end)
 
@@ -2483,26 +2436,27 @@ end)
 
 -- Basic Remote Spy
 _G.RemoteSpyActive = false
+
 createModernToggle(settingsTab, "Basic Remote Spy", "Giden eventleri F9 konsoluna yazdırır.", function(state)
     _G.RemoteSpyActive = state
 end)
 
--- Otomatik Remote Tarayıcı ve Spammer
-_G.RemoteSpamActive = false
-
-local function getRemotes()
-    local remotes = {}
-    local possibleNames = {"Remotes", "RemoteEvents", "RemoteFunction", "Events", "Network", "Packages"}
+-- Metamethod Hook ile giden Remote'ları Yakalama
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
     
-    -- ReplicatedStorage altındaki klasörleri ve remote'ları tara
-    for _, child in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-        if child:IsA("RemoteEvent") then
-            table.insert(remotes, child)
+    -- Eğer RemoteSpy açıksa ve giden metod FireServer ise
+    if _G.RemoteSpyActive and (method == "FireServer" or method == "InvokeServer") then
+        if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
+            print("[WorthNet Spy] -> Remote:", self:GetFullName())
+            print("Args:", unpack(args))
         end
     end
     
-    return remotes
-end
+    return oldNamecall(self, ...)
+end)
 
 -- Arayüze eklenecek toggle (Settings veya ayrı bir Troll sekmesine koyabilirsin)
 createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm eventleri bulur ve spamler.", function(state)
@@ -2518,7 +2472,7 @@ createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm
                     
                     -- Güvenli bir şekilde spam at (Hata verip scripti durdurmaması için pcall kullanıyoruz)
                     pcall(function()
-                        remote:FireServer("SwoxTechSpam", math.random(1, 999999), {}, true)
+                        remote:FireServer("WorthNetSpam", math.random(1, 999999), {}, true)
                     end)
                 end
                 
@@ -2598,7 +2552,8 @@ createModernToggle(moveTab, "Anti-Slowdown", "Yavaşlatma ve stun efektlerini en
                 local char = player.Character
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 if hum then
-                    hum.WalkSpeed = 16 -- Varsayılan hızı sabitler
+                    hum.WalkSpeed = 16
+					 -- Varsayılan hızı sabitler
                     hum.JumpPower = 50
                 end
             end)
@@ -2654,15 +2609,6 @@ createModernToggle(visualsTab, "Ghost Mode", "Karakterini tamamen şeffaf yapar.
     end)
 end)
 
-
-
--- 19. FPS Unlocker (Sınır Kaldırıcı)
-createModernButton(settingsTab, "FPS Unlocker", "Roblox'un 60 FPS sınırını kırar.", function()
-    pcall(function()
-        setfpscap(9999)
-        showNotification("WorthNet", "FPS sınırı kaldırıldı!", true)
-    end)
-end)
 
 -- 20. Crash Protection (Sunucu Çökme Koruması)
 createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı korur.", function(state)
