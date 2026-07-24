@@ -2591,46 +2591,6 @@ createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı 
     end
 end)
 
--- Server Hop (Düşük oyunculu sunucu)
-createModernButton(mainTab, "Server Hop", "En sakin sunucuya geçiş yapar.", function()
-    pcall(function()
-        local Http = game:GetService("HttpService")
-        local TPS = game:GetService("TeleportService")
-        local Servers = Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
-        for _, s in ipairs(Servers.data) do
-            if s.playing < s.maxPlayers - 2 then
-                TPS:TeleportToPlaceInstance(game.PlaceId, s.id, player)
-                break
-            end
-        end
-    end)
-end)
-
--- 18. Command Bar (Gizli Komut Satırı)
-createModernButton(settingsTab, "Command Bar", "Ekranın altına komut çubuğu ekler.", function()
-    pcall(function()
-        if game.CoreGui:FindFirstChild("WorthNetCmd") then return end
-        local gui = Instance.new("ScreenGui", game.CoreGui)
-        gui.Name = "WorthNetCmd"
-        local box = Instance.new("TextBox", gui)
-        box.Size = UDim2.new(0, 300, 0, 30)
-        box.Position = UDim2.new(0.5, -150, 1, -40)
-        box.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        box.TextColor3 = Color3.fromRGB(255, 255, 255)
-        box.PlaceholderText = "Komut yaz (örn: speed 100)"
-        box.Text = ""
-        box.FocusLost:Connect(function(enter)
-            if enter then
-                local cmd = box.Text
-                if cmd:sub(1,6) == "speed " then
-                    local val = tonumber(cmd:sub(7))
-                    if val then player.Character.Humanoid.WalkSpeed = val end
-                end
-                box.Text = ""
-            end
-        end)
-    end)
-end)
 
 -- Arsenal Silent Aim & Wallbang Entegresi
 local silentAimActive = false
