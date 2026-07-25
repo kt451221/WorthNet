@@ -920,48 +920,43 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Spin Fling System
+-- Spin Fling System (Stabilize Edilmiş Versiyon)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local spinFlingConnection = nil
-local originalCollisionValues = {}
 
 createModernToggle(moveTab, "Spin Fling", "Çevrendeki herkese dokunduğunda fırlatmanı sağlar (Spinbot).", function(state)
     if state then
-        -- Fling başladığında
         if spinFlingConnection then
             spinFlingConnection:Disconnect()
             spinFlingConnection = nil
         end
         
-        -- Karakterin çarpışmalarını ve hızını yönetmek için döngü
         spinFlingConnection = RunService.Heartbeat:Connect(function(dt)
             local character = player.Character
             local hrp = character and character:FindFirstChild("HumanoidRootPart")
             local humanoid = character and character:FindFirstChildOfClass("Humanoid")
             
             if hrp and humanoid then
-                -- Noclip (Duvarlardan geçme ve takılmama için)
+                -- Noclip (Karakterin diğer objelere takılmasını önler)
                 for _, part in ipairs(character:GetDescendants()) do
                     if part:IsA("BasePart") then
                         part.CanCollide = false
                     end
                 end
                 
-                -- Fizik motorunu coşturan aşırı hız ve açısal dönüş (Spin)
+                -- Kendini fırlatmaması için hızı optimize ettik, sadece dönme ve hafif itme veriyoruz
                 local currentCFrame = hrp.CFrame
-                -- Hızlı dönüş (Y ekseninde çılgın bir açı ekliyoruz)
                 hrp.CFrame = currentCFrame * CFrame.Angles(0, math.rad(50), 0)
                 
-                -- Hızlı fırlatma vektörleri (Çarptığı an uçurur)
-                hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-                hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+                -- Değerleri uçurmak yerine fizik motorunu sarsacak ama seni öldürmeyecek seviyeye çektik
+                hrp.AssemblyAngularVelocity = Vector3.new(0, 5000, 0)
+                hrp.AssemblyLinearVelocity = Vector3.new(0, 500, 0) -- Dikeyde uçmanı engeller
             end
         end)
     else
-        -- Kapatıldığında her şeyi normale döndür
         if spinFlingConnection then
             spinFlingConnection:Disconnect()
             spinFlingConnection = nil
@@ -975,7 +970,6 @@ createModernToggle(moveTab, "Spin Fling", "Çevrendeki herkese dokunduğunda fı
             hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         end
         
-        -- Çarpışmaları tekrar aç
         if character then
             for _, part in ipairs(character:GetDescendants()) do
                 if part:IsA("BasePart") then
@@ -1313,53 +1307,411 @@ createModernToggle(moveTab, "Anti-Fling ", "Seni uçurmaya çalışanların hız
 end)
 
 
--- WorthNet MM2 ESP (Tur Başlar Başlamaz / Anlık Yakalayan Versiyon)
-local mm2Highlights = {}
+-- WorthNet MM2 Çoklu Dil, Envanter Taramalı Rol ESP ve Crosshair GUI Lock
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
 
-createModernToggle(mm2Tab, "MM2 ESP", "Roller dağıtıldığı an katil ve şerifi anında renklendirir.", function(state)
+local mm2Highlights = {}
+local mm2Tags = {}
+local mm2ESPActive = false
+local crosshairLockActive = false
+
+-- Rol ESP Temizleme Fonksiyonu
+local function removeMM2ESP()
+    for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
+    for _, tag in pairs(mm2Tags) do if tag then tag:Destroy() end end
+    table.clear(mm2Highlights)
+    table.clear(mm2Tags)
+end
+
+-- Katili Tespit Etme Fonksiyonu (Envanterinde "Knife" olan)
+local function getMurderer()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local backpack = p:FindFirstChild("Backpack")
+            local char = p.Character
+            if (backpack and (backpack:FindFirstChild("Knife") or backpack:FindFirstChild("MurdererKnife"))) or
+               (char:FindFirstChild("Knife") or char:FindFirstChild("MurdererKnife")) then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+-- Şerifi/Silahı Tespit Etme Fonksiyonu (Envanterinde "Gun" olan)
+local function getSheriff()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character then
+            local backpack = p:FindFirstChild("Backpack")
+            local char = p.Character
+            if (backpack and (backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver"))) or
+               (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver")) then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+-- Bizim envanterimizde "Gun" var mı kontrolü
+local function hasGun()
+    local char = player.Character
+    if not char then return false end
+    local backpack = player:FindFirstChild("Backpack")
+    if (backpack and (backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver"))) or
+       (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver")) then
+        return true
+    end
+    return false
+end
+
+-- Crosshair GUI'sini Bulan Fonksiyon (GameTopbar altındaki Crosshair)
+local function getCrosshairGUI()
+    local pGui = player:FindFirstChild("PlayerGui")
+    if pGui then
+        local gameTopbar = pGui:FindFirstChild("GameTopbar")
+        if gameTopbar then
+            return gameTopbar:FindFirstChild("Crosshair")
+        end
+    end
+    return nil
+end
+
+-- 1. TOGGLE: MM2 Rol ESP (Envanter & Rol Arayüzü Taramalı, 0.4 saniye döngülü)
+createModernToggle(mm2Tab, "MM2 Rol ESP", "Envanterleri tarar; Knife = Katil (Kırmızı), Gun = Şerif (Mavi).", function(state)
     mm2ESPActive = state
     if not mm2ESPActive then
-        for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
-        table.clear(mm2Highlights)
+        removeMM2ESP()
     else
         task.spawn(function()
             while mm2ESPActive do
-                task.wait(0.1) -- Tarama hızını artırdık (0.4'ten 0.1'e düşürdük ki anında yakalasın)
+                task.wait(0.4) -- Round geçişlerine ve performans için ideal yenileme hızı
+                
                 for _, p in ipairs(Players:GetPlayers()) do
                     if not mm2ESPActive then break end
                     if p ~= player and p.Character then
                         local char = p.Character
-                        local back = p:FindFirstChild("Backpack")
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
                         
-                        -- Hem karakterin üstünde hem çantasında hem de elinde arama yapar
-                        local isMurderer = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")) or char:FindFirstChild("Revolver") and false) -- Bıçak kontrolü
-                        
-                        -- Alternatif olarak MM2'nin bazı sürümlerinde roller değer (Value) olarak tutulur:
-                        local roleVal = p:FindFirstChild("Role") or (char:FindFirstChild("HumanoidRootPart") and p:FindFirstChild("Data"))
-                        
-                        -- Bıçak veya tabanca kontrolünü daha geniş tutuyoruz
-                        local hasKnife = char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife"))
-                        local hasGun = char:FindFirstChild("Gun") or (back and back:FindFirstChild("Gun"))
-                        local droppedGun = workspace:FindFirstChild("GunDrop") -- Yere düşen şerif tabancası
-                        
-                        local color = hasKnife and Color3.fromRGB(255, 0, 0) or (hasGun and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(0, 255, 0))
-                        
-                        -- Eğer şerif öldüyse ve yerde tabancası duruyorsa şerif rengini nötr yapabiliriz
-                        if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= char then
-                            if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
-                            local hl = Instance.new("Highlight", char)
-                            hl.FillTransparency = 0.5
-                            hl.OutlineTransparency = 0
-                            mm2Highlights[p.Name] = hl
+                        if hrp then
+                            local roleName = "Masum"
+                            local roleColor = Color3.fromRGB(0, 255, 0) -- Yeşil (Masum)
+                            
+                            -- Envanter Taraması (Kesin Çözüm)
+                            local backpack = p:FindFirstChild("Backpack")
+                            if (backpack and (backpack:FindFirstChild("Knife") or backpack:FindFirstChild("MurdererKnife"))) or
+                               (char:FindFirstChild("Knife") or char:FindFirstChild("MurdererKnife")) then
+                                roleName = "Katil"
+                                roleColor = Color3.fromRGB(255, 0, 0) -- Kırmızı
+                            elseif (backpack and (backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver"))) or
+                                   (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver")) then
+                                roleName = "Şerif"
+                                roleColor = Color3.fromRGB(0, 140, 255) -- Mavi
+                            else
+                                -- Eğer envanterde yoksa Rol Arayüzüne (RoleSelection) bak
+                                local pGui = p:FindFirstChild("PlayerGui")
+                                if pGui then
+                                    local roleSelection = pGui:FindFirstChild("RoleSelection")
+                                    if roleSelection then
+                                        local containers = { roleSelection:FindFirstChild("Desktop"), roleSelection:FindFirstChild("Mobile"), roleSelection:FindFirstChild("Console") }
+                                        for _, container in ipairs(containers) do
+                                            if container then
+                                                local roleLabel = container:FindFirstChild("Role")
+                                                if roleLabel and roleLabel:IsA("TextLabel") then
+                                                    local text = string.lower(roleLabel.Text)
+                                                    if string.find(text, "murderer") or string.find(text, "katil") then
+                                                        roleName = "Katil"
+                                                        roleColor = Color3.fromRGB(255, 0, 0)
+                                                    elseif string.find(text, "sheriff") or string.find(text, "şerif") then
+                                                        roleName = "Şerif"
+                                                        roleColor = Color3.fromRGB(0, 140, 255)
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            -- Highlight (Karakter Renklendirme)
+                            if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= char then
+                                if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
+                                local hl = Instance.new("Highlight", char)
+                                hl.FillTransparency = 0.5
+                                hl.OutlineTransparency = 0
+                                mm2Highlights[p.Name] = hl
+                            end
+                            mm2Highlights[p.Name].FillColor = roleColor
+                            mm2Highlights[p.Name].OutlineColor = roleColor
+                            
+                            -- BillboardGui (Kafanın Üstünde Yazı)
+                            local head = char:FindFirstChild("Head")
+                            if head then
+                                local tag = mm2Tags[p.Name]
+                                if not tag or tag.Adornee ~= head then
+                                    if tag then tag:Destroy() end
+                                    
+                                    local bg = Instance.new("BillboardGui")
+                                    bg.Name = "MM2RoleTag"
+                                    bg.Size = UDim2.new(0, 110, 0, 45)
+                                    bg.StudsOffset = Vector3.new(0, 2.5, 0)
+                                    bg.AlwaysOnTop = true
+                                    bg.Adornee = head
+                                    
+                                    local txt = Instance.new("TextLabel", bg)
+                                    txt.Name = "RoleText"
+                                    txt.Size = UDim2.new(1, 0, 1, 0)
+                                    txt.BackgroundTransparency = 1
+                                    txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+                                    txt.TextScaled = true
+                                    txt.Font = Enum.Font.SourceSansBold
+                                    txt.TextStrokeTransparency = 0
+                                    
+                                    bg.Parent = char
+                                    mm2Tags[p.Name] = bg
+                                    tag = bg
+                                end
+                                
+                                local tagLabel = tag:FindFirstChild("RoleText")
+                                if tagLabel then
+                                    tagLabel.Text = p.Name .. "\n[" .. roleName .. "]"
+                                    tagLabel.TextColor3 = roleColor
+                                end
+                            end
                         end
-                        mm2Highlights[p.Name].FillColor = color
-                        mm2Highlights[p.Name].OutlineColor = color
                     end
                 end
             end
         end)
     end
 end)
+
+-- WorthNet MM2 Çoklu Dil, Envanter Taramalı Rol ESP ve Özel Crosshair Lock
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+
+local mm2Highlights = {}
+local mm2Tags = {}
+local mm2ESPActive = false
+local crosshairLockActive = false
+
+-- Bizim kontrolümüzde olacak özel Crosshair'i (Görseli) oluşturuyoruz
+local pGui = player:WaitForChild("PlayerGui")
+local customCrosshairGui = pGui:FindFirstChild("WorthNetCustomCrosshair")
+if not customCrosshairGui then
+    customCrosshairGui = Instance.new("ScreenGui")
+    customCrosshairGui.Name = "WorthNetCustomCrosshair"
+    customCrosshairGui.ResetOnSpawn = false
+    customCrosshairGui.Parent = pGui
+    
+    local crossImg = Instance.new("Frame")
+    crossImg.Name = "Cross"
+    crossImg.Size = UDim2.new(0, 8, 0, 8)
+    crossImg.AnchorPoint = Vector2.new(0.5, 0.5)
+    crossImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+    crossImg.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Katile kilitleyince kırmızı olur
+    crossImg.BorderSizePixel = 0
+    crossImg.Visible = false
+    crossImg.Parent = customCrosshairGui
+    
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(1, 0)
+    uiCorner.Parent = crossImg
+end
+
+local crosshairElement = customCrosshairGui:FindFirstChild("Cross")
+
+-- Rol ESP Temizleme Fonksiyonu
+local function removeMM2ESP()
+    for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
+    for _, tag in pairs(mm2Tags) do if tag then tag:Destroy() end end
+    table.clear(mm2Highlights)
+    table.clear(mm2Tags)
+end
+
+-- Katili Tespit Etme Fonksiyonu (Envanterinde "Knife" olan)
+local function getMurderer()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local backpack = p:FindFirstChild("Backpack")
+            local char = p.Character
+            if (backpack and (backpack:FindFirstChild("Knife") or backpack:FindFirstChild("MurdererKnife"))) or
+               (char:FindFirstChild("Knife") or char:FindFirstChild("MurdererKnife")) then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+-- Bizim envanterimizde "Gun" var mı kontrolü
+local function hasGun()
+    local char = player.Character
+    if not char then return false end
+    local backpack = player:FindFirstChild("Backpack")
+    if (backpack and (backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver"))) or
+       (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver")) then
+        return true
+    end
+    return false
+end
+
+-- 1. TOGGLE: MM2 Rol ESP (Envanter & Rol Arayüzü Taramalı, 0.4 saniye döngülü)
+createModernToggle(mm2Tab, "MM2 Rol ESP", "Envanterleri tarar; Knife = Katil (Kırmızı), Gun = Şerif (Mavi).", function(state)
+    mm2ESPActive = state
+    if not mm2ESPActive then
+        removeMM2ESP()
+    else
+        task.spawn(function()
+            while mm2ESPActive do
+                task.wait(0.4) -- Round geçişleri ve performans için ideal yenileme hızı
+                
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if not mm2ESPActive then break end
+                    if p ~= player and p.Character then
+                        local char = p.Character
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        
+                        if hrp then
+                            local roleName = "Masum"
+                            local roleColor = Color3.fromRGB(0, 255, 0) -- Yeşil (Masum)
+                            
+                            -- Envanter Taraması
+                            local backpack = p:FindFirstChild("Backpack")
+                            if (backpack and (backpack:FindFirstChild("Knife") or backpack:FindFirstChild("MurdererKnife"))) or
+                               (char:FindFirstChild("Knife") or char:FindFirstChild("MurdererKnife")) then
+                                roleName = "Katil"
+                                roleColor = Color3.fromRGB(255, 0, 0) -- Kırmızı
+                            elseif (backpack and (backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver"))) or
+                                   (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver")) then
+                                roleName = "Şerif"
+                                roleColor = Color3.fromRGB(0, 140, 255) -- Mavi
+                            else
+                                -- Rol Arayüzü (RoleSelection) yedek taraması
+                                local pGuiRef = p:FindFirstChild("PlayerGui")
+                                if pGuiRef then
+                                    local roleSelection = pGuiRef:FindFirstChild("RoleSelection")
+                                    if roleSelection then
+                                        local containers = { roleSelection:FindFirstChild("Desktop"), roleSelection:FindFirstChild("Mobile"), roleSelection:FindFirstChild("Console") }
+                                        for _, container in ipairs(containers) do
+                                            if container then
+                                                local roleLabel = container:FindFirstChild("Role")
+                                                if roleLabel and roleLabel:IsA("TextLabel") then
+                                                    local text = string.lower(roleLabel.Text)
+                                                    if string.find(text, "murderer") or string.find(text, "katil") then
+                                                        roleName = "Katil"
+                                                        roleColor = Color3.fromRGB(255, 0, 0)
+                                                    elseif string.find(text, "sheriff") or string.find(text, "şerif") then
+                                                        roleName = "Şerif"
+                                                        roleColor = Color3.fromRGB(0, 140, 255)
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            -- Highlight (Karakter Renklendirme)
+                            if not mm2Highlights[p.Name] or mm2Highlights[p.Name].Parent ~= char then
+                                if mm2Highlights[p.Name] then mm2Highlights[p.Name]:Destroy() end
+                                local hl = Instance.new("Highlight", char)
+                                hl.FillTransparency = 0.5
+                                hl.OutlineTransparency = 0
+                                mm2Highlights[p.Name] = hl
+                            end
+                            mm2Highlights[p.Name].FillColor = roleColor
+                            mm2Highlights[p.Name].OutlineColor = roleColor
+                            
+                            -- BillboardGui (Kafanın Üstünde Yazı)
+                            local head = char:FindFirstChild("Head")
+                            if head then
+                                local tag = mm2Tags[p.Name]
+                                if not tag or tag.Adornee ~= head then
+                                    if tag then tag:Destroy() end
+                                    
+                                    local bg = Instance.new("BillboardGui")
+                                    bg.Name = "MM2RoleTag"
+                                    bg.Size = UDim2.new(0, 110, 0, 45)
+                                    bg.StudsOffset = Vector3.new(0, 2.5, 0)
+                                    bg.AlwaysOnTop = true
+                                    bg.Adornee = head
+                                    
+                                    local txt = Instance.new("TextLabel", bg)
+                                    txt.Name = "RoleText"
+                                    txt.Size = UDim2.new(1, 0, 1, 0)
+                                    txt.BackgroundTransparency = 1
+                                    txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+                                    txt.TextScaled = true
+                                    txt.Font = Enum.Font.SourceSansBold
+                                    txt.TextStrokeTransparency = 0
+                                    
+                                    bg.Parent = char
+                                    mm2Tags[p.Name] = bg
+                                    tag = bg
+                                end
+                                
+                                local tagLabel = tag:FindFirstChild("RoleText")
+                                if tagLabel then
+                                    tagLabel.Text = p.Name .. "\n[" .. roleName .. "]"
+                                    tagLabel.TextColor3 = roleColor
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- 2. TOGGLE: Özel Crosshair Katil Lock (Elinde Gun varken katilin kafasına kilitlenir)
+createModernToggle(mm2Tab, "Crosshair Katil Lock", "Elinde Gun varken özel crosshair'i katilin kafasına sabitler.", function(state)
+    crosshairLockActive = state
+    if crosshairLockActive then
+        task.spawn(function()
+            while crosshairLockActive do
+                RunService.RenderStepped:Wait()
+                
+                if hasGun() then
+                    local murderer = getMurderer()
+                    if murderer and murderer.Character then
+                        local mHead = murderer.Character:FindFirstChild("Head")
+                        if mHead then
+                            local screenPoint, onScreen = Camera:WorldToScreenPoint(mHead.Position)
+                            if onScreen and crosshairElement then
+                                crosshairElement.Visible = true
+                                crosshairElement.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
+                            else
+                                if crosshairElement then crosshairElement.Visible = false end
+                            end
+                        else
+                            if crosshairElement then crosshairElement.Visible = false end
+                        end
+                    else
+                        if crosshairElement then crosshairElement.Visible = false end
+                    end
+                else
+                    if crosshairElement then crosshairElement.Visible = false end
+                end
+            end
+            -- Kapatıldığında crosshair'i gizle
+            if crosshairElement then
+                crosshairElement.Visible = false
+            end
+        end)
+    else
+        if crosshairElement then
+            crosshairElement.Visible = false
+        end
+    end
+end)
+
 
 -- Infinite Jump
 createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
@@ -1793,128 +2145,6 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
     end)
 end)
 
--- WorthNet MM2 Aimbot (Fixli & Tahminli Pro Versiyon)
-local mm2AimbotEnabled = false
-local mm2AimbotConnection = nil
-
-local crosshair = Drawing.new("Circle")
-crosshair.Visible = false
-crosshair.Radius = 3
-crosshair.Filled = true
-crosshair.Color = Color3.fromRGB(0, 255, 255)
-crosshair.Transparency = 0.9
-
-local function localHasGun()
-    local localChar = player.Character
-    local localBack = player:FindFirstChild("Backpack")
-    return (localChar and localChar:FindFirstChild("Gun")) or (localBack and localBack:FindFirstChild("Gun"))
-end
-
-local function getTargetPlayer()
-    -- 1. KONTROL: Eğer elimizde silah YOKSA, hiç kimseyi hedef alma!
-    if not localHasGun() then return nil end
-
-    local closestPlayer = nil
-    local shortestDistance = math.huge
-    local currentCamera = workspace.CurrentCamera
-    local localChar = player.Character
-    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-
-    if not localRoot then return nil end
-
-    for _, targetPlayer in ipairs(Players:GetPlayers()) do
-        if targetPlayer ~= player and targetPlayer.Character then
-            local char = targetPlayer.Character
-            local back = targetPlayer:FindFirstChild("Backpack")
-            local hum = char:FindFirstChild("Humanoid")
-            local head = char:FindFirstChild("Head")
-
-            -- Sadece elinde Bıçak olan kişiyi (Katili) hedef seç
-            local targetHasKnife = (char:FindFirstChild("Knife") or (back and back:FindFirstChild("Knife")))
-
-            if targetHasKnife and head and hum and hum.Health > 0 then
-                local _, onScreen = currentCamera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local distance = (head.Position - localRoot.Position).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closestPlayer = targetPlayer
-                    end
-                end
-            end
-        end
-    end
-    return closestPlayer
-end
-
-createModernToggle(mm2Tab, "MM2 Aimbot", "Sadece silahın varsa katile kilitlenir ve hareket tahminli vurur.", function(state)
-    mm2AimbotEnabled = state
-    crosshair.Visible = state
-    
-    if mm2AimbotEnabled then
-        mm2AimbotConnection = RunService.RenderStepped:Connect(function()
-            local screenSize = workspace.CurrentCamera.ViewportSize
-            crosshair.Position = screenSize / 2
-
-            local targetPlayer = getTargetPlayer()
-            local char = targetPlayer and targetPlayer.Character
-            local head = char and char:FindFirstChild("Head")
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            if head and hrp then
-                local camera = workspace.CurrentCamera
-                
-                -- 2. HAREKET TAHMİNİ (Prediction): Katil koşarken merminin boşa gitmemesi için öne nişan alır
-                local predictedPos = head.Position + (hrp.AssemblyLinearVelocity * 0.09)
-                
-                -- Kamerayı yumuşak ve isabetli şekilde kilitler
-                local targetCFrame = CFrame.new(camera.CFrame.Position, predictedPos)
-                camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.5)
-            end
-        end)
-        showNotification("MM2 Aimbot", "Akıllı Aimbot aktif!", true)
-    else
-        if mm2AimbotConnection then
-            mm2AimbotConnection:Disconnect()
-            mm2AimbotConnection = nil
-        end
-        crosshair.Visible = false
-        showNotification("MM2 Aimbot", "Durduruldu.", false)
-    end
-end)
-
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
--- Hiyerarşiyi (iskeleti) ekrana/konsola yazdıran özyinelemeli (recursive) fonksiyon
-local function inspectGui(parent, indent)
-    indent = indent or ""
-    for _, child in ipairs(parent:GetChildren()) do
-        -- GUI öğesi mi kontrol et (Frame, TextLabel, ScreenGui vb.)
-        if child:IsA("GuiObject") or child:IsA("LayerCollector") or child:IsA("Folder") then
-            -- Öğənin türünü ve adını yazdır
-            print(indent .. "├── [" .. child.ClassName .. "] " .. child.Name)
-            
-            -- Eğer içinde başka öğeler varsa alt alta (girintili) yazdırmaya devam et
-            inspectGui(child, indent .. "│   ")
-        end
-    end
-end
-
-print("=== PLAYERGUI İSKELETİ BAŞLIYOR ===")
-inspectGui(PlayerGui)
-print("=== PLAYERGUI İSKELETİ BİTTİ ===")
-
--- İsteğe bağlı: CoreGui (oyunun kendi menüleri vb.) içerisindekileri de görmek istersen (Her Executor desteklemeyebilir)
-pcall(function()
-    print("=== COREGUI İSKELETİ BAŞLIYOR ===")
-    inspectGui(CoreGui, "    ")
-    print("=== COREGUI İSKELETİ BİTTİ ===")
-end)
-
-
 -- WorthNet MM2 Auto Shoot (Geliştirilmiş & Akıllı Versiyon)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -1984,51 +2214,6 @@ createModernToggle(visualsTab, "UI Viewer (Dex)", "Arayüzü ve oyun ağacını 
 		showNotification("UI Viewer", "Dex Explorer yüklendi!", true)
 	end
 end)
-
--- Çoklu Remote Event Spam Sistemi
-local remoteSpamActive = false
-
--- Spam yapmak istediğin farklı event isimlerini buraya ekleyebilirsin
-local targetRemotes = {
-    "RemoteEvent",
-    "GiveItemEvent",
-    "BuyItem",
-	"Admin"
-	"Ban"
-	"Unban"
-	"Kick"
-	"RemoveAdmin"
-    "RewardClaim",
-    "TestData"
-}
-
-createModernToggle(mainTab, "Multi Remote Spam", "Listedeki tüm remote eventleri sürekli tetikler.", function(state)
-    remoteSpamActive = state
-    if state then
-        task.spawn(function()
-            while remoteSpamActive do
-                task.wait(0.05)
-                pcall(function()
-                    -- Workspace ve ReplicatedStorage içindeki her şeyi tara
-                    for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                        if v:IsA("RemoteEvent") then
-                            -- Tablodaki isimlerden biriyle eşleşiyor mu diye kontrol et
-                            for _, targetName in ipairs(targetRemotes) do
-                                if v.Name == targetName then
-                                    v:FireServer()
-                                end
-                            end
-                        end
-                    end
-                end)
-            end
-        end)
-        showNotification("Multi Spam", "Çoklu spam başlatıldı!", true)
-    else
-        showNotification("Multi Spam", "Durduruldu.", false)
-    end
-end)
-
 
 
 
