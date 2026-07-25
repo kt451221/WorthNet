@@ -730,77 +730,6 @@ task.spawn(function()
 	end
 end)
 
--- Silent Aim
-local silentAimActive = false
-local silentAimFov = 150
-local silentAimConn = nil
-
-local silentAimDrawing = Drawing.new("Circle")
-silentAimDrawing.Color = Color3.fromRGB(255, 100, 100)
-silentAimDrawing.Thickness = 1
-silentAimDrawing.Radius = silentAimFov
-silentAimDrawing.Filled = false
-silentAimDrawing.Visible = false
-
-local function getClosestSilentTarget()
-	local closestTarget = nil
-	local shortestDist = silentAimFov
-	local camera = workspace.CurrentCamera
-	local mouseLoc = UserInputService:GetMouseLocation()
-
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-			local hum = p.Character:FindFirstChildOfClass("Humanoid")
-			if hum and hum.Health > 0 then
-				if p.Team and p.Team == player.Team then continue end
-				
-				local head = p.Character.Head
-				local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
-				
-				if onScreen then
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouseLoc).Magnitude
-					if dist < shortestDist then
-						shortestDist = dist
-						closestTarget = head
-					end
-				end
-			end
-		end
-	end
-	return closestTarget
-end
-
-createModernToggle(combatTab, "Silent Aim", "Kamerayı sarsmadan en yakın hedefe vuruş yönlendirir.", function(state)
-	silentAimActive = state
-	silentAimDrawing.Visible = state
-	
-	if silentAimActive then
-		silentAimConn = RunService.RenderStepped:Connect(function()
-			local mouseLoc = UserInputService:GetMouseLocation()
-			silentAimDrawing.Position = mouseLoc
-			silentAimDrawing.Radius = silentAimFov
-			
-			local targetHead = getClosestSilentTarget()
-			if targetHead then
-				_G.WorthNetSilentTarget = targetHead
-			else
-				_G.WorthNetSilentTarget = nil
-			end
-		end)
-	else
-		silentAimDrawing.Visible = false
-		if silentAimConn then
-			silentAimConn:Disconnect()
-			silentAimConn = nil
-		end
-		_G.WorthNetSilentTarget = nil
-	end
-end)
-
-createModernSlider(combatTab, "Silent Aim FOV", "Silent aim etkileşim çapı", 30, 500, 150, function(value)
-	silentAimFov = value
-	silentAimDrawing.Radius = value
-end)
 
 -- Simple Hitbox (Fixli & Titremeyen Versiyon)
 local HitboxEnabled = false
@@ -989,6 +918,72 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
 		updateCFrameFly(not cframeFlyActive)
 	end
+end)
+
+-- Spin Fling System
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local spinFlingConnection = nil
+local originalCollisionValues = {}
+
+createModernToggle(moveTab, "Spin Fling", "Çevrendeki herkese dokunduğunda fırlatmanı sağlar (Spinbot).", function(state)
+    if state then
+        -- Fling başladığında
+        if spinFlingConnection then
+            spinFlingConnection:Disconnect()
+            spinFlingConnection = nil
+        end
+        
+        -- Karakterin çarpışmalarını ve hızını yönetmek için döngü
+        spinFlingConnection = RunService.Heartbeat:Connect(function(dt)
+            local character = player.Character
+            local hrp = character and character:FindFirstChild("HumanoidRootPart")
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            
+            if hrp and humanoid then
+                -- Noclip (Duvarlardan geçme ve takılmama için)
+                for _, part in ipairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+                
+                -- Fizik motorunu coşturan aşırı hız ve açısal dönüş (Spin)
+                local currentCFrame = hrp.CFrame
+                -- Hızlı dönüş (Y ekseninde çılgın bir açı ekliyoruz)
+                hrp.CFrame = currentCFrame * CFrame.Angles(0, math.rad(50), 0)
+                
+                -- Hızlı fırlatma vektörleri (Çarptığı an uçurur)
+                hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+                hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+            end
+        end)
+    else
+        -- Kapatıldığında her şeyi normale döndür
+        if spinFlingConnection then
+            spinFlingConnection:Disconnect()
+            spinFlingConnection = nil
+        end
+        
+        local character = player.Character
+        local hrp = character and character:FindFirstChild("HumanoidRootPart")
+        
+        if hrp then
+            hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        end
+        
+        -- Çarpışmaları tekrar aç
+        if character then
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
 end)
 
 -- Fling Menüsü
@@ -1321,7 +1316,7 @@ end)
 -- WorthNet MM2 ESP (Tur Başlar Başlamaz / Anlık Yakalayan Versiyon)
 local mm2Highlights = {}
 
-createModernToggle(mm2Tab, "MM2 ESP (Fast)", "Roller dağıtıldığı an katil ve şerifi anında renklendirir.", function(state)
+createModernToggle(mm2Tab, "MM2 ESP", "Roller dağıtıldığı an katil ve şerifi anında renklendirir.", function(state)
     mm2ESPActive = state
     if not mm2ESPActive then
         for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
@@ -1415,9 +1410,9 @@ createModernToggle(mainTab, "Anti-Void", "Boşluğa düşerek ölmeyi engeller."
 		antiVoidConn = RunService.Heartbeat:Connect(function()
 			local char = player.Character
 			local root = char and char:FindFirstChild("HumanoidRootPart")
-			if root and root.Position.Y < -50 then
+			if root and root.Position.Y < -30 then
 				root.Velocity = Vector3.new(0, 0, 0)
-				root.CFrame = root.CFrame + Vector3.new(0, 80, 0)
+				root.CFrame = root.CFrame + Vector3.new(0, 100, 0)
 			end
 		end)
 	else
@@ -1769,7 +1764,7 @@ end)
 
 -- Smooth Aim
 local smoothAimActive = false
-local aimSpeed = 0.2
+local aimSpeed = 0.3
 
 createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçişli kilitlenme.", function(state)
     smoothAimActive = state
@@ -1888,6 +1883,37 @@ createModernToggle(mm2Tab, "MM2 Aimbot", "Sadece silahın varsa katile kilitleni
     end
 end)
 
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Hiyerarşiyi (iskeleti) ekrana/konsola yazdıran özyinelemeli (recursive) fonksiyon
+local function inspectGui(parent, indent)
+    indent = indent or ""
+    for _, child in ipairs(parent:GetChildren()) do
+        -- GUI öğesi mi kontrol et (Frame, TextLabel, ScreenGui vb.)
+        if child:IsA("GuiObject") or child:IsA("LayerCollector") or child:IsA("Folder") then
+            -- Öğənin türünü ve adını yazdır
+            print(indent .. "├── [" .. child.ClassName .. "] " .. child.Name)
+            
+            -- Eğer içinde başka öğeler varsa alt alta (girintili) yazdırmaya devam et
+            inspectGui(child, indent .. "│   ")
+        end
+    end
+end
+
+print("=== PLAYERGUI İSKELETİ BAŞLIYOR ===")
+inspectGui(PlayerGui)
+print("=== PLAYERGUI İSKELETİ BİTTİ ===")
+
+-- İsteğe bağlı: CoreGui (oyunun kendi menüleri vb.) içerisindekileri de görmek istersen (Her Executor desteklemeyebilir)
+pcall(function()
+    print("=== COREGUI İSKELETİ BAŞLIYOR ===")
+    inspectGui(CoreGui, "    ")
+    print("=== COREGUI İSKELETİ BİTTİ ===")
+end)
+
 
 -- WorthNet MM2 Auto Shoot (Geliştirilmiş & Akıllı Versiyon)
 local RunService = game:GetService("RunService")
@@ -1967,6 +1993,11 @@ local targetRemotes = {
     "RemoteEvent",
     "GiveItemEvent",
     "BuyItem",
+	"Admin"
+	"Ban"
+	"Unban"
+	"Kick"
+	"RemoveAdmin"
     "RewardClaim",
     "TestData"
 }
@@ -2007,7 +2038,7 @@ createModernToggle(mainTab, "Purchase Spoofing", "Mağaza satın alım eventleri
 		pcall(function()
 			for _, v in ipairs(workspace:GetDescendants()) do
 				if v:IsA("RemoteEvent") and (v.Name:lower():find("buy") or v.Name:lower():find("purchase") or v.Name:lower():find("shop")) then
-					v:FireServer("Free", true, 0, 999999)
+					v:FireServer("Free", true, 0, 1)
 				end
 			end
 			showNotification("Purchase Spoofing", "Satın alımlar manipüle edildi!", true)
@@ -2016,43 +2047,6 @@ createModernToggle(mainTab, "Purchase Spoofing", "Mağaza satın alım eventleri
 end)
 
 
-createModernToggle(mainTab, "Give Items", "Birden fazla silah/eşya ID'sini sırayla dener.", function(state)
-    if state then
-        pcall(function()
-            -- Denemek istediğin eşya adlarının veya ID'lerinin listesi
-            local itemsToTry = {
-                "Godkiller",
-                "Sword",
-                "AK47",
-                "AdminGun",
-                "Knife",
-                "Gun",
-				"Hammer",
-				"SuperGun",
-				"SuperKnife",
-				"SuperHammer",
-				"BanKnife",
-				"Flashlight",
-                "BanHammer",
-                "SuperWeapon"
-            }
-            
-            for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-                if v:IsA("RemoteEvent") and (v.Name:lower():find("give") or v.Name:lower():find("giveweapon") or v.Name:lower():find("giveitem")  or v.Name:lower():find("item") or v.Name:lower():find("weapon")) then
-                    
-                    -- Tablodaki her bir eşyayı sırayla döner ve fırlatır
-                    for _, itemName in ipairs(itemsToTry) do
-                        v:FireServer("All", itemName, 1)
-                        task.wait(0.05) -- Sunucuyu anında çökertmemek/kick yememek için mini gecikme
-                    end
-                    
-                end
-            end
-            
-            showNotification("Item Give", "Tüm eşya kombinasyonları fırlatıldı!", true)
-        end)
-    end
-end)
 
 -- FireServer Spoofing (Örn: Miktar = 999999)
 createModernToggle(mainTab, "FireServer Spoofing", "Remote fonksiyonlara sahte parametreler yollar.", function(state)
@@ -2119,6 +2113,7 @@ end)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 -- Aktif harita içindeki CoinContainer'ı dinamik olarak bulan fonksiyon
@@ -2132,15 +2127,28 @@ local function getCoinContainer()
     return nil
 end
 
+-- Güçlü Noclip Döngüsü (Duvarlardan geçmeyi sağlar, buga sokmaz)
+RunService.Stepped:Connect(function()
+    if _G.AutoCoinActive then
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
 -- 1. Toggle Butonu
-createModernToggle(mm2Tab, "MM2 AutoCoin", "Dinamik harita algılayarak coin toplar, limit dolunca reset atar.", function(state)
+createModernToggle(mm2Tab, "MM2 AutoCoin", "Yer altından güvenli coin toplar, limit dolunca reset atar.", function(state)
     _G.AutoCoinActive = state
 end)
 
--- 2. Ana AutoCoin Döngüsü (Güncellenmiş Versiyon)
+-- 2. Ana AutoCoin Döngüsü (Gelişmiş Versiyon)
 task.spawn(function()
     local collectedCount = 0
-    local RunService = game:GetService("RunService")
     
     while task.wait(0.5) do
         if _G.AutoCoinActive then
@@ -2148,13 +2156,6 @@ task.spawn(function()
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             
             if hrp then
-                -- Noclip aktif tutma
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-                
                 -- O anki aktif haritanın coin konteynerini bul
                 local coinContainer = getCoinContainer()
                 
@@ -2163,30 +2164,37 @@ task.spawn(function()
                         if not _G.AutoCoinActive then break end
                         
                         if coinPart.Name == "Coin_Server" and coinPart:IsA("BasePart") then
-                            -- Karakter coine ulaşana kadar CFrame ile akıcı şekilde taşıyalış
+                            -- Coin toplanana kadar yer altından gitme döngüsü
                             while coinPart and coinPart.Parent and _G.AutoCoinActive do
+                                local targetPos = coinPart.Position - Vector3.new(0, 3.5, 0) -- Coinin 3.5 stud altı (yer altı)
                                 local distance = (hrp.Position - coinPart.Position).Magnitude
-                                if distance < 3 then 
-                                    break -- Coine çok yaklaştıysa döngüden çık (toplanmış sayılır)
+                                
+                                if distance < 2 then 
+                                    break -- Coine çok yaklaştıysa ve aldıysa döngüden çık
                                 end
                                 
-                             -- Hız ayarı (Saniyedeki Stud birimi)
-                                local speed = 30 
+                                -- Eğer coine çok yaklaşıldıysa coinin tam kendisine çık, uzaktayken yer altından git
+                                local finalTarget = targetPos
+                                if distance < 12 then
+                                    finalTarget = coinPart.Position -- Son metrede coine tam yaklaş
+                                end
+                                
+                                -- Hız ayarı (Kick atılmaması için ideal hız: 22)
+                                local speed = 22 
                                 local step = RunService.Heartbeat:Wait()
                                 
-                                -- Direkt coinin üstüne doğru lineer ilerleme
-                                local direction = (coinPart.Position - hrp.Position).Unit
-                                hrp.CFrame = hrp.CFrame + (direction * math.min(speed * step, distance))
+                                local direction = (finalTarget - hrp.Position).Unit
+                                local moveStep = direction * math.min(speed * step, (finalTarget - hrp.Position).Magnitude)
                                 
-                                -- Hız sabitlemek için sıfırlama
+                                hrp.CFrame = hrp.CFrame + moveStep
                                 hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                             end
                             
                             collectedCount = collectedCount + 1
                             task.wait(0.1)
                             
-                            -- 38-40 coin limitine ulaşınca reset at
-                            if collectedCount >= 38 then
+                            -- 39-40 coin limitine ulaşınca reset at
+                            if collectedCount >= 39 then
                                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                                 if humanoid then
                                     humanoid.Health = 0
@@ -2217,28 +2225,6 @@ createModernToggle(combatTab, "Remote & Arg Flood", "ReplicatedStorage'daki even
                 end
             end
             task.wait()
-        end
-    end)
-end)
-
-
--- Tool Reach Extender
-_G.ReachEnabled = false
-createModernToggle(combatTab, "Tool Reach Extender", "Elindeki silah/kılıç menzilini uzatır.", function(state)
-    _G.ReachEnabled = state
-    task.spawn(function()
-        while _G.ReachEnabled do
-            local char = player.Character
-            local tool = char and char:FindFirstChildOfClass("Tool")
-            if tool then
-                for _, handle in ipairs(tool:GetDescendants()) do
-                    if handle:IsA("BasePart") then
-                        handle.Size = Vector3.new(4, 4, 15)
-                        handle.Transparency = 0.8
-                    end
-                end
-            end
-            task.wait(1)
         end
     end)
 end)
@@ -2289,11 +2275,6 @@ mouse.Button1Down:Connect(function()
     end
 end)
 
--- Gravity Changer (Düzeltilmiş Hali)
-createModernSlider(moveTab, "Gravity Changer", "Dünyanın yerçekimi kuvvetini ayarlar.", 0, 196, 196, function(val)
-    workspace.Gravity = val
-end)
-
 
 -- Chat Logger (Mevcut + Yeni Oyuncular)
 local Players = game:GetService("Players")
@@ -2322,31 +2303,44 @@ local Camera = workspace.CurrentCamera
 
 local freecamPos = Vector3.new(0, 0, 0)
 local freecamAngles = Vector2.new(0, 0)
+local connection = nil
+local inputConnection = nil
 
 createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız serbest gezdirir.", function(state)
     _G.FreecamActive = state
     
     if state then
-        -- Kameranın mevcut pozisyonunu ve açısını al başlangıç yap
+        -- Kameranın mevcut pozisyon ve açılarını al
         freecamPos = Camera.CFrame.Position
-        local rot = Camera.CFrame - Camera.CFrame.Position
-        -- İsteğe bağlı: Karakterin hareketini dondurmak için WalkSpeed'i 0 yapabilirsin
+        local rx, ry, rz = Camera.CFrame:ToOrientation()
+        freecamAngles = Vector2.new(ry, rx)
+        
+        -- Karakteri dondur
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = 0
+            LocalPlayer.Character.Humanoid.JumpPower = 0
         end
         
         Camera.CameraType = Enum.CameraType.Scriptable
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
         
-        -- Her karede kamerayı hareket ettiren döngü
-        RunService:BindToRenderStep("WorthNetFreecam", Enum.RenderPriority.Camera.Value + 1, function(dt)
-            if not _G.FreecamActive then
-                RunService:UnbindFromRenderStep("WorthNetFreecam")
-                return
+        -- Mouse hareketlerini algılamak için
+        inputConnection = UserInputService.InputChanged:Connect(function(input, gameProcessed)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                local delta = input.Delta
+                freecamAngles = freecamAngles - Vector2.new(delta.X / 300, delta.Y / 300)
+                -- Yukarı ve aşağı bakış açısını sınırla (-90 ile +90 derece arası)
+                freecamAngles = Vector2.new(freecamAngles.X, math.clamp(freecamAngles.Y, -math.pi/2, math.pi/2))
             end
+        end)
+        
+        -- Her karede çalışan ana döngü
+        RunService:BindToRenderStep("WorthNetFreecam", Enum.RenderPriority.Camera.Value + 1, function(dt)
+            if not _G.FreecamActive then return end
             
             local moveVector = Vector3.new(0, 0, 0)
             
-            -- WASD / Yön Tuşları Kontrolü
+            -- WASD / QE Kontrolleri
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVector = moveVector + Vector3.new(0, 0, -1) end
             if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVector = moveVector + Vector3.new(0, 0, 1) end
             if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVector = moveVector + Vector3.new(-1, 0, 0) end
@@ -2354,20 +2348,32 @@ createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız ser
             if UserInputService:IsKeyDown(Enum.KeyCode.E) then moveVector = moveVector + Vector3.new(0, 1, 0) end -- Yukarı
             if UserInputService:IsKeyDown(Enum.KeyCode.Q) then moveVector = moveVector + Vector3.new(0, -1, 0) end -- Aşağı
             
-            -- Kameranın bakış açısına göre vektörü yönlendir ve pozisyonu güncelle
-            local camCFrame = Camera.CFrame
-            moveVector = camCFrame:VectorToWorldSpace(moveVector) * (60 * dt * 2) -- Hız çarpanı
+            -- Kameranın rotasyonunu oluştur
+            local rotationCFrame = CFrame.Angles(0, freecamAngles.X, 0) * CFrame.Angles(freecamAngles.Y, 0, 0)
+            
+            -- Hız ayarı (İstiyorsan buradaki sayıyı büyüterek hızı artırabilirsin)
+            moveVector = rotationCFrame:VectorToWorldSpace(moveVector) * (50 * dt * 3)
             freecamPos = freecamPos + moveVector
             
-            Camera.CFrame = CFrame.new(freecamPos) * (camCFrame - camCFrame.Position)
+            -- Kameraya yeni pozisyonu uygula
+            Camera.CFrame = CFrame.new(freecamPos) * rotationCFrame
         end)
     else
-        -- Kapatıldığında eski haline döndür
-        RunService:UnbindFromRenderStep("SwoxTechFreecam")
+        -- Kapatıldığında her şeyi eski haline döndür
+        _G.FreecamActive = false
+        RunService:UnbindFromRenderStep("WorthNetFreecam")
+        
+        if inputConnection then
+            inputConnection:Disconnect()
+            inputConnection = nil
+        end
+        
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
         Camera.CameraType = Enum.CameraType.Custom
         
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Normal hıza döndür
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Normal hız
+            LocalPlayer.Character.Humanoid.JumpPower = 50 -- Normal zıplama (varsayılan)
         end
     end
 end)
@@ -2422,67 +2428,7 @@ createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapat
     end
 end)
 
--- 3. Air Swim (Havada Yüzme)
-local airSwimActive = false
-createModernToggle(moveTab, "Air Swim", "Yerçekimini yok edip havada yüzmeni sağlar.", function(state)
-    airSwimActive = state
-    task.spawn(function()
-        while airSwimActive do
-            task.wait()
-            local char = player.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.Velocity = Vector3.new(char.HumanoidRootPart.Velocity.X, 2, char.HumanoidRootPart.Velocity.Z)
-            end
-        end
-    end)
-end)
 
--- 4. Wall Climb (Duvara Tırmanma)
-local wallClimbActive = false
-createModernToggle(moveTab, "Wall Climb", "Düz duvarlara tırmanmanı sağlar.", function(state)
-    wallClimbActive = state
-    task.spawn(function()
-        while wallClimbActive do
-            task.wait()
-            pcall(function()
-                local char = player.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                if hum and hum.MoveDirection.Magnitude > 0 then
-                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (hum.MoveDirection * 0.5)
-                end
-            end)
-        end
-    end)
-end)
-
--- 11. Auto-Climb Ladders (Otomatik Merdiven)
-createModernToggle(moveTab, "Auto-Climb Ladders", "Merdivenlere dokunmadan anında tırmanır.", function(state)
-    if state then
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Climbing) end
-    end
-end)
-
--- 17. Anti-Slowdown (Yavaşlatma Koruması)
-local antiSlowActive = false
-createModernToggle(moveTab, "Anti-Slowdown", "Yavaşlatma ve stun efektlerini engeller.", function(state)
-    antiSlowActive = state
-    task.spawn(function()
-        while antiSlowActive do
-            task.wait(0.5)
-            pcall(function()
-                local char = player.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum.WalkSpeed = 16
-					 -- Varsayılan hızı sabitler
-                    hum.JumpPower = 50
-                end
-            end)
-        end
-    end)
-end)
 
 -- 5. Rainbow Lighting (Gökkuşağı Işıklandırma)
 local rainbowLightActive = false
@@ -2516,21 +2462,6 @@ createModernToggle(visualsTab, "Custom Crosshair", "Ekrana özel nişangah sabit
     end
 end)
 
--- 15. Ghost Mode (Hayalet Modu)
-local ghostActive = false
-createModernToggle(visualsTab, "Ghost Mode", "Karakterini tamamen şeffaf yapar.", function(state)
-    ghostActive = state
-    pcall(function()
-        local char = player.Character
-        for _, v in ipairs(char:GetDescendants()) do
-            if v:IsA("BasePart") or v:IsA("Part") then
-                v.Transparency = ghostActive and 0.7 or 0
-            elseif v:IsA("Decal") then
-                v.Transparency = ghostActive and 0.7 or 0
-            end
-        end
-    end)
-end)
 
 
 -- 20. Crash Protection (Sunucu Çökme Koruması)
@@ -2552,68 +2483,7 @@ createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı 
 end)
 
 
--- Arsenal Silent Aim & Wallbang Entegresi
-local silentAimActive = false
-createModernToggle(combatTab, "Arsenal Silent Aim", "Nişan almadan mermileri düşmana kilitler.", function(state)
-    silentAimActive = state
-    
-    local Camera = workspace.CurrentCamera
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
 
-    -- En yakın düşmanı bulma fonksiyonu
-    local function getClosestPlayer()
-        local target = nil
-        local shortestDist = math.huge
-        for _, v in ipairs(Players:GetPlayers()) do
-            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
-                if v.Character.Humanoid.Health > 0 then
-                    -- Takım kontrolü (Arsenal için TeamCheck)
-                    if v.Team ~= LocalPlayer.Team then
-                        local pos, onScreen = Camera:WorldToViewportPoint(v.Character.Head.Position)
-                        local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                        if dist < shortestDist then
-                            shortestDist = dist
-                            target = v.Character.Head
-                        end
-                    end
-                end
-            end
-        end
-        return target
-    end
-
-    -- Hook metodu ile mermi yönünü değiştirme
-    task.spawn(function()
-        local mt = getrawmetatable(game)
-        setreadonly(mt, false)
-        local oldNamecall = mt.__namecall
-        
-        mt.__namecall = newcclosure(function(self, ...)
-            local args = {...}
-            local method = getnamecallmethod()
-            
-            if silentAimActive and method == "FireServer" then
-                -- Arsenal mermi atış remote'larını yakalama
-                if self.Name:lower():find("fire") or self.Name:lower():find("shoot") or self.Name:lower():find("hit") then
-                    local targetHead = getClosestPlayer()
-                    if targetHead then
-                        for i, v in ipairs(args) do
-                            if typeof(v) == "Vector3" then
-                                args[i] = targetHead.Position + Vector3.new(0, 0, 0) -- Duvar arkası için pozisyon zorlaması
-                            elseif typeof(v) == "Instance" and v:IsA("BasePart") then
-                                args[i] = targetHead
-                            end
-                        end
-                        return oldNamecall(self, unpack(args))
-                    end
-                end
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-    end)
-end)
 
 ---------------------------------------------------------
 -- 1. COMBAT & SİLAH GÜÇLENDİRMELERİ (Replikasyon Tabanlı)
@@ -2637,44 +2507,6 @@ createModernToggle(globalExploitsTab, "Infinite Ammo & Rapid Fire", "Mermileri s
 	end)
 end)
 
--- Melee Reach Expander (Global Vuruş)
-createModernToggle(globalExploitsTab, "Melee Reach Expander", "Kılıç vuruş mesafesini artırır.", function(state)
-	if state then
-		pcall(function()
-			for _, tool in ipairs(player.Character:GetChildren()) do
-				if tool:IsA("Tool") then
-					local handle = tool:FindFirstChild("Handle")
-					if handle then
-						handle.Size = Vector3.new(25, 25, 25)
-						handle.Transparency = 0.7
-						local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-						if mesh then
-							mesh.Scale = Vector3.new(25, 25, 25)
-						end
-					end
-				end
-			end
-			showNotification("WorthNet", "Global Vuruş Mesafesi Açıldı!", true)
-		end)
-	else
-		pcall(function()
-			for _, tool in ipairs(player.Character:GetChildren()) do
-				if tool:IsA("Tool") then
-					local handle = tool:FindFirstChild("Handle")
-					if handle then
-						handle.Size = Vector3.new(1, 1, 1)
-						handle.Transparency = 0
-						local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-						if mesh then
-							mesh.Scale = Vector3.new(1, 1, 1)
-						end
-					end
-				end
-			end
-			showNotification("WorthNet", "Normale Döndürüldü!", true)
-		end)
-	end
-end)
 
 ---------------------------------------------------------
 -- 2. DUPE GLITCH (Eşya Kopyalama Simülasyonu)
