@@ -856,13 +856,13 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- Fly (VectorForce Tabanlı Akıcı Uçuş)
+-- Fly (BodyVelocity Tabanlı En İyi ve Akıcı Uçuş)
 local flyActive = false
-local flySpeed = 16 -- Ban yememek için ideal hız
-local vf, attachment
+local flySpeed = 13
+local bv, bg
 local flyConnection
 
-local function updateVectorForceFly(state)
+local function updateBodyVelocityFly(state)
 	flyActive = state
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -871,31 +871,25 @@ local function updateVectorForceFly(state)
 	if flyActive and root and hum then
 		hum.PlatformStand = true
 		
-		-- Kollizyonu kapatıp duvardan geçme (Bypass)
+		-- Duvarlardan geçme (Bypass)
 		for _, part in ipairs(char:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = false
 			end
 		end
 
-		-- VectorForce ve Attachment oluşturuyoruz
-		attachment = Instance.new("Attachment")
-		attachment.Parent = root
+		-- BodyVelocity ve BodyGyro oluşturuyoruz
+		bv = Instance.new("BodyVelocity")
+		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+		bv.Velocity = Vector3.new(0, 0, 0)
+		bv.Parent = root
 
-		vf = Instance.new("VectorForce")
-		vf.Attachment0 = attachment
-		vf.RelativeTo = EnumActuatorRelativeTo.World
-		vf.Parent = root
+		bg = Instance.new("BodyGyro")
+		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		bg.P = 15000
+		bg.Parent = root
 
-		-- Yerçekimini etkisiz hale getirmek için karakterin kütlesini hesaplıyoruz
-		local mass = 0
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				mass = mass + part.Mass
-			end
-		end
-
-		flyConnection = RunService.RenderStepped:Connect(function(dt)
+		flyConnection = RunService.RenderStepped:Connect(function()
 			if not flyActive or not root or not root.Parent then
 				if flyConnection then flyConnection:Disconnect() end
 				return
@@ -904,7 +898,7 @@ local function updateVectorForceFly(state)
 			local camera = workspace.CurrentCamera
 			local moveDirection = Vector3.new(0, 0, 0)
 			
-			-- WASD ve Yükseklik Tuşları
+			-- Tuş kontrolleri
 			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camera.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camera.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CFrame.RightVector end
@@ -913,25 +907,20 @@ local function updateVectorForceFly(state)
 			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 			
 			if moveDirection.Magnitude > 0 then
-				moveDirection = moveDirection.Unit
-				-- VectorForce ile hem yerçekimini sıfırlıyoruz hem de yön kuvveti veriyoruz
-				vf.Force = (moveDirection * flySpeed * mass * 10) + Vector3.new(0, workspace.Gravity * mass, 0)
-				
-				-- Karakterin yönünü kameraya sabitleme
-				local camLook = camera.CFrame.LookVector
-				root.CFrame = CFrame.new(root.Position, root.Position + Vector3.new(camLook.X, 0, camLook.Z))
+				bv.Velocity = moveDirection.Unit * flySpeed
 			else
-				-- Durduğumuz an havada taş gibi çivilenir, kayma yapmaz
-				vf.Force = Vector3.new(0, workspace.Gravity * mass, 0)
+				-- Tuşları bıraktığın an havada çivilenir, sıfır kayma
+				bv.Velocity = Vector3.new(0, 0, 0)
 			end
 			
-			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			-- Kameranın açısına göre karakteri düz tutma
+			local camLook = camera.CFrame.LookVector
+			bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), Vector3.new(camLook.X, 0, camLook.Z))
 		end)
 	else
 		if flyConnection then flyConnection:Disconnect() end
-		if vf then vf:Destroy() end
-		if attachment then attachment:Destroy() end
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
 		if hum then hum.PlatformStand = false end
 		
 		if char then
@@ -942,14 +931,8 @@ local function updateVectorForceFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "VectorForce ile sarsıntısız uçurur, P tuşu ile açılır.", function(state)
-	updateVectorForceFly(state)
-end)
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-		updateVectorForceFly(not flyActive)
-	end
+createModernToggle(moveTab, "Fly", "BodyVelocity ile akıcı uçurur, P tuşu ile açılır.", function(state)
+	updateBodyVelocityFly(state)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
