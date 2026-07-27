@@ -944,63 +944,28 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		updateBodyVelocityFly(not flyActive)
 	end
 end)
--- Spin Fling System (Stabilize Edilmiş Versiyon)
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
 
-local spinFlingConnection = nil
-
-createModernToggle(moveTab, "Spin Fling", "Çevrendeki herkese dokunduğunda fırlatmanı sağlar (Spinbot).", function(state)
+-- Workspace / Harita Kopyalama (Map Dumper)
+createModernToggle(mainTab, "Haritayı Kaydet (Map Dump)", "Workspace içindeki her şeyi ve haritayı dosyaya kaydeder.", function(state)
     if state then
-        if spinFlingConnection then
-            spinFlingConnection:Disconnect()
-            spinFlingConnection = nil
-        end
-        
-        spinFlingConnection = RunService.Heartbeat:Connect(function(dt)
-            local character = player.Character
-            local hrp = character and character:FindFirstChild("HumanoidRootPart")
-            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-            
-            if hrp and humanoid then
-                -- Noclip (Karakterin diğer objelere takılmasını önler)
-                for _, part in ipairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
+        task.spawn(function()
+            -- Synapse, KRNL, ScriptWare gibi gelişmiş executor'lerin desteklediği yerleşik kaydetme fonksiyonu
+            if saveinstance then
+                success, err = pcall(function()
+                    saveinstance({
+                        inos = true, -- Oyundaki nesneleri dahil et
+                        mode = "optimized"
+                    })
+                end)
+                if success then
+                    print("Harita başarıyla kaydedildi! Executor'ün workspace klasörünü kontrol et.")
+                else
+                    warn("Kayıt başarısız oldu: " .. tostring(err))
                 end
-                
-                -- Kendini fırlatmaması için hızı optimize ettik, sadece dönme ve hafif itme veriyoruz
-                local currentCFrame = hrp.CFrame
-                hrp.CFrame = currentCFrame * CFrame.Angles(0, math.rad(50), 0)
-                
-                -- Değerleri uçurmak yerine fizik motorunu sarsacak ama seni öldürmeyecek seviyeye çektik
-                hrp.AssemblyAngularVelocity = Vector3.new(0, 5000, 0)
-                hrp.AssemblyLinearVelocity = Vector3.new(0, 500, 0) -- Dikeyde uçmanı engeller
+            else
+                warn("Kullandığın executor saveinstance() fonksiyonunu desteklemiyor!")
             end
         end)
-    else
-        if spinFlingConnection then
-            spinFlingConnection:Disconnect()
-            spinFlingConnection = nil
-        end
-        
-        local character = player.Character
-        local hrp = character and character:FindFirstChild("HumanoidRootPart")
-        
-        if hrp then
-            hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        end
-        
-        if character then
-            for _, part in ipairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
     end
 end)
 
