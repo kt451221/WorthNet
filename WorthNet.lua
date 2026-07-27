@@ -856,70 +856,73 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- Fly (Sabit ve Dik Duruşlu Pürüzsüz Süzülme Modu)
-local cframeFlyActive = false
-local flySpeed = 20
+-- Fly (BodyVelocity & Bypass Tabanlı Pürüzsüz Uçuş)
+local flyActive = false
+local flySpeed = 18 -- Ban yememek için güvenli ve ideal hız
+local bv, bg
 local flyConnection
 
-local function updateCFrameFly(state)
-	cframeFlyActive = state
+local function updateBodyVelocityFly(state)
+	flyActive = state
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	local hum = char and char:FindFirstChild("Humanoid")
 
-	if cframeFlyActive and root and hum then
+	if flyActive and root and hum then
 		hum.PlatformStand = true
-		_G.LastFlyPos = root.Position -- Fly açıldığı an mevcut konumunu baz alması için sıfırlıyoruz
 		
-		flyConnection = RunService.RenderStepped:Connect(function(dt)
-			if not cframeFlyActive or not root or not root.Parent then
+		-- Kollizyonu (çarpmayı) kapatıp duvardan geçme bypass'ı
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+
+		-- Fizik motorunu manipüle etmek için BodyVelocity ve BodyGyro ekliyoruz
+		bv = Instance.new("BodyVelocity")
+		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+		bv.Velocity = Vector3.new(0, 0, 0)
+		bv.Parent = root
+
+		bg = Instance.new("BodyGyro")
+		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+		bg.P = 9000
+		bg.Parent = root
+
+		flyConnection = RunService.RenderStepped:Connect(function()
+			if not flyActive or not root or not root.Parent then
 				if flyConnection then flyConnection:Disconnect() end
 				return
-			end
-			
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
 			end
 			
 			local camera = workspace.CurrentCamera
 			local moveDirection = Vector3.new(0, 0, 0)
 			
-			-- Tuş kontrolleri
+			-- WASD ve Yükseklik Tuşları
 			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camera.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camera.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CGrade.RightVector or moveDirection = moveDirection - camera.CFrame.RightVector end -- Düzeltme
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CFrame.RightVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camera.CFrame.RightVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
 			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 			
-			-- Eğer hareket ediyorsak normal hızda git, etmiyorsak pozisyonu kitle
-			local currentPos
 			if moveDirection.Magnitude > 0 then
-				moveDirection = moveDirection.Unit
-				currentPos = root.Position + (moveDirection * flySpeed * dt)
-				_G.LastFlyPos = currentPos 
+				bv.Velocity = moveDirection.Unit * flySpeed
 			else
-				if not _G.LastFlyPos then _G.LastFlyPos = root.Position end
-				currentPos = _G.LastFlyPos
+				-- Tuş bırakıldığında tamamen durur, asla aşağı kaymaz
+				bv.Velocity = Vector3.new(0, 0, 0)
 			end
 			
+			-- Karakteri dik tutarak kameranın baktığı yöne sabitleme
 			local camLook = camera.CFrame.LookVector
-			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
-			
-			if flatLook.Magnitude > 0 then
-				root.CFrame = CFrame.new(currentPos, currentPos + flatLook)
-			else
-				root.CFrame = CFrame.new(currentPos, currentPos + root.CFrame.LookVector)
-			end
-			
-			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		end) -- BURADAKİ END EKSİKTİ, EKLENDİ!
+			bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), Vector3.new(camLook.X, 0, camLook.Z))
+		end)
 	else
 		if flyConnection then flyConnection:Disconnect() end
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
 		if hum then hum.PlatformStand = false end
+		
 		if char then
 			for _, part in ipairs(char:GetDescendants()) do
 				if part:IsA("BasePart") then part.CanCollide = true end
@@ -928,13 +931,13 @@ local function updateCFrameFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "Karakteri bozmadan dik ve sabit uçurur, P tuşu ile açılır.", function(state)
-	updateCFrameFly(state)
+createModernToggle(moveTab, "Fly", "BodyVelocity ile pürüzsüz uçurur, P tuşu ile açılır.", function(state)
+	updateBodyVelocityFly(state)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-		updateCFrameFly(not cframeFlyActive)
+		updateBodyVelocityFly(not flyActive)
 	end
 end)
 -- Spin Fling System (Stabilize Edilmiş Versiyon)
