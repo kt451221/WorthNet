@@ -858,7 +858,7 @@ end)
 
 -- Fly (Sabit ve Dik Duruşlu Pürüzsüz Süzülme Modu)
 local cframeFlyActive = false
-local flySpeed = 24
+local flySpeed = 20
 local flyConnection
 
 local function updateCFrameFly(state)
@@ -869,6 +869,8 @@ local function updateCFrameFly(state)
 
 	if cframeFlyActive and root and hum then
 		hum.PlatformStand = true
+		_G.LastFlyPos = root.Position -- Fly açıldığı an mevcut konumunu baz alması için sıfırlıyoruz
+		
 		flyConnection = RunService.RenderStepped:Connect(function(dt)
 			if not cframeFlyActive or not root or not root.Parent then
 				if flyConnection then flyConnection:Disconnect() end
@@ -884,21 +886,25 @@ local function updateCFrameFly(state)
 			local camera = workspace.CurrentCamera
 			local moveDirection = Vector3.new(0, 0, 0)
 			
-			-- Tuş kontrolleri (Aşağı inme tuşu LeftShift yapıldı, dilersen LeftControl yapabilirsin)
+			-- Tuş kontrolleri
 			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camera.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camera.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CGrade.RightVector or moveDirection = moveDirection - camera.CFrame.RightVector end -- Düzeltme
 			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camera.CFrame.RightVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
 			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 			
+			-- Eğer hareket ediyorsak normal hızda git, etmiyorsak pozisyonu kitle
+			local currentPos
 			if moveDirection.Magnitude > 0 then
 				moveDirection = moveDirection.Unit
+				currentPos = root.Position + (moveDirection * flySpeed * dt)
+				_G.LastFlyPos = currentPos 
+			else
+				if not _G.LastFlyPos then _G.LastFlyPos = root.Position end
+				currentPos = _G.LastFlyPos
 			end
 			
-			-- Karakterin eğilmesini/yatmasını engellemek için sadece pozisyonu güncelliyoruz, 
-			-- rotasyonu ise kameranın sadece Y eksenine (yatay bakışına) sabitliyoruz ki dik dursun!
-			local currentPos = root.Position + (moveDirection * flySpeed * dt)
 			local camLook = camera.CFrame.LookVector
 			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
 			
@@ -910,7 +916,7 @@ local function updateCFrameFly(state)
 			
 			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		end)
+		end) -- BURADAKİ END EKSİKTİ, EKLENDİ!
 	else
 		if flyConnection then flyConnection:Disconnect() end
 		if hum then hum.PlatformStand = false end
