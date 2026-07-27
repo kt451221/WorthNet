@@ -856,9 +856,9 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- Fly (BodyVelocity Tabanlı En İyi ve Akıcı Uçuş)
+-- Fly (BodyVelocity Tabanlı, Duvar Geçmeli ve Dik Duruşlu Uçuş)
 local flyActive = false
-local flySpeed = 24
+local flySpeed = 20 -- Ban yememek için güvenli hız
 local bv, bg
 local flyConnection
 
@@ -871,13 +871,6 @@ local function updateBodyVelocityFly(state)
 	if flyActive and root and hum then
 		hum.PlatformStand = true
 		
-		-- Duvarlardan geçme (Bypass)
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
-			end
-		end
-
 		-- BodyVelocity ve BodyGyro oluşturuyoruz
 		bv = Instance.new("BodyVelocity")
 		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
@@ -886,13 +879,20 @@ local function updateBodyVelocityFly(state)
 
 		bg = Instance.new("BodyGyro")
 		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-		bg.P = 15000
+		bg.P = 20000 -- Güçlü rotasyon ile karakterin yamulmasını engeller
 		bg.Parent = root
 
 		flyConnection = RunService.RenderStepped:Connect(function()
 			if not flyActive or not root or not root.Parent then
 				if flyConnection then flyConnection:Disconnect() end
 				return
+			end
+			
+			-- Duvarlardan geçebilmek için döngü içinde CanCollide'ı sürekli false yapıyoruz (Noclip Bypass)
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
 			end
 			
 			local camera = workspace.CurrentCamera
@@ -909,13 +909,17 @@ local function updateBodyVelocityFly(state)
 			if moveDirection.Magnitude > 0 then
 				bv.Velocity = moveDirection.Unit * flySpeed
 			else
-				-- Tuşları bıraktığın an havada çivilenir, sıfır kayma
+				-- Tuşları bıraktığın an havada taş gibi çivilenir
 				bv.Velocity = Vector3.new(0, 0, 0)
 			end
 			
-			-- Kameranın açısına göre karakteri düz tutma
+			-- Kameranın yukarı/aşağı bakış açısını sıfırlayıp (sadece yatay alarak) karakterin 
+			-- fotoğraftaki gibi hep dik ve sabit durmasını sağlıyoruz
 			local camLook = camera.CFrame.LookVector
-			bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), Vector3.new(camLook.X, 0, camLook.Z))
+			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+			if flatLook.Magnitude > 0 then
+				bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), flatLook)
+			end
 		end)
 	else
 		if flyConnection then flyConnection:Disconnect() end
@@ -931,7 +935,7 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "BodyVelocity ile akıcı uçurur, P tuşu ile açılır.", function(state)
+createModernToggle(moveTab, "Fly", "Duvarlardan geçirir ve dik tutar, P tuşu ile açılır.", function(state)
 	updateBodyVelocityFly(state)
 end)
 
