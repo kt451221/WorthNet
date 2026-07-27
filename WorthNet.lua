@@ -1488,8 +1488,11 @@ createModernToggle(mm2Tab, "MM2 Rol ESP", "Envanterleri tarar; Knife = Katil (K�
     end
 end)
 
--- 2. TOGGLE: Özel Crosshair Katil Lock (Elinde Gun varken katilin kafasına kilitlenir)
-createModernToggle(mm2Tab, "Crosshair Katil Lock", "Elinde Gun varken özel crosshair'i katilin kafasına sabitler.", function(state)
+-- 2. TOGGLE: Mouse Crosshair Katil Lock (Elinde Gun varken fareyi katilin kafasına sabitler)
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+createModernToggle(mm2Tab, "Mm2 Katile Kitlen", "Elinde Gun varken fare imlecini katilin kafasına kilitler.", function(state)
     crosshairLockActive = state
     if crosshairLockActive then
         task.spawn(function()
@@ -1501,32 +1504,28 @@ createModernToggle(mm2Tab, "Crosshair Katil Lock", "Elinde Gun varken özel cros
                     if murderer and murderer.Character then
                         local mHead = murderer.Character:FindFirstChild("Head")
                         if mHead then
+                            -- Kafanın 3D pozisyonunu ekrandaki 2D piksel koordinatlarına çeviriyoruz
                             local screenPoint, onScreen = Camera:WorldToScreenPoint(mHead.Position)
-                            if onScreen and crosshairElement then
-                                crosshairElement.Visible = true
-                                crosshairElement.Position = UDim2.new(0, screenPoint.X, 0, screenPoint.Y)
-                            else
-                                if crosshairElement then crosshairElement.Visible = false end
+                            
+                            if onScreen then
+                                local mouse = LocalPlayer:GetMouse()
+                                -- Mevcut fare konumu ile hedef nokta arasındaki mesafeyi hesapla
+                                local currentX, currentY = mouse.X, mouse.Y
+                                local targetX, targetY = screenPoint.X, screenPoint.Y
+                                
+                                local deltaX = targetX - currentX
+                                local deltaY = targetY - currentY
+                                
+                                -- Fareyi doğrudan hedefe kaydır (Anlık veya pürüzsüz olması için delta kullanılır)
+                                if mousemoverel then
+                                    mousemoverel(deltaX, deltaY)
+                                end
                             end
-                        else
-                            if crosshairElement then crosshairElement.Visible = false end
                         end
-                    else
-                        if crosshairElement then crosshairElement.Visible = false end
                     end
-                else
-                    if crosshairElement then crosshairElement.Visible = false end
                 end
             end
-            -- Kapatıldığında crosshair'i gizle
-            if crosshairElement then
-                crosshairElement.Visible = false
-            end
         end)
-    else
-        if crosshairElement then
-            crosshairElement.Visible = false
-        end
     end
 end)
 
@@ -2112,7 +2111,7 @@ createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanla
 		showNotification("Auto-Dodge", "Devre dışı bırakıldı.", false)
 	end
 end)
--- WorthNet MM2 AutoCoin System (Fixed & Dynamic)
+-- WorthNet MM2 AutoCoin System (Safe & Smart)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
@@ -2125,6 +2124,20 @@ local function getCoinContainer()
         local container = child:FindFirstChild("CoinContainer")
         if container then
             return container
+        end
+    end
+    return nil
+end
+
+-- Elinde "Knife" olan kişiyi (Katili) bulan fonksiyon
+local function getMurderer()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            -- Karakterin üstünde veya sırtında bıçak var mı kontrol et
+            local bp = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+            if bp then
+                return p
+            end
         end
     end
     return nil
@@ -2145,11 +2158,11 @@ RunService.Stepped:Connect(function()
 end)
 
 -- 1. Toggle Butonu
-createModernToggle(mm2Tab, "MM2 AutoCoin", "Yer altından güvenli coin toplar, limit dolunca reset atar.", function(state)
+createModernToggle(mm2Tab, "MM2 AutoCoin", "Güvenli hızda yer altından coin toplar, katilden kaçar ve limit dolunca reset atar.", function(state)
     _G.AutoCoinActive = state
 end)
 
--- 2. Ana AutoCoin Döngüsü (Gelişmiş Versiyon)
+-- 2. Ana AutoCoin Döngüsü (Gelişmiş & Güvenli Versiyon)
 task.spawn(function()
     local collectedCount = 0
     
@@ -2159,61 +2172,94 @@ task.spawn(function()
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             
             if hrp then
-                -- O anki aktif haritanın coin konteynerini bul
-                local coinContainer = getCoinContainer()
+                -- Önce katil yakınımızda mı diye kontrol et!
+                local murderer = getMurderer()
+                local isSafe = true
                 
-                if coinContainer then
-                    for _, coinPart in ipairs(coinContainer:GetChildren()) do
-                        if not _G.AutoCoinActive then break end
-                        
-                        if coinPart.Name == "Coin_Server" and coinPart:IsA("BasePart") then
-                            -- Coin toplanana kadar yer altından gitme döngüsü
-                            while coinPart and coinPart.Parent and _G.AutoCoinActive do
-                                local targetPos = coinPart.Position - Vector3.new(0, 3.5, 0) -- Coinin 3.5 stud altı (yer altı)
-                                local distance = (hrp.Position - coinPart.Position).Magnitude
-                                
-                                if distance < 2 then 
-                                    break -- Coine çok yaklaştıysa ve aldıysa döngüden çık
+                if murderer and murderer.Character and murderer.Character:FindFirstChild("HumanoidRootPart") then
+                    local mHrp = murderer.Character.HumanoidRootPart
+                    local distToMurderer = (hrp.Position - mHrp.Position).Magnitude
+                    
+                    -- Katil 18 stud'dan daha yakınsa tehlikedeyiz, coin toplamayı geçici olarak durdur ve uzaklaş
+                    if distToMurderer < 18 then
+                        isSafe = false
+                        -- Katilden biraz uzaklaşmak için yer altında güvenli bir konuma kayabiliriz veya sadece bekleyebiliriz
+                    end
+                end
+                
+                -- Eğer ortalık güvenliyse coin topla
+                if isSafe then
+                    local coinContainer = getCoinContainer()
+                    
+                    if coinContainer then
+                        for _, coinPart in ipairs(coinContainer:GetChildren()) do
+                            if not _G.AutoCoinActive then break end
+                            
+                            -- Döngü içindeyken de katili sürekli kontrol et
+                            local currentMurderer = getMurderer()
+                            if currentMurderer and currentMurderer.Character and currentMurderer.Character:FindFirstChild("HumanoidRootPart") then
+                                if (hrp.Position - currentMurderer.Character.HumanoidRootPart.Position).Magnitude < 18 then
+                                    break -- Katil yaklaştıysa bu coini bırak, döngüyü kır ve güvenli moda geç
                                 end
-                                
-                                -- Eğer coine çok yaklaşıldıysa coinin tam kendisine çık, uzaktayken yer altından git
-                                local finalTarget = targetPos
-                                if distance < 12 then
-                                    finalTarget = coinPart.Position -- Son metrede coine tam yaklaş
-                                end
-                                
-                                -- Hız ayarı (Kick atılmaması için ideal hız: 22)
-                                local speed = 22 
-                                local step = RunService.Heartbeat:Wait()
-                                
-                                local direction = (finalTarget - hrp.Position).Unit
-                                local moveStep = direction * math.min(speed * step, (finalTarget - hrp.Position).Magnitude)
-                                
-                                hrp.CFrame = hrp.CFrame + moveStep
-                                hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                             end
                             
-                            collectedCount = collectedCount + 1
-                            task.wait(0.1)
-                            
-                            -- 39-40 coin limitine ulaşınca reset at
-                            if collectedCount >= 39 then
-                                local humanoid = char:FindFirstChildOfClass("Humanoid")
-                                if humanoid then
-                                    humanoid.Health = 0
+                            if coinPart.Name == "Coin_Server" and coinPart:IsA("BasePart") then
+                                while coinPart and coinPart.Parent and _G.AutoCoinActive do
+                                    -- Katil yaklaşırsa anında döngüyü kes
+                                    local activeMurderer = getMurderer()
+                                    if activeMurderer and activeMurderer.Character and activeMurderer.Character:FindFirstChild("HumanoidRootPart") then
+                                        if (hrp.Position - activeMurderer.Character.HumanoidRootPart.Position).Magnitude < 18 then
+                                            break
+                                        end
+                                    end
+                                    
+                                    local targetPos = coinPart.Position - Vector3.new(0, 3.5, 0)
+                                    local distance = (hrp.Position - coinPart.Position).Magnitude
+                                    
+                                    if distance < 2 then 
+                                        break 
+                                    end
+                                    
+                                    local finalTarget = targetPos
+                                    if distance < 12 then
+                                        finalTarget = coinPart.Position
+                                    end
+                                    
+                                    -- Ban yememek için hızı daha güvenli ve yumuşak bir değer olan 16-18 arasına düşürdük
+                                    local speed = 16 
+                                    local step = RunService.Heartbeat:Wait()
+                                    
+                                    local direction = (finalTarget - hrp.Position).Unit
+                                    local moveStep = direction * math.min(speed * step, (finalTarget - hrp.Position).Magnitude)
+                                    
+                                    hrp.CFrame = hrp.CFrame + moveStep
+                                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                                 end
-                                collectedCount = 0
-                                task.wait(3)
-                                break
+                                
+                                collectedCount = collectedCount + 1
+                                task.wait(0.1)
+                                
+                                -- Limit dolunca reset at
+                                if collectedCount >= 39 then
+                                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                                    if humanoid then
+                                        humanoid.Health = 0
+                                    end
+                                    collectedCount = 0
+                                    task.wait(3)
+                                    break
+                                end
                             end
                         end
                     end
+                else
+                    -- Katil yakınlardaysa burası çalışır: Güvenli olması için haritanın dışına veya alta biraz daha derin inebilirsin
+                    task.wait(1)
                 end
             end
         end
     end
 end)
-
 -- Auto Remote Event Spam & Argument Flooding
 _G.RemoteFloodActive = false
 createModernToggle(combatTab, "Remote & Arg Flood", "ReplicatedStorage'daki eventlere büyük veriler spamler.", function(state)
