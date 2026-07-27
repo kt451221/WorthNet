@@ -34,11 +34,11 @@ local THEME = {
 	Background = Color3.fromRGB(10, 8, 8),         -- Çok Koyu Kan Siyahı
 	Sidebar    = Color3.fromRGB(16, 12, 12),       -- Yan Menü Arka Planı
 	Card       = Color3.fromRGB(24, 18, 18),       -- Kart Arka Planı
-	Accent     = Color3.fromRGB(239, 68, 68),     -- Parlak Kan Kırmızı Vurgu
-	AccentGlow = Color3.fromRGB(248, 113, 113),   -- Neon / Parlak Açık Kırmızı
-	TextMain   = Color3.fromRGB(255, 255, 255),   -- Saf Beyaz
-	TextDark   = Color3.fromRGB(150, 135, 135),   -- Soluk Gri-Kırmızı
-	ToggleOn   = Color3.fromRGB(239, 68, 68),     -- Açık Buton (Parlak Kırmızı)
+	Accent     = Color3.fromRGB(239, 68, 68),      -- Parlak Kan Kırmızı Vurgu
+	AccentGlow = Color3.fromRGB(248, 113, 113),    -- Neon / Parlak Açık Kırmızı
+	TextMain   = Color3.fromRGB(255, 255, 255),    -- Saf Beyaz
+	TextDark   = Color3.fromRGB(150, 135, 135),    -- Soluk Gri-Kırmızı
+	ToggleOn   = Color3.fromRGB(239, 68, 68),      -- Açık Buton (Parlak Kırmızı)
 	ToggleOff  = Color3.fromRGB(45, 30, 30)        -- Kapalı Buton (Koyu Bordo/Gri)
 }
 
@@ -856,13 +856,13 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- Fly (BodyVelocity & Bypass Tabanlı Pürüzsüz Uçuş)
+-- Fly (VectorForce Tabanlı Akıcı Uçuş)
 local flyActive = false
-local flySpeed = 13 -- Ban yememek için güvenli ve ideal hız
-local bv, bg
+local flySpeed = 16 -- Ban yememek için ideal hız
+local vf, attachment
 local flyConnection
 
-local function updateBodyVelocityFly(state)
+local function updateVectorForceFly(state)
 	flyActive = state
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -871,25 +871,31 @@ local function updateBodyVelocityFly(state)
 	if flyActive and root and hum then
 		hum.PlatformStand = true
 		
-		-- Kollizyonu (çarpmayı) kapatıp duvardan geçme bypass'ı
+		-- Kollizyonu kapatıp duvardan geçme (Bypass)
 		for _, part in ipairs(char:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = false
 			end
 		end
 
-		-- Fizik motorunu manipüle etmek için BodyVelocity ve BodyGyro ekliyoruz
-		bv = Instance.new("BodyVelocity")
-		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-		bv.Velocity = Vector3.new(0, 0, 0)
-		bv.Parent = root
+		-- VectorForce ve Attachment oluşturuyoruz
+		attachment = Instance.new("Attachment")
+		attachment.Parent = root
 
-		bg = Instance.new("BodyGyro")
-		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-		bg.P = 9000
-		bg.Parent = root
+		vf = Instance.new("VectorForce")
+		vf.Attachment0 = attachment
+		vf.RelativeTo = EnumActuatorRelativeTo.World
+		vf.Parent = root
 
-		flyConnection = RunService.RenderStepped:Connect(function()
+		-- Yerçekimini etkisiz hale getirmek için karakterin kütlesini hesaplıyoruz
+		local mass = 0
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				mass = mass + part.Mass
+			end
+		end
+
+		flyConnection = RunService.RenderStepped:Connect(function(dt)
 			if not flyActive or not root or not root.Parent then
 				if flyConnection then flyConnection:Disconnect() end
 				return
@@ -907,20 +913,25 @@ local function updateBodyVelocityFly(state)
 			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 			
 			if moveDirection.Magnitude > 0 then
-				bv.Velocity = moveDirection.Unit * flySpeed
+				moveDirection = moveDirection.Unit
+				-- VectorForce ile hem yerçekimini sıfırlıyoruz hem de yön kuvveti veriyoruz
+				vf.Force = (moveDirection * flySpeed * mass * 10) + Vector3.new(0, workspace.Gravity * mass, 0)
+				
+				-- Karakterin yönünü kameraya sabitleme
+				local camLook = camera.CFrame.LookVector
+				root.CFrame = CFrame.new(root.Position, root.Position + Vector3.new(camLook.X, 0, camLook.Z))
 			else
-				-- Tuş bırakıldığında tamamen durur, asla aşağı kaymaz
-				bv.Velocity = Vector3.new(0, 0, 0)
+				-- Durduğumuz an havada taş gibi çivilenir, kayma yapmaz
+				vf.Force = Vector3.new(0, workspace.Gravity * mass, 0)
 			end
 			
-			-- Karakteri dik tutarak kameranın baktığı yöne sabitleme
-			local camLook = camera.CFrame.LookVector
-			bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), Vector3.new(camLook.X, 0, camLook.Z))
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 		end)
 	else
 		if flyConnection then flyConnection:Disconnect() end
-		if bv then bv:Destroy() end
-		if bg then bg:Destroy() end
+		if vf then vf:Destroy() end
+		if attachment then attachment:Destroy() end
 		if hum then hum.PlatformStand = false end
 		
 		if char then
@@ -931,8 +942,14 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "BodyVelocity ile pürüzsüz uçurur, P tuşu ile açılır.", function(state)
-	updateBodyVelocityFly(state)
+createModernToggle(moveTab, "Fly", "VectorForce ile sarsıntısız uçurur, P tuşu ile açılır.", function(state)
+	updateVectorForceFly(state)
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
+		updateVectorForceFly(not flyActive)
+	end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1508,12 +1525,11 @@ createModernToggle(mm2Tab, "MM2 Rol ESP", "Envanterleri tarar; Knife = Katil (K�
     end
 end)
 
--- 2. TOGGLE: Kesin Knife Hedefli Mouse Katil Lock
+-- 2. TOGGLE: Kusursuz Katil Silent/Cam Lock (Elinde Gun varken kafaya kilitler)
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Envanterinde "Knife" olan kişiyi (Katili) kesin olarak bulan fonksiyon
 local function getRealMurderer()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
@@ -1526,35 +1542,25 @@ local function getRealMurderer()
     return nil
 end
 
-createModernToggle(mm2Tab, "MM2 Katile Kitlenme", "Elinde Gun varken fareyi envanterinde Knife olan katilin kafasına sabitler.", function(state)
+createModernToggle(mm2Tab, "MM2 Katile Kitlenme", "Elinde Gun varken kamerayı direkt katilin kafasına sabitler.", function(state)
     crosshairLockActive = state
     if crosshairLockActive then
         task.spawn(function()
             while crosshairLockActive do
                 RunService.RenderStepped:Wait()
                 
-                -- hasGun fonksiyonun ve katil kontrolü
                 if hasGun() then
                     local murderer = getRealMurderer()
                     if murderer and murderer.Character then
                         local mHead = murderer.Character:FindFirstChild("Head")
                         if mHead then
-                            -- Kafanın ekrandaki 2D piksel konumunu al
-                            local screenPoint, onScreen = Camera:WorldToScreenPoint(mHead.Position)
+                            -- Fareyi bozan mousemoverel yerine kameranın vektörünü doğrudan kafaya kilitliyoruz.
+                            -- Bu sayede ateş ettiğinde mermi şaşmaz, direkt kafaya gider!
+                            local camera = workspace.CurrentCamera
+                            local targetCF = CFrame.new(camera.CFrame.Position, mHead.Position)
                             
-                            if onScreen and mousemoverel then
-                                local mouse = LocalPlayer:GetMouse()
-                                local currentX, currentY = mouse.X, mouse.Y
-                                local targetX, targetY = screenPoint.X, screenPoint.Y
-                                
-                                local deltaX = targetX - currentX
-                                local deltaY = targetY - currentY
-                                
-                                -- Fare uçmasın, titremesin diye değeri yumuşatarak (lerp mantığıyla) gönderiyoruz
-                                if math.abs(deltaX) > 1 or math.abs(deltaY) > 1 then
-                                    mousemoverel(deltaX * 0.5, deltaY * 0.5)
-                                end
-                            end
+                            -- Pürüzsüz geçiş için Interpolation (Lerp) kullanıyoruz ki ani kamera zıplaması yapmasın
+                            camera.CFrame = camera.CFrame:Lerp(targetCF, 0.2)
                         end
                     end
                 end
