@@ -31,15 +31,15 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
 local THEME = {
-	Background = Color3.fromRGB(10, 8, 8),         -- Çok Koyu Kan Siyahı
-	Sidebar    = Color3.fromRGB(16, 12, 12),       -- Yan Menü Arka Planı
-	Card       = Color3.fromRGB(24, 18, 18),       -- Kart Arka Planı
-	Accent     = Color3.fromRGB(239, 68, 68),      -- Parlak Kan Kırmızı Vurgu
-	AccentGlow = Color3.fromRGB(248, 113, 113),    -- Neon / Parlak Açık Kırmızı
+	Background = Color3.fromRGB(12, 12, 18),       -- Çok Koyu Gece Mavisi / Siyah
+	Sidebar    = Color3.fromRGB(18, 18, 26),       -- Yan Menü Arka Planı
+	Card       = Color3.fromRGB(26, 26, 38),       -- Kart Arka Planı
+	Accent     = Color3.fromRGB(139, 92, 246),     -- Canlı Neon Mor Vurgu
+	AccentGlow = Color3.fromRGB(167, 139, 250),    -- Parlak Açık Mor / Lila
 	TextMain   = Color3.fromRGB(255, 255, 255),    -- Saf Beyaz
-	TextDark   = Color3.fromRGB(150, 135, 135),    -- Soluk Gri-Kırmızı
-	ToggleOn   = Color3.fromRGB(239, 68, 68),      -- Açık Buton (Parlak Kırmızı)
-	ToggleOff  = Color3.fromRGB(45, 30, 30)        -- Kapalı Buton (Koyu Bordo/Gri)
+	TextDark   = Color3.fromRGB(140, 140, 165),    -- Soluk Gri-Mor
+	ToggleOn   = Color3.fromRGB(139, 92, 246),     -- Açık Buton (Mor)
+	ToggleOff  = Color3.fromRGB(35, 35, 50)        -- Kapalı Buton (Koyu Lacivert/Gri)
 }
 
 
@@ -858,7 +858,7 @@ end)
 
 -- Fly (BodyVelocity Tabanlı En İyi ve Akıcı Uçuş)
 local flyActive = false
-local flySpeed = 13
+local flySpeed = 18
 local bv, bg
 local flyConnection
 
