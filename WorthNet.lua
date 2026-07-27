@@ -858,7 +858,7 @@ end)
 
 -- Fly (BodyVelocity Tabanlı En İyi ve Akıcı Uçuş)
 local flyActive = false
-local flySpeed = 18
+local flySpeed = 24
 local bv, bg
 local flyConnection
 
