@@ -856,9 +856,9 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- Fly
+-- Fly (Sabit ve Dik Duruşlu Pürüzsüz Süzülme Modu)
 local cframeFlyActive = false
-local flySpeed = 35
+local flySpeed = 24
 local flyConnection
 
 local function updateCFrameFly(state)
@@ -884,18 +884,30 @@ local function updateCFrameFly(state)
 			local camera = workspace.CurrentCamera
 			local moveDirection = Vector3.new(0, 0, 0)
 			
+			-- Tuş kontrolleri (Aşağı inme tuşu LeftShift yapıldı, dilersen LeftControl yapabilirsin)
 			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camera.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camera.CFrame.LookVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CFrame.RightVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camera.CFrame.RightVector end
 			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
-			if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
 			
 			if moveDirection.Magnitude > 0 then
 				moveDirection = moveDirection.Unit
 			end
 			
-			root.CFrame = root.CFrame + (moveDirection * flySpeed * dt)
+			-- Karakterin eğilmesini/yatmasını engellemek için sadece pozisyonu güncelliyoruz, 
+			-- rotasyonu ise kameranın sadece Y eksenine (yatay bakışına) sabitliyoruz ki dik dursun!
+			local currentPos = root.Position + (moveDirection * flySpeed * dt)
+			local camLook = camera.CFrame.LookVector
+			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+			
+			if flatLook.Magnitude > 0 then
+				root.CFrame = CFrame.new(currentPos, currentPos + flatLook)
+			else
+				root.CFrame = CFrame.new(currentPos, currentPos + root.CFrame.LookVector)
+			end
+			
 			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 		end)
@@ -910,7 +922,7 @@ local function updateCFrameFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "Fizik motorunu bypass eder, P tuşu ile açılır.", function(state)
+createModernToggle(moveTab, "Fly", "Karakteri bozmadan dik ve sabit uçurur, P tuşu ile açılır.", function(state)
 	updateCFrameFly(state)
 end)
 
@@ -919,7 +931,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		updateCFrameFly(not cframeFlyActive)
 	end
 end)
-
 -- Spin Fling System (Stabilize Edilmiş Versiyon)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
