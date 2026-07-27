@@ -1488,37 +1488,51 @@ createModernToggle(mm2Tab, "MM2 Rol ESP", "Envanterleri tarar; Knife = Katil (K�
     end
 end)
 
--- 2. TOGGLE: Mouse Crosshair Katil Lock (Elinde Gun varken fareyi katilin kafasına sabitler)
+-- 2. TOGGLE: Kesin Knife Hedefli Mouse Katil Lock
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-createModernToggle(mm2Tab, "Mm2 Katile Kitlen", "Elinde Gun varken fare imlecini katilin kafasına kilitler.", function(state)
+-- Envanterinde "Knife" olan kişiyi (Katili) kesin olarak bulan fonksiyon
+local function getRealMurderer()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local bp = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+            if bp then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+createModernToggle(mm2Tab, "MM2 Katile Kitlenme", "Elinde Gun varken fareyi envanterinde Knife olan katilin kafasına sabitler.", function(state)
     crosshairLockActive = state
     if crosshairLockActive then
         task.spawn(function()
             while crosshairLockActive do
                 RunService.RenderStepped:Wait()
                 
+                -- hasGun fonksiyonun ve katil kontrolü
                 if hasGun() then
-                    local murderer = getMurderer()
+                    local murderer = getRealMurderer()
                     if murderer and murderer.Character then
                         local mHead = murderer.Character:FindFirstChild("Head")
                         if mHead then
-                            -- Kafanın 3D pozisyonunu ekrandaki 2D piksel koordinatlarına çeviriyoruz
+                            -- Kafanın ekrandaki 2D piksel konumunu al
                             local screenPoint, onScreen = Camera:WorldToScreenPoint(mHead.Position)
                             
-                            if onScreen then
+                            if onScreen and mousemoverel then
                                 local mouse = LocalPlayer:GetMouse()
-                                -- Mevcut fare konumu ile hedef nokta arasındaki mesafeyi hesapla
                                 local currentX, currentY = mouse.X, mouse.Y
                                 local targetX, targetY = screenPoint.X, screenPoint.Y
                                 
                                 local deltaX = targetX - currentX
                                 local deltaY = targetY - currentY
                                 
-                                -- Fareyi doğrudan hedefe kaydır (Anlık veya pürüzsüz olması için delta kullanılır)
-                                if mousemoverel then
-                                    mousemoverel(deltaX, deltaY)
+                                -- Fare uçmasın, titremesin diye değeri yumuşatarak (lerp mantığıyla) gönderiyoruz
+                                if math.abs(deltaX) > 1 or math.abs(deltaY) > 1 then
+                                    mousemoverel(deltaX * 0.5, deltaY * 0.5)
                                 end
                             end
                         end
@@ -1528,7 +1542,6 @@ createModernToggle(mm2Tab, "Mm2 Katile Kitlen", "Elinde Gun varken fare imlecini
         end)
     end
 end)
-
 
 -- Infinite Jump
 createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı sağlar.", function(state)
