@@ -2239,7 +2239,7 @@ task.spawn(function()
                                     end
                                     
                                     -- Ban yememek için hızı daha güvenli ve yumuşak bir değer olan 16-18 arasına düşürdük
-                                    local speed = 10 
+                                    local speed = 13 
                                     local step = RunService.Heartbeat:Wait()
                                     
                                     local direction = (finalTarget - hrp.Position).Unit
