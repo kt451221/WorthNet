@@ -858,7 +858,7 @@ end)
 
 -- Fly (BodyVelocity & Bypass Tabanlı Pürüzsüz Uçuş)
 local flyActive = false
-local flySpeed = 18 -- Ban yememek için güvenli ve ideal hız
+local flySpeed = 13 -- Ban yememek için güvenli ve ideal hız
 local bv, bg
 local flyConnection
 
@@ -2259,7 +2259,7 @@ task.spawn(function()
                                     end
                                     
                                     -- Ban yememek için hızı daha güvenli ve yumuşak bir değer olan 16-18 arasına düşürdük
-                                    local speed = 13 
+                                    local speed = 11 
                                     local step = RunService.Heartbeat:Wait()
                                     
                                     local direction = (finalTarget - hrp.Position).Unit
