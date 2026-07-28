@@ -2778,6 +2778,43 @@ createModernToggle(globalExploitsTab, "Kick All / Server Shutdown", "Eğer oyunu
 end)
 
 
+-- WorthNet Komik El Animasyonu 
+local customAnimActive = false
+local animConnection = nil
+
+createModernToggle(mainTab, "Komik Animasyon", "Elin 31 çekme pozunda  hızlıca ileri geri hareket eder.", function(state)
+    customAnimActive = state
+    local char = player.Character
+    local rightArm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand"))
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if customAnimActive and rightArm and hrp then
+        showNotification("Animasyon", "Efsane poz aktif edildi!", true)
+        
+        local startTime = tick()
+        animConnection = RunService.RenderStepped:Connect(function()
+            if not customAnimActive or not char or not char.Parent then
+                if animConnection then animConnection:Disconnect() end
+                return
+            end
+            
+            -- Zaman akışı ve hızlı ileri-geri salınım için sinüs dalgası
+            local elapsed = tick() - startTime
+            local offsetVal = math.sin(elapsed * 25) * 0.8 -- Hız ve mesafe
+            
+            -- Fotoğraftaki gibi eller ön tarafta bükülü şekilde durup ileri geri yapıyor
+            rightArm.CFrame = hrp.CFrame * CFrame.new(0.6, 0.2, -0.8 - offsetVal) * CFrame.Angles(math.rad(45), math.rad(-25), math.rad(15))
+        end)
+    else
+        if animConnection then
+            animConnection:Disconnect()
+            animConnection = nil
+        end
+        showNotification("Animasyon", "Durduruldu.", false)
+    end
+end)
+
+
 
 
 
