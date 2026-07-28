@@ -857,9 +857,9 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- WorthNet Düzeltilmiş Mobil / PC Uyumlu Fly Scripti (Doğru Joystick Yönü)
+-- WorthNet Kesin Çözüm Fly Scripti (Joystick Yönü Sabitlendi)
 local flyActive = false
-local flySpeed = 40
+local flySpeed = 30
 local bv, bg
 local flyConnection
 
@@ -912,8 +912,8 @@ local function updateBodyVelocityFly(state)
 				camLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
 				camRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
 				
-				-- DÜZELTME: Buradaki eksi (+) yapıldı, artık joystick ne taraftaysa düzgünce oraya gider
-				local finalDir = (camLook * rawMoveDir.Z + camRight * rawMoveDir.X)
+				-- DÜZELTME: İleri/geri tersliğini gidermek için eski eksi(-) formüle geri döndük
+				local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
 				moveDirection = finalDir.Unit
 			end
 			
@@ -950,7 +950,7 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly (Düzeltilmiş Joystick)", "Joystick nereye giderse oraya uçarsın (Duvar geçirir).", function(state)
+createModernToggle(moveTab, "Fly (Mobil Kusursuz)", "Joystick nereye giderse düzgünce oraya uçarsın (Duvar geçirir).", function(state)
 	updateBodyVelocityFly(state)
 end)
 
@@ -960,6 +960,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		updateBodyVelocityFly(not flyActive)
 	end
 end)
+
 
 
 
@@ -2796,12 +2797,12 @@ createModernToggle(globalExploitsTab, "Kick All / Server Shutdown", "Eğer oyunu
 end)
 
 
--- WorthNet Komik El Animasyonu (Tek Kol - Fırlama Fix 🚀)
+-- WorthNet Komik El Animasyonu (Açı Düzeltilmiş Tek Kol Versiyonu 🚀)
 local customAnimActive = false
 local animConnection = nil
 local originalMotor = nil
 
-createModernToggle(mainTab, "Komik El Animasyonu", "Tek kol salınım modu aktif!", function(state)
+createModernToggle(mainTab, "Komik El Animasyonu", "Efsane meme pozu aktif!", function(state)
     customAnimActive = state
     local char = player.Character
     local rightArm = char and char:FindFirstChild("Right Arm")
@@ -2809,9 +2810,8 @@ createModernToggle(mainTab, "Komik El Animasyonu", "Tek kol salınım modu aktif
     local rightShoulder = torso and torso:FindFirstChild("Right Shoulder")
     
     if customAnimActive and rightArm and torso and rightShoulder then
-        showNotification("Animasyon", "Mod aktif edildi! 🦾", true)
+        showNotification("Animasyon", "Efsane poz aktif! 😎", true)
         
-        -- Motor bağlantısını kesip kontrolü ele alıyoruz
         originalMotor = rightShoulder.Part1
         rightShoulder.Part1 = nil
         rightArm.CanCollide = false
@@ -2826,16 +2826,16 @@ createModernToggle(mainTab, "Komik El Animasyonu", "Tek kol salınım modu aktif
             end
             
             local elapsed = tick() - startTime
-            -- Hızlı ileri geri hareket mesafesini azalttık ki karakterin dengesi bozulup fırlamasın
-            local offsetVal = math.sin(elapsed * 35) * 0.4
+            -- Salınım mesafesi
+            local offsetVal = math.sin(elapsed * 35) * 0.35
             
-            -- HRP yerine Torso bazlı konumlandırarak karakterin uçmasını engelliyoruz
-            rightArm.CFrame = torso.CFrame * CFrame.new(1.0, 0.5, -0.4 - offsetVal) * CFrame.Angles(math.rad(90), 0, 0)
+            -- DÜZELTME: Kolun yukarı dikilmesini önleyen, öne ve hafif içe bakan doğru meme açıları
+            rightArm.CFrame = torso.CFrame * CFrame.new(1.0, 0.2, -0.3 - offsetVal) * CFrame.Angles(math.rad(15), math.rad(-10), math.rad(-80))
         end)
     else
         if animConnection then
             animConnection:Disconnect()
-            animConnection = nil
+            animConnection:nil
         end
         
         if rightShoulder and originalMotor then rightShoulder.Part1 = originalMotor end
@@ -2844,6 +2844,7 @@ createModernToggle(mainTab, "Komik El Animasyonu", "Tek kol salınım modu aktif
         showNotification("Animasyon", "Durduruldu.", false)
     end
 end)
+
 
 
 
