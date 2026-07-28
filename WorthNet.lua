@@ -857,9 +857,9 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- WorthNet Gelişmiş Mobil / PC Uyumlu Fly Scripti (Yatay Kamera & Joystick Odaklı)
+-- WorthNet Düzeltilmiş Mobil / PC Uyumlu Fly Scripti (Doğru Joystick Yönü)
 local flyActive = false
-local flySpeed = 30
+local flySpeed = 40
 local bv, bg
 local flyConnection
 
@@ -905,20 +905,19 @@ local function updateBodyVelocityFly(state)
 			if rawMoveDir.Magnitude > 0 then
 				local camCFrame = camera.CFrame
 				
-				-- Kameranın sadece YATAY (sağ/sol) yönlerini alıyoruz (Dikey eğimleri siliyoruz)
+				-- Kameranın sadece YATAY (sağ/sol) yönlerini alıyoruz
 				local camLook = camCFrame.LookVector
 				local camRight = camCFrame.RightVector
 				
 				camLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
 				camRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
 				
-				-- Joystick nereye itiliyorsa yatay düzlemde oraya yönlendirir
-				local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
+				-- DÜZELTME: Buradaki eksi (+) yapıldı, artık joystick ne taraftaysa düzgünce oraya gider
+				local finalDir = (camLook * rawMoveDir.Z + camRight * rawMoveDir.X)
 				moveDirection = finalDir.Unit
 			end
 			
-			-- Yükselmek veya alçalmak için zıplama/eğilme tuşlarını kullanabiliriz
-			-- Veya joystick ile tamamen yatay düzlemde kayarsın
+			-- Zıplama tuşuna basınca yukarı süzülür
 			if hum.Jump then
 				moveDirection = moveDirection + Vector3.new(0, 1, 0)
 			end
@@ -951,7 +950,7 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "Joystick nereye giderse kamera yatayına göre oraya uçarsın (Duvar geçirir).", function(state)
+createModernToggle(moveTab, "Fly (Düzeltilmiş Joystick)", "Joystick nereye giderse oraya uçarsın (Duvar geçirir).", function(state)
 	updateBodyVelocityFly(state)
 end)
 
@@ -961,6 +960,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		updateBodyVelocityFly(not flyActive)
 	end
 end)
+
 
 
 
@@ -2796,56 +2796,54 @@ createModernToggle(globalExploitsTab, "Kick All / Server Shutdown", "Eğer oyunu
 end)
 
 
--- WorthNet Komik El Animasyonu (Fırlama Sorunu Düzeltildi 🚀)
+-- WorthNet Komik El Animasyonu (Tek Kol - Fırlama Fix 🚀)
 local customAnimActive = false
 local animConnection = nil
 local originalMotor = nil
 
-createModernToggle(mainTab, "Komik El Animasyonu", "Efsane pozda hızlıca ileri geri hareket eder.", function(state)
+createModernToggle(mainTab, "Komik El Animasyonu", "Tek kol salınım modu aktif!", function(state)
     customAnimActive = state
     local char = player.Character
-    local rightArm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand"))
-    local rightShoulder = char and char:FindFirstChild("Torso") and char.Torso:FindFirstChild("Right Shoulder") 
-                          or (char:FindFirstChild("UpperTorso") and char.UpperTorso:FindFirstChild("RightShoulder"))
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local rightArm = char and char:FindFirstChild("Right Arm")
+    local torso = char and char:FindFirstChild("Torso")
+    local rightShoulder = torso and torso:FindFirstChild("Right Shoulder")
     
-    if customAnimActive and rightArm and hrp then
-        showNotification("Animasyon", "Efsane poz aktif edildi! 😂", true)
+    if customAnimActive and rightArm and torso and rightShoulder then
+        showNotification("Animasyon", "Mod aktif edildi! 🦾", true)
         
-        -- Karakterin kendi kol animasyonunun kafayı yememesi için motoru geçici devre dışı bırakıyoruz
-        if rightShoulder then
-            originalMotor = rightShoulder.Part1
-            rightShoulder.Part1 = nil
-        end
+        -- Motor bağlantısını kesip kontrolü ele alıyoruz
+        originalMotor = rightShoulder.Part1
+        rightShoulder.Part1 = nil
+        rightArm.CanCollide = false
         
         local startTime = tick()
         animConnection = RunService.RenderStepped:Connect(function()
             if not customAnimActive or not char or not char.Parent then
                 if animConnection then animConnection:Disconnect() end
                 if rightShoulder and originalMotor then rightShoulder.Part1 = originalMotor end
+                if rightArm then rightArm.CanCollide = true end
                 return
             end
             
-            -- Hızlı ileri-geri salınım için sinüs dalgası
             local elapsed = tick() - startTime
-            local offsetVal = math.sin(elapsed * 25) * 0.6
+            -- Hızlı ileri geri hareket mesafesini azalttık ki karakterin dengesi bozulup fırlamasın
+            local offsetVal = math.sin(elapsed * 35) * 0.4
             
-            -- Kolu fırlatmadan, HRP'ye göre lokal sabit pozisyonda tutup sallıyoruz
-            rightArm.CFrame = hrp.CFrame * CFrame.new(1.0, 0.2, -0.6 - offsetVal) * CFrame.Angles(math.rad(45), math.rad(-15), math.rad(10))
+            -- HRP yerine Torso bazlı konumlandırarak karakterin uçmasını engelliyoruz
+            rightArm.CFrame = torso.CFrame * CFrame.new(1.0, 0.5, -0.4 - offsetVal) * CFrame.Angles(math.rad(90), 0, 0)
         end)
     else
         if animConnection then
             animConnection:Disconnect()
             animConnection = nil
         end
-        -- Normal duruma geri döndür
-        if rightShoulder and originalMotor then
-            rightShoulder.Part1 = originalMotor
-        end
+        
+        if rightShoulder and originalMotor then rightShoulder.Part1 = originalMotor end
+        if rightArm then rightArm.CanCollide = true end
+        
         showNotification("Animasyon", "Durduruldu.", false)
     end
 end)
-
 
 
 
