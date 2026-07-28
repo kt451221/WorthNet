@@ -31,16 +31,17 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
 local THEME = {
-	Background = Color3.fromRGB(12, 12, 18),       -- Çok Koyu Gece Mavisi / Siyah
-	Sidebar    = Color3.fromRGB(18, 18, 26),       -- Yan Menü Arka Planı
-	Card       = Color3.fromRGB(26, 26, 38),       -- Kart Arka Planı
-	Accent     = Color3.fromRGB(139, 92, 246),     -- Canlı Neon Mor Vurgu
-	AccentGlow = Color3.fromRGB(167, 139, 250),    -- Parlak Açık Mor / Lila
+	Background = Color3.fromRGB(15, 15, 18),       -- Derin Saf Siyah / Koyu Gri
+	Sidebar    = Color3.fromRGB(22, 22, 28),       -- Yan Menü Arka Planı
+	Card       = Color3.fromRGB(30, 30, 38),       -- Kart Arka Planı
+	Accent     = Color3.fromRGB(0, 242, 254),      -- Canlı Neon Cyan / Turkuaz
+	AccentGlow = Color3.fromRGB(79, 236, 255),    -- Parlak Açık Cyan
 	TextMain   = Color3.fromRGB(255, 255, 255),    -- Saf Beyaz
-	TextDark   = Color3.fromRGB(140, 140, 165),    -- Soluk Gri-Mor
-	ToggleOn   = Color3.fromRGB(139, 92, 246),     -- Açık Buton (Mor)
-	ToggleOff  = Color3.fromRGB(35, 35, 50)        -- Kapalı Buton (Koyu Lacivert/Gri)
+	TextDark   = Color3.fromRGB(150, 150, 170),    -- Soluk Gri
+	ToggleOn   = Color3.fromRGB(0, 242, 254),      -- Açık Buton (Cyan)
+	ToggleOff  = Color3.fromRGB(45, 45, 55)        -- Kapalı Buton (Koyu Gri)
 }
+
 
 
 local function roundCorners(obj, radius)
@@ -175,7 +176,7 @@ logoStroke.Parent = minLogo
 -- ANA FRAME (HUB FRAME)
 ---------------------------------------------------------
 local hubFrame = Instance.new("Frame")
-hubFrame.Size = UDim2.new(0, 600, 0, 380)
+hubFrame.Size = UDim2.new(0, 500, 0, 320)
 hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
 hubFrame.BorderSizePixel = 0
@@ -968,6 +969,199 @@ createModernToggle(mainTab, "Haritayı Kaydet (Map Dump)", "Workspace içindeki 
         end)
     end
 end)
+
+-- Fling Menüsü (Hareket Tahmini / Prediction Eklenmiş Hali)
+local flingPlayerListGui = nil
+local flingScrollingRef = nil
+local flingPlayerConns = {}
+local activeFlingConnection = nil
+local currentlyFlingingTarget = nil
+
+local function createFlingPlayerListWindow()
+	if flingPlayerListGui then
+		flingPlayerListGui.Enabled = true
+		return
+	end
+
+	flingPlayerListGui = Instance.new("ScreenGui")
+	flingPlayerListGui.Name = "WorthNetFlingPlayerListMenu"
+	
+	local success = pcall(function()
+		flingPlayerListGui.Parent = game:GetService("CoreGui")
+	end)
+	if not success then
+		flingPlayerListGui.Parent = player.PlayerGui
+	end
+
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 240, 0, 320)
+	mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+	mainFrame.BackgroundColor3 = THEME.Sidebar
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = flingPlayerListGui
+	roundCorners(mainFrame, 10)
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0, 40)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "WorthNet Fling Menüsü"
+	titleLabel.TextColor3 = THEME.Accent
+	titleLabel.TextSize = 12
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.Parent = mainFrame
+
+	local scrollingFrame = Instance.new("ScrollingFrame")
+	scrollingFrame.Size = UDim2.new(1, -16, 1, -50)
+	scrollingFrame.Position = UDim2.new(0, 8, 0, 42)
+	scrollingFrame.BackgroundTransparency = 1
+	scrollingFrame.BorderSizePixel = 0
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scrollingFrame.ScrollBarThickness = 3
+	scrollingFrame.ScrollBarImageColor3 = THEME.Accent
+	scrollingFrame.Parent = mainFrame
+	flingScrollingRef = scrollingFrame
+
+	local uiListLayout = Instance.new("UIListLayout")
+	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	uiListLayout.Padding = UDim.new(0, 6)
+	uiListLayout.Parent = scrollingFrame
+
+	local function refreshFlingList()
+		if not flingScrollingRef then return end
+		
+		for _, child in ipairs(flingScrollingRef:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		for _, targetPlayer in ipairs(Players:GetPlayers()) do
+			if targetPlayer ~= player then
+				local itemRow = Instance.new("Frame")
+				itemRow.Size = UDim2.new(1, 0, 0, 32)
+				itemRow.BackgroundColor3 = THEME.Card
+				itemRow.BorderSizePixel = 0
+				itemRow.Parent = flingScrollingRef
+				roundCorners(itemRow, 6)
+
+				local nameLabel = Instance.new("TextLabel")
+				nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
+				nameLabel.Position = UDim2.new(0, 8, 0, 0)
+				nameLabel.BackgroundTransparency = 1
+				nameLabel.Text = targetPlayer.Name
+				nameLabel.TextColor3 = THEME.TextMain
+				nameLabel.TextSize = 11
+				nameLabel.Font = Enum.Font.GothamMedium
+				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+				nameLabel.Parent = itemRow
+
+				local flingButton = Instance.new("TextButton")
+				flingButton.Size = UDim2.new(0.38, 0, 0.75, 0)
+				flingButton.Position = UDim2.new(0.60, 0, 0.125, 0)
+				flingButton.BackgroundColor3 = (currentlyFlingingTarget == targetPlayer) and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+				flingButton.BorderSizePixel = 0
+				flingButton.Text = (currentlyFlingingTarget == targetPlayer) and "Durdur" or "Fling"
+				flingButton.TextColor3 = THEME.TextMain
+				flingButton.TextSize = 11
+				flingButton.Font = Enum.Font.GothamBold
+				flingButton.Parent = itemRow
+				roundCorners(flingButton, 5)
+
+				flingButton.MouseButton1Click:Connect(function()
+					if currentlyFlingingTarget == targetPlayer then
+						if activeFlingConnection then
+							activeFlingConnection:Disconnect()
+							activeFlingConnection = nil
+						end
+						currentlyFlingingTarget = nil
+						
+						local char = player.Character
+						local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+						if rootPart then
+							rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+							rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+						end
+						
+						showNotification("Fling", targetPlayer.Name .. " serbest bırakıldı.", false)
+						refreshFlingList()
+					else
+						if activeFlingConnection then
+							activeFlingConnection:Disconnect()
+							activeFlingConnection = nil
+						end
+
+						currentlyFlingingTarget = targetPlayer
+						showNotification("Fling", targetPlayer.Name .. " hedeflendi ve fırlatılıyor!", true)
+						refreshFlingList()
+
+						-- HAREKET EDENLERİ YAKALAYAN PREDICTION MANTIĞI
+						activeFlingConnection = RunService.Heartbeat:Connect(function()
+							local character = player.Character
+							local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+							
+							if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and rootPart then
+								local targetRoot = targetPlayer.Character.HumanoidRootPart
+								local moveVelocity = targetRoot.AssemblyLinearVelocity
+								
+								-- Hedefin kaçtığı yöne doğru konum tahmini yaparak yapışır
+								rootPart.CFrame = targetRoot.CFrame + (moveVelocity * 0.05)
+								rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+								rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+							else
+								if activeFlingConnection then
+									activeFlingConnection:Disconnect()
+									activeFlingConnection = nil
+								end
+								currentlyFlingingTarget = nil
+								if rootPart then
+									rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+									rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+								end
+								refreshFlingList()
+							end
+						end)
+					end
+				end)
+			end
+		end
+	end
+
+	refreshFlingList()
+
+	table.insert(flingPlayerConns, Players.PlayerAdded:Connect(refreshFlingList))
+	table.insert(flingPlayerConns, Players.PlayerRemoving:Connect(refreshFlingList))
+end
+
+local function hideFlingPlayerListWindow()
+	if flingPlayerListGui then
+		flingPlayerListGui.Enabled = false
+	end
+	
+	if activeFlingConnection then
+		activeFlingConnection:Disconnect()
+		activeFlingConnection = nil
+	end
+	currentlyFlingingTarget = nil
+	
+	local char = player.Character
+	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+	if rootPart then
+		rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	end
+end
+
+createModernToggle(mainTab, "Fling Menüsü 2", "Oyuncu listesini açar, seçtiğini fırlatır.", function(state)
+	if state then
+		createFlingPlayerListWindow()
+	else
+		hideFlingPlayerListWindow()
+	end
+end)
+
 
 -- Fling Menüsü
 local flingPlayerListGui = nil
