@@ -1,0 +1,273 @@
+---------------------------------------------------------
+-- SWOXTECH v5.0 - ULTIMATE DOMINATION & ANTI-TROLL SYSTEM
+---------------------------------------------------------
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Eski SwoxTech arayüzü varsa temizle
+pcall(function()
+	if CoreGui:FindFirstChild("SwoxTechUI") then
+		CoreGui.SwoxTechUI:Destroy()
+	end
+end)
+
+---------------------------------------------------------
+-- ANA EKRAN VE UI YAPISI
+---------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SwoxTechUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 450, 0, 350)
+MainFrame.Visible = true
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 170, 255)
+UIStroke.Thickness = 2
+UIStroke.Parent = MainFrame
+
+-- Üst Başlık (Topbar)
+local TopBar = Instance.new("Frame")
+TopBar.Parent = MainFrame
+TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 10)
+TopCorner.Parent = TopBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = TopBar
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.Size = UDim2.new(0, 200, 1, 0)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "SwoxTech v5.0 [Dominasyon]"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Bildirim Sistemi
+local function showNotification(title, text, isSuccess)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = title,
+			Text = text,
+			Duration = 3
+		})
+	end)
+end
+
+-- İçerik Konteyneri (ScrollingFrame)
+local Container = Instance.new("ScrollingFrame")
+Container.Parent = MainFrame
+Container.BackgroundTransparency = 1
+Container.Position = UDim2.new(0, 10, 0, 55)
+Container.Size = UDim2.new(1, -20, 1, -65)
+Container.CanvasSize = UDim2.new(0, 0, 0, 600)
+Container.ScrollBarThickness = 4
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = Container
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
+
+-- Modern Toggle Oluşturucu Fonksiyon
+local function createModernToggle(parent, titleText, descText, callback)
+	local ToggleFrame = Instance.new("Frame")
+	ToggleFrame.Parent = parent
+	ToggleFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+	ToggleFrame.Size = UDim2.new(1, 0, 0, 50)
+	
+	local TCorner = Instance.new("UICorner")
+	TCorner.CornerRadius = UDim.new(0, 8)
+	TCorner.Parent = ToggleFrame
+	
+	local Title = Instance.new("TextLabel")
+	Title.Parent = ToggleFrame
+	Title.BackgroundTransparency = 1
+	Title.Position = UDim2.new(0, 12, 0, 6)
+	Title.Size = UDim2.new(0, 300, 0, 20)
+	Title.Font = Enum.Font.GothamBold
+	Title.Text = titleText
+	Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+	Title.TextSize = 14
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	
+	local Desc = Instance.new("TextLabel")
+	Desc.Parent = ToggleFrame
+	Desc.BackgroundTransparency = 1
+	Desc.Position = UDim2.new(0, 12, 0, 26)
+	Desc.Size = UDim2.new(0, 300, 0, 18)
+	Desc.Font = Enum.Font.Gotham
+	Desc.Text = descText
+	Desc.TextColor3 = Color3.fromRGB(150, 150, 160)
+	Desc.TextSize = 11
+	Desc.TextXAlignment = Enum.TextXAlignment.Left
+	
+	local ToggleBtn = Instance.new("TextButton")
+	ToggleBtn.Parent = ToggleFrame
+	ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+	ToggleBtn.Position = UDim2.new(1, -55, 0.5, -12)
+	ToggleBtn.Size = UDim2.new(0, 45, 0, 24)
+	ToggleBtn.Text = ""
+	
+	local BCorner = Instance.new("UICorner")
+	BCorner.CornerRadius = UDim.new(1, 0)
+	BCorner.Parent = ToggleBtn
+	
+	local Circle = Instance.new("Frame")
+	Circle.Parent = ToggleBtn
+	Circle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+	Circle.Position = UDim2.new(0, 3, 0.5, -9)
+	Circle.Size = UDim2.new(0, 18, 0, 18)
+	
+	local CCircle = Instance.new("UICorner")
+	CCircle.CornerRadius = UDim.new(1, 0)
+	CCircle.Parent = Circle
+	
+	local toggled = false
+	ToggleBtn.MouseButton1Click:Connect(function()
+		toggled = not toggled
+		local goalCirclePos = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+		local goalBtnColor = toggled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(40, 40, 55)
+		
+		TweenService:Create(Circle, TweenInfo.new(0.2), {Position = goalCirclePos}):Play()
+		TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = goalBtnColor}):Play()
+		
+		pcall(function()
+			callback(toggled)
+		end)
+	end)
+end
+
+---------------------------------------------------------
+-- ÖZELLİK MOTORLARI VE MANTIKLARI
+---------------------------------------------------------
+
+-- 1. Absolute Server Anchor (Anti-Fling)
+local anchorEnabled = false
+RunService.Stepped:Connect(function()
+	if not anchorEnabled then return end
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		local hrp = char.HumanoidRootPart
+		if hrp.AssemblyLinearVelocity.Magnitude > 300 then
+			hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+	end
+end)
+
+createModernToggle(Container, "Absolute Anti-Fling", "Seni fırlatmaya çalışanları kendi tuzağına düşürür.", function(state)
+	anchorEnabled = state
+	showNotification("SwoxTech", "Anti-Fling Durumu: " .. tostring(state), true)
+end)
+
+-- 2. Global Aura Expander (Fizik Kalkanı - Herkeste Görünür)
+local auraEnabled = false
+RunService.Heartbeat:Connect(function()
+	if not auraEnabled then return end
+	local myChar = LocalPlayer.Character
+	if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
+	
+	local myHrp = myChar.HumanoidRootPart
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local targetHrp = p.Character.HumanoidRootPart
+			local dist = (myHrp.Position - targetHrp.Position).Magnitude
+			if dist < 18 then
+				pcall(function()
+					targetHrp.AssemblyLinearVelocity = (targetHrp.Position - myHrp.Position).Unit * 450 + Vector3.new(0, 160, 0)
+				end)
+			end
+		end
+	end
+end)
+
+createModernToggle(Container, "Aura Shield (Fizik Kalkanı)", "Yakınına gelen herkesi herkesin gözü önünde fırlatır.", function(state)
+	auraEnabled = state
+	showNotification("SwoxTech", "Aura Kalkanı: " .. tostring(state), true)
+end)
+
+-- 3. Orbit Locked Pressure (Yörüngeye Alma ve Baskı)
+local orbitActive = false
+local currentTarget = nil
+local orbitAngle = 0
+
+RunService.RenderStepped:Connect(function()
+	if not orbitActive or not currentTarget then return end
+	local targetChar = currentTarget.Character
+	local myChar = LocalPlayer.Character
+	
+	if targetChar and targetChar:FindFirstChild("HumanoidRootPart") and myChar and myChar:FindFirstChild("HumanoidRootPart") then
+		local targetHrp = targetChar.HumanoidRootPart
+		local myHrp = myChar.HumanoidRootPart
+		
+		orbitAngle = orbitAngle + 0.2
+		local radius = 6
+		local offsetX = math.cos(orbitAngle) * radius
+		local offsetZ = math.sin(orbitAngle) * radius
+		
+		myHrp.CFrame = CFrame.new(targetHrp.Position + Vector3.new(offsetX, 2, offsetZ), targetHrp.Position)
+		myHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	end
+end)
+
+-- Otomatik Hileci Avcısı / Hedef Bulucu
+RunService.Heartbeat:Connect(function()
+	if not orbitActive then return end
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = player.Character.HumanoidRootPart
+			if hrp.AssemblyLinearVelocity.Magnitude > 120 then
+				currentTarget = player
+				break
+			end
+		end
+	end
+end)
+
+createModernToggle(Container, "Orbit Hunter (Yörünge Baskısı)", "Sana bulaşan hilecinin etrafında dönüp aim'ini bozar.", function(state)
+	orbitActive = state
+	if state then
+		currentTarget = Players:GetPlayers()[2] -- Varsayılan ilk oyuncu
+	else
+		currentTarget = nil
+	end
+	showNotification("SwoxTech", "Orbit Baskı: " .. tostring(state), true)
+end)
+
+-- 4. Mass Exploit (Ağırlık ve Çarpışma Baskısı)
+createModernToggle(Container, "Mass & Gravity Exploit", "Kütleni artırarak çarpanların ağır hasar almasını sağlar.", function(state)
+	pcall(function()
+		local char = LocalPlayer.Character
+		if char then
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CustomPhysicalProperties = state and PhysicalProperties.new(100, 0.3, 0, 100, 100) or nil
+				end
+			end
+		end
+	end)
+	showNotification("SwoxTech", "Kütle Baskısı: " .. tostring(state), true)
+end)
+
+showNotification("SwoxTech v5.0", "Sistem hatasız olarak yüklendi! İyi eğlenceler.", true)
