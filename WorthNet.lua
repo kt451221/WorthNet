@@ -857,9 +857,9 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- WorthNet Gelişmiş Mobil / PC Uyumlu Fly Scripti (Kamera Odaklı)
+-- WorthNet Gelişmiş Mobil / PC Uyumlu Fly Scripti (Yatay Kamera & Joystick Odaklı)
 local flyActive = false
-local flySpeed = 35
+local flySpeed = 30
 local bv, bg
 local flyConnection
 
@@ -905,25 +905,37 @@ local function updateBodyVelocityFly(state)
 			if rawMoveDir.Magnitude > 0 then
 				local camCFrame = camera.CFrame
 				
-				-- Kameranın tam LookVector (baktığı yön) ve RightVector (sağ tarafı) değerleri
-				-- Bu sayede kamerayı yukarı dikip joystick'i ileri ittiğinde direkt gökyüzüne uçarsın
+				-- Kameranın sadece YATAY (sağ/sol) yönlerini alıyoruz (Dikey eğimleri siliyoruz)
 				local camLook = camCFrame.LookVector
 				local camRight = camCFrame.RightVector
 				
-				-- Girdiyi kamera açısıyla harmanlıyoruz
+				camLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+				camRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
+				
+				-- Joystick nereye itiliyorsa yatay düzlemde oraya yönlendirir
 				local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
 				moveDirection = finalDir.Unit
+			end
+			
+			-- Yükselmek veya alçalmak için zıplama/eğilme tuşlarını kullanabiliriz
+			-- Veya joystick ile tamamen yatay düzlemde kayarsın
+			if hum.Jump then
+				moveDirection = moveDirection + Vector3.new(0, 1, 0)
 			end
 			
 			if moveDirection.Magnitude > 0 then
 				bv.Velocity = moveDirection * flySpeed
 			else
-				-- Hiçbir şeye dokunulmadığı an havada zımba gibi sabit kalır
+				-- Hiçbir şeye dokunulmadığı an havada sabit kalır
 				bv.Velocity = Vector3.new(0, 0, 0)
 			end
 			
-			-- Uçarken karakterin kameranın baktığı yöne doğru dik bakmasını sağlar
-			bg.CFrame = camera.CFrame
+			-- Karakterin dik durmasını ve kameranın yatay açısına bakmasını sağlar
+			local camLook = camera.CFrame.LookVector
+			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+			if flatLook.Magnitude > 0 then
+				bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), flatLook)
+			end
 		end)
 	else
 		if flyConnection then flyConnection:Disconnect() end
@@ -939,16 +951,17 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly (Kamera Yönlü)", "Kamerayı nereye çevirirsen joystick ile oraya uçarsın (Duvar geçirir).", function(state)
+createModernToggle(moveTab, "Fly", "Joystick nereye giderse kamera yatayına göre oraya uçarsın (Duvar geçirir).", function(state)
 	updateBodyVelocityFly(state)
 end)
 
--- PC kullanıcıları için P tuşu kısayolu (Mobilde hata yaratmaz)
+-- PC kullanıcıları için P tuşu kısayolu
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
 		updateBodyVelocityFly(not flyActive)
 	end
 end)
+
 
 
 -- Workspace / Harita Kopyalama (Map Dumper)
