@@ -812,7 +812,7 @@ createModernToggle(moveTab, "SpeedHack", "Karakterinizin yürüme hızını beli
     end
 end)
 
-createModernSlider(moveTab, "Hız Seviyesi", "SpeedHack aktifken uygulanacak yürüme hızı.", 16, 300, 75, function(value)
+createModernSlider(moveTab, "Hız Seviyesi", "SpeedHack aktifken uygulanacak yürüme hızı.", 1, 300, 75, function(value)
     targetSpeedValue = value
     if speedHackActive then
         applySpeed(player.Character, targetSpeedValue)
@@ -857,9 +857,9 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- Fly (BodyVelocity Tabanlı, Duvar Geçmeli ve Dik Duruşlu Uçuş)
+-- WorthNet Gelişmiş Mobil / PC Uyumlu Fly Scripti (Kamera Odaklı)
 local flyActive = false
-local flySpeed = 20 -- Ban yememek için güvenli hız
+local flySpeed = 35
 local bv, bg
 local flyConnection
 
@@ -872,7 +872,7 @@ local function updateBodyVelocityFly(state)
 	if flyActive and root and hum then
 		hum.PlatformStand = true
 		
-		-- BodyVelocity ve BodyGyro oluşturuyoruz
+		-- Fizik nesnelerini oluşturuyoruz
 		bv = Instance.new("BodyVelocity")
 		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 		bv.Velocity = Vector3.new(0, 0, 0)
@@ -880,7 +880,7 @@ local function updateBodyVelocityFly(state)
 
 		bg = Instance.new("BodyGyro")
 		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-		bg.P = 20000 -- Güçlü rotasyon ile karakterin yamulmasını engeller
+		bg.P = 20000
 		bg.Parent = root
 
 		flyConnection = RunService.RenderStepped:Connect(function()
@@ -889,7 +889,7 @@ local function updateBodyVelocityFly(state)
 				return
 			end
 			
-			-- Duvarlardan geçebilmek için döngü içinde CanCollide'ı sürekli false yapıyoruz (Noclip Bypass)
+			-- Duvarlardan geçebilmek için Noclip aktif tutulur
 			for _, part in ipairs(char:GetDescendants()) do
 				if part:IsA("BasePart") then
 					part.CanCollide = false
@@ -899,28 +899,31 @@ local function updateBodyVelocityFly(state)
 			local camera = workspace.CurrentCamera
 			local moveDirection = Vector3.new(0, 0, 0)
 			
-			-- Tuş kontrolleri
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + camera.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - camera.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - camera.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection + camera.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection = moveDirection + Vector3.new(0, 1, 0) end
-			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection = moveDirection - Vector3.new(0, 1, 0) end
+			-- Joystick veya Tuş girdilerini alıyoruz
+			local rawMoveDir = hum.MoveDirection
+			
+			if rawMoveDir.Magnitude > 0 then
+				local camCFrame = camera.CFrame
+				
+				-- Kameranın tam LookVector (baktığı yön) ve RightVector (sağ tarafı) değerleri
+				-- Bu sayede kamerayı yukarı dikip joystick'i ileri ittiğinde direkt gökyüzüne uçarsın
+				local camLook = camCFrame.LookVector
+				local camRight = camCFrame.RightVector
+				
+				-- Girdiyi kamera açısıyla harmanlıyoruz
+				local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
+				moveDirection = finalDir.Unit
+			end
 			
 			if moveDirection.Magnitude > 0 then
-				bv.Velocity = moveDirection.Unit * flySpeed
+				bv.Velocity = moveDirection * flySpeed
 			else
-				-- Tuşları bıraktığın an havada taş gibi çivilenir
+				-- Hiçbir şeye dokunulmadığı an havada zımba gibi sabit kalır
 				bv.Velocity = Vector3.new(0, 0, 0)
 			end
 			
-			-- Kameranın yukarı/aşağı bakış açısını sıfırlayıp (sadece yatay alarak) karakterin 
-			-- fotoğraftaki gibi hep dik ve sabit durmasını sağlıyoruz
-			local camLook = camera.CFrame.LookVector
-			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
-			if flatLook.Magnitude > 0 then
-				bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), flatLook)
-			end
+			-- Uçarken karakterin kameranın baktığı yöne doğru dik bakmasını sağlar
+			bg.CFrame = camera.CFrame
 		end)
 	else
 		if flyConnection then flyConnection:Disconnect() end
@@ -936,15 +939,17 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly", "Duvarlardan geçirir ve dik tutar, P tuşu ile açılır.", function(state)
+createModernToggle(moveTab, "Fly (Kamera Yönlü)", "Kamerayı nereye çevirirsen joystick ile oraya uçarsın (Duvar geçirir).", function(state)
 	updateBodyVelocityFly(state)
 end)
 
+-- PC kullanıcıları için P tuşu kısayolu (Mobilde hata yaratmaz)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
 		updateBodyVelocityFly(not flyActive)
 	end
 end)
+
 
 -- Workspace / Harita Kopyalama (Map Dumper)
 createModernToggle(mainTab, "Haritayı Kaydet (Map Dump)", "Workspace içindeki her şeyi ve haritayı dosyaya kaydeder.", function(state)
@@ -2778,41 +2783,56 @@ createModernToggle(globalExploitsTab, "Kick All / Server Shutdown", "Eğer oyunu
 end)
 
 
--- WorthNet Komik El Animasyonu 
+-- WorthNet Komik El Animasyonu (Fırlama Sorunu Düzeltildi 🚀)
 local customAnimActive = false
 local animConnection = nil
+local originalMotor = nil
 
-createModernToggle(mainTab, "Komik Animasyon", "Elin 31 çekme pozunda  hızlıca ileri geri hareket eder.", function(state)
+createModernToggle(mainTab, "Komik El Animasyonu", "Efsane pozda hızlıca ileri geri hareket eder.", function(state)
     customAnimActive = state
     local char = player.Character
     local rightArm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand"))
+    local rightShoulder = char and char:FindFirstChild("Torso") and char.Torso:FindFirstChild("Right Shoulder") 
+                          or (char:FindFirstChild("UpperTorso") and char.UpperTorso:FindFirstChild("RightShoulder"))
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
     if customAnimActive and rightArm and hrp then
-        showNotification("Animasyon", "Efsane poz aktif edildi!", true)
+        showNotification("Animasyon", "Efsane poz aktif edildi! 😂", true)
+        
+        -- Karakterin kendi kol animasyonunun kafayı yememesi için motoru geçici devre dışı bırakıyoruz
+        if rightShoulder then
+            originalMotor = rightShoulder.Part1
+            rightShoulder.Part1 = nil
+        end
         
         local startTime = tick()
         animConnection = RunService.RenderStepped:Connect(function()
             if not customAnimActive or not char or not char.Parent then
                 if animConnection then animConnection:Disconnect() end
+                if rightShoulder and originalMotor then rightShoulder.Part1 = originalMotor end
                 return
             end
             
-            -- Zaman akışı ve hızlı ileri-geri salınım için sinüs dalgası
+            -- Hızlı ileri-geri salınım için sinüs dalgası
             local elapsed = tick() - startTime
-            local offsetVal = math.sin(elapsed * 25) * 0.8 -- Hız ve mesafe
+            local offsetVal = math.sin(elapsed * 25) * 0.6
             
-            -- Fotoğraftaki gibi eller ön tarafta bükülü şekilde durup ileri geri yapıyor
-            rightArm.CFrame = hrp.CFrame * CFrame.new(0.6, 0.2, -0.8 - offsetVal) * CFrame.Angles(math.rad(45), math.rad(-25), math.rad(15))
+            -- Kolu fırlatmadan, HRP'ye göre lokal sabit pozisyonda tutup sallıyoruz
+            rightArm.CFrame = hrp.CFrame * CFrame.new(1.0, 0.2, -0.6 - offsetVal) * CFrame.Angles(math.rad(45), math.rad(-15), math.rad(10))
         end)
     else
         if animConnection then
             animConnection:Disconnect()
             animConnection = nil
         end
+        -- Normal duruma geri döndür
+        if rightShoulder and originalMotor then
+            rightShoulder.Part1 = originalMotor
+        end
         showNotification("Animasyon", "Durduruldu.", false)
     end
 end)
+
 
 
 
