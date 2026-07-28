@@ -2797,58 +2797,6 @@ createModernToggle(globalExploitsTab, "Kick All / Server Shutdown", "Eğer oyunu
 end)
 
 
--- WorthNet Komik El Animasyonu (Açı Düzeltilmiş Tek Kol Versiyonu 🚀)
-local customAnimActive = false
-local animConnection = nil
-local originalMotor = nil
-
-createModernToggle(mainTab, "Komik El Animasyonu", "Efsane meme pozu aktif!", function(state)
-    customAnimActive = state
-    local char = player.Character
-    local rightArm = char and char:FindFirstChild("Right Arm")
-    local torso = char and char:FindFirstChild("Torso")
-    local rightShoulder = torso and torso:FindFirstChild("Right Shoulder")
-    
-    if customAnimActive and rightArm and torso and rightShoulder then
-        showNotification("Animasyon", "Efsane poz aktif! 😎", true)
-        
-        originalMotor = rightShoulder.Part1
-        rightShoulder.Part1 = nil
-        rightArm.CanCollide = false
-        
-        local startTime = tick()
-        animConnection = RunService.RenderStepped:Connect(function()
-            if not customAnimActive or not char or not char.Parent then
-                if animConnection then animConnection:Disconnect() end
-                if rightShoulder and originalMotor then rightShoulder.Part1 = originalMotor end
-                if rightArm then rightArm.CanCollide = true end
-                return
-            end
-            
-            local elapsed = tick() - startTime
-            -- Salınım mesafesi
-            local offsetVal = math.sin(elapsed * 35) * 0.35
-            
-            -- DÜZELTME: Kolun yukarı dikilmesini önleyen, öne ve hafif içe bakan doğru meme açıları
-            rightArm.CFrame = torso.CFrame * CFrame.new(1.0, 0.2, -0.3 - offsetVal) * CFrame.Angles(math.rad(15), math.rad(-10), math.rad(-80))
-        end)
-    else
-        if animConnection then
-            animConnection:Disconnect()
-            animConnection:nil
-        end
-        
-        if rightShoulder and originalMotor then rightShoulder.Part1 = originalMotor end
-        if rightArm then rightArm.CanCollide = true end
-        
-        showNotification("Animasyon", "Durduruldu.", false)
-    end
-end)
-
-
-
-
-
 
 -- Xeno ve Executor Uyumluluk Metatable Koruması
 pcall(function()
