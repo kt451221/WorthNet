@@ -2251,21 +2251,19 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
 end)
 
 -- ==========================================
--- MM2 AUTO SHOT (DUVAR KONTROLLÜ - 360 DERECE ATEŞ)
+-- MM2 AUTO SHOT (360 DERECE - NET İSABET)
 -- ==========================================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 
 local autoShotEnabled = false
-local aimLockStrength = 1 -- 0 ile 1 arasında. 1 olursa tam kafaya yapışır.
 
-createModernToggle(mm2Tab, "Auto Shot (360 + Wall)", "Görüş açısı fark etmez (360 derece), arada duvar yoksa otomatik döner ve sıkar.", function(state)
+createModernToggle(mm2Tab, "Auto Shot (Sheriff)", "Kameran sabitlenmez, arkanda olsa bile mermiyi doğrudan katile gönderir.", function(state)
     autoShotEnabled = state
 end)
 
--- Gelişmiş Duvar Kontrolü (Raycast)
+-- Duvar Kontrolü (Raycast)
 local function hasLineOfSight(targetPart)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
@@ -2281,16 +2279,16 @@ local function hasLineOfSight(targetPart)
     
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
     if raycastResult then
-        return false -- Arada engel var
+        return false -- Arada duvar var
     end
     
-    return true -- Önü açık (Arkanızda olsa bile)
+    return true -- Önü açık
 end
 
--- Katili Bulma ve Atış Döngüsü
+-- Katili Bulma ve Ateş Etme Döngüsü
 task.spawn(function()
     while true do
-        task.wait(0.04) -- Biraz daha hızlı tepki (0.04s)
+        task.wait(0.05)
         
         if autoShotEnabled then
             pcall(function()
@@ -2298,7 +2296,7 @@ task.spawn(function()
                 local humanoid = character and character:FindFirstChildOfClass("Humanoid")
                 if not character or not humanoid or humanoid.Health <= 0 then return end
                 
-                -- 1. Silahı kontrol et/kuşan
+                -- 1. Silahı kontrol et / kuşan
                 local gunInChar = character:FindFirstChild("Gun")
                 local gunInBackpack = LocalPlayer.Backpack:FindFirstChild("Gun")
                 local activeGun = gunInChar or gunInBackpack
@@ -2325,37 +2323,34 @@ task.spawn(function()
                                 
                                 if hasKnife then
                                     local pHumanoid = pChar:FindFirstChildOfClass("Humanoid")
-                                    -- Mümkünse Kafaya (Head), değilse gövdeye (HumanoidRootPart) nişan al
-                                    local head = pChar:FindFirstChild("Head")
-                                    local torso = pChar:FindFirstChild("HumanoidRootPart")
+                                    local torso = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
                                     
-                                    if (head or torso) and pHumanoid and pHumanoid.Health > 0 then
+                                    if torso and pHumanoid and pHumanoid.Health > 0 then
                                         targetPlayer = player
-                                        -- Öncelik kafa, yoksa gövde
-                                        targetPart = head or torso
+                                        targetPart = torso
                                         break
                                     end
                                 end
                             end
                         end
                         
-                        -- 3. Katil bulundu ve Duvar Yoksa -> Dön ve Ateş Et
+                        -- 3. Katil bulundu ve duvar yoksa -> Kameraya dokunmadan mermiyi hedefe kitle
                         if targetPlayer and targetPart then
                             if hasLineOfSight(targetPart) then
                                 
-                                -- === YENİ ÖZELLİK: AİM ASSIST (Görüşe girmeden çevirme) ===
-                                -- Kamerayı zorla katile doğru çeviriyoruz (Snap)
-                                -- CFrame.new(Göz Pozisyonu, Hedef Pozisyon)
-                                local camera = Workspace.CurrentCamera
-                                local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPart.Position)
+                                -- Silahın ateş etme fonksiyonunu veya RemoteEvent'ini buluyoruz
+                                local gunRemote = currentGun:FindFirstChild("Shoot") or currentGun:FindFirstChild("Fire") or currentGun:FindFirstChildOfClass("RemoteEvent")
                                 
-                                -- İstersek 'aimLockStrength' ile yumuşatabiliriz ama tam yapışması için direkt atıyoruz
-                                camera.CFrame = lookAtCFrame
+                                if gunRemote and gunRemote:IsA("RemoteEvent") then
+                                    -- Doğrudan katilin pozisyonunu sunucuya işliyoruz (Boşluğa gitmez)
+                                    gunRemote:FireServer(targetPart.Position)
+                                else
+                                    -- Eğer özel remote yoksa, tool'un kendi vuruşunu tetiklemeden önce 
+                                    -- merminin yönünü simüle etmek için alternatif tetikleme
+                                    currentGun:Activate()
+                                end
                                 
-                                -- Silahı ateşle
-                                currentGun:Activate()
-                                
-                                task.wait(0.5) -- Seri atış engeli
+                                task.wait(0.6) -- Seri spam engeli
                             end
                         end
                     end
@@ -2364,7 +2359,6 @@ task.spawn(function()
         end
     end
 end)
-
 -- UI Viewer / Dex Explorer
 createModernToggle(visualsTab, "UI Viewer (Dex)", "Arayüzü ve oyun ağacını incelemek için Explorer açar.", function(state)
 	if state then
@@ -2796,48 +2790,62 @@ task.spawn(function()
     while true do
         task.wait(0.1)
         if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local rootPart = player.Character.HumanoidRootPart
-            local originalCFrame = rootPart.CFrame
-            local targetPart = nil
-
-            -- Önce Workspace genelinde, sonra Workspace içindeki harita modellerinde (Factory, Workplace vb.) arama yapıyoruz
-            for _, item in ipairs(workspace:GetChildren()) do
-                if item.Name == "GunDrop" then
-                    targetPart = item:IsA("Model") and (item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")) or (item:IsA("BasePart") and item)
-                    if targetPart then break end
-                elseif item:IsA("Model") or item:IsA("Folder") then
-                    -- Harita modelinin (Factory, Workplace vb.) içine girip GunDrop arıyoruz
-                    local foundInMap = item:FindFirstChild("GunDrop", true)
-                    if foundInMap then
-                        if foundInMap:IsA("Model") then
-                            targetPart = foundInMap.PrimaryPart or foundInMap:FindFirstChildWhichIsA("BasePart")
-                        elseif foundInMap:IsA("BasePart") then
-                            targetPart = foundInMap
-                        end
-                        if targetPart then break end
-                    end
-                end
+            -- Backpack'te veya Character'da "Knife" var mı kontrol et
+            local backpack = player:FindFirstChild("Backpack")
+            local hasKnife = false
+            
+            if backpack and backpack:FindFirstChild("Knife") then
+                hasKnife = true
+            elseif player.Character:FindFirstChild("Knife") then
+                hasKnife = true
             end
 
-            if targetPart then
-                pcall(function()
-                    -- Silahın tepesine ışınlan
-                    rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-                    task.wait(0.1)
-                    
-                    -- Silahı oyuncuya çekme/temas etme tetiklemesi
-                    if targetPart:IsA("BasePart") then
-                        firetouchinterest(rootPart, targetPart, 0)
-                        firetouchinterest(rootPart, targetPart, 1)
-                    end
+            -- Eğer bıçağımız varsa silaha gitme döngüyü atla
+            if not hasKnife then
+                local rootPart = player.Character.HumanoidRootPart
+                local originalCFrame = rootPart.CFrame
+                local targetPart = nil
 
-                    showNotification("Auto GunDrop", "Silah alındı, geri dönülüyor!", true)
-                    task.wait(0.2)
-                    
-                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        player.Character.HumanoidRootPart.CFrame = originalCFrame
+                -- Önce Workspace genelinde, sonra Workspace içindeki harita modellerinde arama yapıyoruz
+                for _, item in ipairs(workspace:GetChildren()) do
+                    if item.Name == "GunDrop" then
+                        targetPart = item:IsA("Model") and (item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")) or (item:IsA("BasePart") and item)
+                        if targetPart then break end
+                    elseif item:IsA("Model") or item:IsA("Folder") then
+                        local foundInMap = item:FindFirstChild("GunDrop", true)
+                        if foundInMap then
+                            if foundInMap:IsA("Model") then
+                                targetPart = foundInMap.PrimaryPart or foundInMap:FindFirstChildWhichIsA("BasePart")
+                            elseif foundInMap:IsA("BasePart") then
+                                targetPart = foundInMap
+                            end
+                            if targetPart then break end
+                        end
                     end
-                end)
+                end
+
+                if targetPart then
+                    pcall(function()
+                        -- Silahın tepesine ışınlan
+                        rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                        task.wait(0.1)
+                        
+                        -- Silahı oyuncuya çekme/temas etme tetiklemesi
+                        if targetPart:IsA("BasePart") then
+                            firetouchinterest(rootPart, targetPart, 0)
+                            firetouchinterest(rootPart, targetPart, 1)
+                        end
+
+                        if type(showNotification) == "function" then
+                            showNotification("Auto GunDrop", "Silah alındı, geri dönülüyor!")
+                        end
+                        task.wait(0.2)
+                        
+                        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            player.Character.HumanoidRootPart.CFrame = originalCFrame
+                        end
+                    end)
+                end
             end
         end
     end
