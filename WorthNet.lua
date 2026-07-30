@@ -1,4 +1,3 @@
--- WorthNet UI System v4.4 - Glass Bridge, Tug of War & Adjustable SpeedHack (Fixed & Xeno Compatible)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -9,7 +8,6 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
 
--- YARDIMCI FONKSİYONLAR (TriggerBot & Hitbox İçin)
 local function isAlive()
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -2819,7 +2817,7 @@ end)
 
 
 -- ==========================================
--- GÜNVENLİ VE XENO UYUMLU REMOTE SPY
+-- 3. GÜNCELLENMİŞ VE HATASIZ REMOTE SPY
 -- ==========================================
 local isSpyActive = false
 
@@ -2902,7 +2900,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
                 pcall(function() argsStr = HttpService:JSONEncode(args) end)
                 if setclipboard then
                     setclipboard(remoteObj:GetFullName() .. ":" .. remoteType .. "(" .. argsStr .. ")")
-                    if type(showNotification) == "function" then showNotification("Remote Spy", "Panoya kopyalandı!", true) end
+                    if type(showNotification) == "function" then showNotification("Remote Spy", "Panoya kopyalandı!") end
                 end
             end)
 
@@ -2950,14 +2948,14 @@ pcall(function()
     end)
 end)
 
--- createModernToggle ile Entegrasyon
+-- createModernToggle ile Entegrasyon (Hatalı boolean parametresi düzeltildi)
 if type(createModernToggle) == "function" then
     createModernToggle(SpyTabPage, "Remote Spy Aktif Et", false, function(state)
         isSpyActive = state
         SpyMainFrame.Visible = state
         
         if type(showNotification) == "function" then
-            showNotification("Remote Spy", state and "Dinleme başlatıldı." or "Dinleme durduruldu.", state)
+            showNotification("Remote Spy", state and "Dinleme başlatıldı." or "Dinleme durduruldu.")
         end
     end)
 end
