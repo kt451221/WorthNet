@@ -2252,19 +2252,21 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
 end)
 
 -- ==========================================
--- MM2 AUTO SHOT (GELİŞTİRİLMİŞ & OTOMATİK KUŞANMA)
+-- MM2 AUTO SHOT (DUVAR KONTROLLÜ - 360 DERECE ATEŞ)
 -- ==========================================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
 local autoShotEnabled = false
+local aimLockStrength = 1 -- 0 ile 1 arasında. 1 olursa tam kafaya yapışır.
 
-createModernToggle(mm2Tab, "Auto Shot (Sheriff)", "Katil görüş açısındaysa ve duvar yoksa silahı alıp otomatik vurur.", function(state)
+createModernToggle(mm2Tab, "Auto Shot (360 + Wall)", "Görüş açısı fark etmez (360 derece), arada duvar yoksa otomatik döner ve sıkar.", function(state)
     autoShotEnabled = state
 end)
 
--- Geliştirilmiş Duvar Kontrolü (Raycast)
+-- Gelişmiş Duvar Kontrolü (Raycast)
 local function hasLineOfSight(targetPart)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
@@ -2275,24 +2277,21 @@ local function hasLineOfSight(targetPart)
     
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    -- Hem kendi karakterimizi hem de hedef oyuncunun karakterini filtreden hariç tutuyoruz
     raycastParams.FilterDescendantsInstances = {character, targetPart.Parent}
     raycastParams.IgnoreWater = true
     
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-    
-    -- Eğer ray bir şeye çarptıysa, araya engel girmiştir
     if raycastResult then
-        return false
+        return false -- Arada engel var
     end
     
-    return true -- Önü tamamen temiz
+    return true -- Önü açık (Arkanızda olsa bile)
 end
 
--- Katili Bulma ve Otomatik Tetikleme Döngüsü
+-- Katili Bulma ve Atış Döngüsü
 task.spawn(function()
     while true do
-        task.wait(0.05) -- Hızı biraz daha artırdık (0.05 sn)
+        task.wait(0.04) -- Biraz daha hızlı tepki (0.04s)
         
         if autoShotEnabled then
             pcall(function()
@@ -2300,25 +2299,24 @@ task.spawn(function()
                 local humanoid = character and character:FindFirstChildOfClass("Humanoid")
                 if not character or not humanoid or humanoid.Health <= 0 then return end
                 
-                -- 1. Silah karakterin üzerindemi veya Backpack'te mi?
+                -- 1. Silahı kontrol et/kuşan
                 local gunInChar = character:FindFirstChild("Gun")
                 local gunInBackpack = LocalPlayer.Backpack:FindFirstChild("Gun")
                 local activeGun = gunInChar or gunInBackpack
                 
                 if activeGun then
-                    -- Eğer silah çantadaysa otomatik olarak ele al (Equip et)
                     if gunInBackpack and not gunInChar then
                         humanoid:EquipTool(activeGun)
-                        task.wait(0.1) -- El değiştirmesi için kısa bir bekleme
+                        task.wait(0.1)
                         return
                     end
                     
-                    -- Silah artık elindeyse devam et
-                    if character:FindFirstChild("Gun") then
+                    local currentGun = character:FindFirstChild("Gun")
+                    if currentGun then
                         local targetPlayer = nil
                         local targetPart = nil
                         
-                        -- 2. Katili (Knife taşıyanı) tespit et
+                        -- 2. Katili bul (Knife taşıyan)
                         for _, player in ipairs(Players:GetPlayers()) do
                             if player ~= LocalPlayer and player.Character then
                                 local pChar = player.Character
@@ -2328,31 +2326,37 @@ task.spawn(function()
                                 
                                 if hasKnife then
                                     local pHumanoid = pChar:FindFirstChildOfClass("Humanoid")
-                                    local torso = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
+                                    -- Mümkünse Kafaya (Head), değilse gövdeye (HumanoidRootPart) nişan al
+                                    local head = pChar:FindFirstChild("Head")
+                                    local torso = pChar:FindFirstChild("HumanoidRootPart")
                                     
-                                    if torso and pHumanoid and pHumanoid.Health > 0 then
+                                    if (head or torso) and pHumanoid and pHumanoid.Health > 0 then
                                         targetPlayer = player
-                                        targetPart = torso
+                                        -- Öncelik kafa, yoksa gövde
+                                        targetPart = head or torso
                                         break
                                     end
                                 end
                             end
                         end
                         
-                        -- 3. Katil bulunduysa ve duvar yoksa ateş et
+                        -- 3. Katil bulundu ve Duvar Yoksa -> Dön ve Ateş Et
                         if targetPlayer and targetPart then
                             if hasLineOfSight(targetPart) then
-                                -- Kamerayı katile odakla
-                                Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, targetPart.Position)
                                 
-                                -- Ateş etme tetikleyicisi
-                                task.spawn(function()
-                                    mouse1press()
-                                    task.wait(0.03)
-                                    mouse1release()
-                                end)
+                                -- === YENİ ÖZELLİK: AİM ASSIST (Görüşe girmeden çevirme) ===
+                                -- Kamerayı zorla katile doğru çeviriyoruz (Snap)
+                                -- CFrame.new(Göz Pozisyonu, Hedef Pozisyon)
+                                local camera = Workspace.CurrentCamera
+                                local lookAtCFrame = CFrame.new(camera.CFrame.Position, targetPart.Position)
                                 
-                                task.wait(0.6) -- Seri atıp mermi tüketmemesi ve spam olmaması için bekleme
+                                -- İstersek 'aimLockStrength' ile yumuşatabiliriz ama tam yapışması için direkt atıyoruz
+                                camera.CFrame = lookAtCFrame
+                                
+                                -- Silahı ateşle
+                                currentGun:Activate()
+                                
+                                task.wait(0.5) -- Seri atış engeli
                             end
                         end
                     end
@@ -2868,7 +2872,7 @@ end)
 
 
 -- ==========================================
--- 4. BAĞIMSIZ VE AYRI PENCERE (FRAME) REMOTE SPY
+-- 4. BAĞIMSIZ VE AYRI PENCERE (FRAME) REMOTE SPY (TEST EDİLEBİLİR)
 -- ==========================================
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -2878,80 +2882,85 @@ local RunService = game:GetService("RunService")
 
 local isSpyActive = false
 
--- Mevcut varsa eskisini sil (çakışma olmasın)
 if CoreGui:FindFirstChild("WorthNet_RemoteSpyWindow") then
     CoreGui.WorthNet_RemoteSpyWindow:Destroy()
 end
 
--- Ana Ekran (ScreenGui)
 local SpyScreenGui = Instance.new("ScreenGui")
 SpyScreenGui.Name = "WorthNet_RemoteSpyWindow"
 SpyScreenGui.Parent = CoreGui
 SpyScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 SpyScreenGui.Enabled = false
 
--- Ayrı Bağımsız Pencere Frame'i
 local MainSpyWindow = Instance.new("Frame")
 MainSpyWindow.Parent = SpyScreenGui
-MainSpyWindow.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainSpyWindow.BackgroundColor3 = THEME.Background
 MainSpyWindow.Position = UDim2.new(0.5, -250, 0.5, -175)
 MainSpyWindow.Size = UDim2.new(0, 500, 0, 350)
 MainSpyWindow.BorderSizePixel = 0
-if type(roundCorners) == "function" then roundCorners(MainSpyWindow, 8) end
+if type(roundCorners) == "function" then roundCorners(MainSpyWindow, 10) end
 
--- Üst Başlık Çubuğu (Sürükleme için)
+local WindowStroke = Instance.new("UIStroke")
+WindowStroke.Parent = MainSpyWindow
+WindowStroke.Color = THEME.Border
+WindowStroke.Thickness = 1
+
 local TopBar = Instance.new("Frame")
 TopBar.Parent = MainSpyWindow
-TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-TopBar.Size = UDim2.new(1, 0, 0, 35)
+TopBar.BackgroundColor3 = THEME.Card
+TopBar.Size = UDim2.new(1, 0, 0, 38)
 TopBar.BorderSizePixel = 0
-if type(roundCorners) == "function" then roundCorners(TopBar, 8) end
+if type(roundCorners) == "function" then roundCorners(TopBar, 10) end
+
+local TopBarFix = Instance.new("Frame")
+TopBarFix.Parent = TopBar
+TopBarFix.BackgroundColor3 = THEME.Card
+TopBarFix.Position = UDim2.new(0, 0, 1, -6)
+TopBarFix.Size = UDim2.new(1, 0, 0, 6)
+TopBarFix.BorderSizePixel = 0
 
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Parent = TopBar
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, 12, 0, 0)
-TitleLabel.Size = UDim2.new(0, 200, 1, 0)
+TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+TitleLabel.Size = UDim2.new(0, 250, 1, 0)
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "WorthNet - Remote Spy"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 13
+TitleLabel.Text = "WORTHNET // REMOTE_SPY"
+TitleLabel.TextColor3 = THEME.TextMain
+TitleLabel.TextSize = 12
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Pencereyi Kapatma / Gizleme Butonu
 local CloseSpyBtn = Instance.new("TextButton")
 CloseSpyBtn.Parent = TopBar
-CloseSpyBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseSpyBtn.Position = UDim2.new(1, -30, 0.5, -10)
-CloseSpyBtn.Size = UDim2.new(0, 20, 0, 20)
+CloseSpyBtn.BackgroundColor3 = Color3.fromRGB(235, 65, 65)
+CloseSpyBtn.Position = UDim2.new(1, -32, 0.5, -11)
+CloseSpyBtn.Size = UDim2.new(0, 22, 0, 22)
 CloseSpyBtn.Font = Enum.Font.GothamBold
-CloseSpyBtn.Text = "X"
+CloseSpyBtn.Text = "×"
 CloseSpyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseSpyBtn.TextSize = 10
-if type(roundCorners) == "function" then roundCorners(CloseSpyBtn, 4) end
+CloseSpyBtn.TextSize = 14
+if type(roundCorners) == "function" then roundCorners(CloseSpyBtn, 6) end
 
 CloseSpyBtn.MouseButton1Click:Connect(function()
     SpyScreenGui.Enabled = false
 end)
 
--- Logların Akacağı ScrollingFrame
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Parent = MainSpyWindow
 LogScroll.BackgroundTransparency = 1
-LogScroll.Position = UDim2.new(0, 8, 0, 45)
-LogScroll.Size = UDim2.new(1, -16, 1, -55)
+LogScroll.Position = UDim2.new(0, 10, 0, 48)
+LogScroll.Size = UDim2.new(1, -20, 1, -58)
 LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-LogScroll.ScrollBarThickness = 4
-LogScroll.ScrollBarImageColor3 = THEME and THEME.Accent or Color3.fromRGB(255, 50, 150)
+LogScroll.ScrollBarThickness = 3
+LogScroll.ScrollBarImageColor3 = THEME.Accent
 LogScroll.BorderSizePixel = 0
 
 local LogLayout = Instance.new("UIListLayout") 
 LogLayout.Parent = LogScroll 
 LogLayout.SortOrder = Enum.SortOrder.LayoutOrder 
-LogLayout.Padding = UDim.new(0, 5)
+LogLayout.Padding = UDim.new(0, 6)
 
--- Pencereyi Sürükleme (Draggable) Özelliği
 local dragging, dragInput, dragStart, startPos
 TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -2979,7 +2988,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Log Ekleme Fonksiyonu
 local loggedRemotes = {}
 
 local function AddSpyLogEntry(remoteType, remoteObj, args)
@@ -2992,54 +3000,64 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
         if loggedRemotes[remoteKey] then
             local data = loggedRemotes[remoteKey]
             data.count = data.count + 1
-            data.infoText.Text = "[" .. remoteType .. "] " .. remoteName .. " (x" .. data.count .. ")"
+            data.infoText.Text = "[" .. remoteType .. "] " .. remoteName .. "  (x" .. data.count .. ")"
         else
             local entryFrame = Instance.new("Frame")
             entryFrame.Parent = LogScroll
-            entryFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-            entryFrame.Size = UDim2.new(1, 0, 0, 45)
+            entryFrame.BackgroundColor3 = THEME.Card
+            entryFrame.Size = UDim2.new(1, 0, 0, 46)
             entryFrame.BorderSizePixel = 0
             if type(roundCorners) == "function" then roundCorners(entryFrame, 6) end
+
+            local entryStroke = Instance.new("UIStroke")
+            entryStroke.Parent = entryFrame
+            entryStroke.Color = THEME.Border
+            entryStroke.Thickness = 1
 
             local infoText = Instance.new("TextLabel")
             infoText.Parent = entryFrame 
             infoText.BackgroundTransparency = 1
-            infoText.Position = UDim2.new(0, 10, 0, 5) 
-            infoText.Size = UDim2.new(1, -100, 0, 18)
+            infoText.Position = UDim2.new(0, 10, 0, 6) 
+            infoText.Size = UDim2.new(1, -100, 0, 16)
             infoText.Font = Enum.Font.GothamBold 
-            infoText.Text = "[" .. remoteType .. "] " .. remoteName .. " (x1)"
-            infoText.TextColor3 = THEME and THEME.Accent or Color3.fromRGB(255, 100, 150)
+            infoText.Text = "[" .. remoteType .. "] " .. remoteName .. "  (x1)"
+            infoText.TextColor3 = THEME.Accent
             infoText.TextSize = 11 
             infoText.TextXAlignment = Enum.TextXAlignment.Left
 
             local pathText = Instance.new("TextLabel")
             pathText.Parent = entryFrame 
             pathText.BackgroundTransparency = 1
-            pathText.Position = UDim2.new(0, 10, 0, 22) 
-            pathText.Size = UDim2.new(1, -100, 0, 18)
+            pathText.Position = UDim2.new(0, 10, 0, 24) 
+            pathText.Size = UDim2.new(1, -100, 0, 16)
             pathText.Font = Enum.Font.Gotham 
-            pathText.Text = "Yol: " .. remoteFullName
-            pathText.TextColor3 = Color3.fromRGB(160, 160, 160)
-            pathText.TextSize = 10 
+            pathText.Text = remoteFullName
+            pathText.TextColor3 = THEME.TextDark
+            pathText.TextSize = 9.5 
             pathText.TextXAlignment = Enum.TextXAlignment.Left
 
             local copyBtn = Instance.new("TextButton")
             copyBtn.Parent = entryFrame 
-            copyBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-            copyBtn.Position = UDim2.new(1, -95, 0.5, -12) 
-            copyBtn.Size = UDim2.new(0, 85, 0, 24)
+            copyBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
+            copyBtn.Position = UDim2.new(1, -90, 0.5, -12) 
+            copyBtn.Size = UDim2.new(0, 80, 0, 24)
             copyBtn.Font = Enum.Font.GothamMedium 
             copyBtn.Text = "Kopyala" 
-            copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            copyBtn.TextColor3 = THEME.TextMain
             copyBtn.TextSize = 10
             if type(roundCorners) == "function" then roundCorners(copyBtn, 4) end
+
+            local btnStroke = Instance.new("UIStroke")
+            btnStroke.Parent = copyBtn
+            btnStroke.Color = THEME.Border
+            btnStroke.Thickness = 1
 
             copyBtn.MouseButton1Click:Connect(function()
                 local argsStr = ""
                 pcall(function() argsStr = HttpService:JSONEncode(args) end)
                 if setclipboard and typeof(remoteObj) == "Instance" then
                     setclipboard(remoteObj:GetFullName() .. ":" .. remoteType .. "(" .. argsStr .. ")")
-                    if type(showNotification) == "function" then showNotification("Remote Spy", "Panoya kopyalandı!") end
+                    if type(showNotification) == "function" then showNotification("Remote Spy", "Pano başarıyla güncellendi.") end
                 end
             end)
 
@@ -3052,8 +3070,8 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
     end)
 end
 
--- Hook İşlemi (Gerçek Remotelar İçin)
-pcall(function()
+-- Hook Testi ve Başlatma
+local success, err = pcall(function()
     if type(hookmetamethod) == "function" and type(getnamecallmethod) == "function" then
         local oldNamecall
         oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -3065,17 +3083,23 @@ pcall(function()
             end
             return oldNamecall(self, ...)
         end)
+        print("WorthNet RemoteSpy: Hook başarıyla atıldı!")
+    else
+        warn("WorthNet RemoteSpy: Bu executor hookmetamethod desteklemiyor!")
     end
 end)
 
--- Ana Hile Menüsüne Eklenen Toggle (Ayrı pencereyi açıp kapatır)
+if not success then
+    warn("WorthNet RemoteSpy Hook Hatası: " .. tostring(err))
+end
+
 if type(createModernToggle) == "function" then
     createModernToggle(SpyTabPage, "Remote Spy Penceresi", "Bağımsız taşınabilir Remote Spy penceresini açar.", function(state)
         isSpyActive = state
         SpyScreenGui.Enabled = state
         
         if type(showNotification) == "function" then
-            showNotification("Remote Spy", state and "Pencere açıldı." or "Pencere kapatıldı.")
+            showNotification("Remote Spy", state and "Pencere aktif edildi." or "Pencere kapatıldı.")
         end
     end)
 end
