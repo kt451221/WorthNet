@@ -2251,63 +2251,103 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
     end)
 end)
 
--- WorthNet MM2 Auto Shoot (Geliştirilmiş & Akıllı Versiyon)
-local RunService = game:GetService("RunService")
+-- ==========================================
+-- MM2 AUTO SHOT (WALL CHECK İLE)
+-- ==========================================
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local workspace = game:GetService("Workspace")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
 
-local mm2AutoShootEnabled = false
-local mm2AutoShootConn = nil
-local lastShot = 0
-local shootDelay = 0.4 -- Ateş etme aralığı (Saniye)
+local autoShotEnabled = false
 
-createModernToggle(mm2Tab, "MM2 Auto Shoot", "Yumuşak nişan alma ve tahmin özellikli otomatik katil vurucu.", function(state)
-    mm2AutoShootEnabled = state
+createModernToggle(mm2Tab, "Auto Shot (Sheriff)", "Katil görüş açısındaysa ve duvar yoksa otomatik vurur.", function(state)
+    autoShotEnabled = state
+end)
+
+-- Duvar Kontrolü (Raycast Fonksiyonu)
+local function hasLineOfSight(targetPart)
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
     
-    if mm2AutoShootEnabled then
-        mm2AutoShootConn = RunService.RenderStepped:Connect(function()
-            if not localHasGun() then return end
-            
-            local killer = getKillerTarget()
-            if killer and killer.Character and killer.Character:FindFirstChild("Head") and killer.Character:FindFirstChild("HumanoidRootPart") then
-                local head = killer.Character.Head
-                local hrp = killer.Character.HumanoidRootPart
-                local camera = workspace.CurrentCamera
+    local origin = character.HumanoidRootPart.Position
+    local destination = targetPart.Position
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {character, targetPart.Parent}
+    raycastParams.IgnoreWater = true
+    
+    local raycastResult = Workspace:Raycast(origin, destination - origin, raycastParams)
+    
+    -- Eğer ray bir şeye çarptıysa arada duvar/engel var demektir
+    if raycastResult then
+        return false
+    end
+    
+    return true -- Önü tamamen açık
+end
+
+-- Katili Bulma ve Ateş Etme Döngüsü
+task.spawn(function()
+    while true do
+        task.wait(0.1) -- Performans ve hız dengesi için 0.1 saniye
+        
+        if autoShotEnabled then
+            pcall(function()
+                local character = LocalPlayer.Character
+                if not character then return end
                 
-                -- 1. Hareket Tahmini (Prediction): Katilin koşu yönüne göre hafif öne nişan al
-                local predictedPos = head.Position + (hrp.AssemblyLinearVelocity * 0.08)
+                -- 1. Envanterde (Karakterde veya Backpack'te) "Gun" var mı kontrol et
+                local hasGun = character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
                 
-                -- 2. Smooth LookAt (Ekranın titrememesi için yumuşak kamera geçişi)
-                local targetCFrame = CFrame.new(camera.CFrame.Position, predictedPos)
-                camera.CFrame = camera.CFrame:Lerp(targetCFrame, 0.4)
-                
-                -- Silahı kontrol et ve eline al
-                local localChar = player.Character
-                local gun = localChar:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
-                
-                if gun then
-                    if gun.Parent ~= localChar then
-                        gun.Parent = localChar
+                if hasGun then
+                    local targetPlayer = nil
+                    local targetPart = nil
+                    
+                    -- 2. Katili (Knife taşıyanı) bul
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character then
+                            local pChar = player.Character
+                            local pBackpack = player:FindFirstChild("Backpack")
+                            
+                            -- Katil tespiti: Elinde veya çantasında Bıçak (Knife) olan kişi
+                            if (pChar:FindFirstChild("Knife") or (pBackpack and pBackpack:FindFirstChild("Knife"))) then
+                                local torso = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
+                                if torso and pChar:FindFirstChild("Humanoid") and pChar.Humanoid.Health > 0 then
+                                    targetPlayer = player
+                                    targetPart = torso
+                                    break
+                                end
+                            end
+                        end
                     end
                     
-                    -- 3. Cooldown Kontrolü (Gereksiz spamı önlemek için)
-                    if tick() - lastShot > shootDelay then
-                        lastShot = tick()
-                        pcall(function()
-                            gun:Activate()
-                        end)
+                    -- 3. Katil bulunduysa Wall Check yap ve ateş et
+                    if targetPlayer and targetPart then
+                        if hasLineOfSight(targetPart) then
+                            -- Silah elindeyse veya eline alınabilecekse ateş tetiklemesi
+                            local gun = character:FindFirstChild("Gun")
+                            if gun then
+                                -- Silah karakterin elindeyse Mouse1Click veya RemoteEvent ile ateş açılır
+                                local mouse = LocalPlayer:GetMouse()
+                                
+                                -- Kamerayı katile odakla (İsteğe bağlı ufak bir kilitlenme)
+                                Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, targetPart.Position)
+                                
+                                -- Ateş etme simülasyonu
+                                task.spawn(function()
+                                    mouse1press()
+                                    task.wait(0.05)
+                                    mouse1release()
+                                end)
+                                
+                                task.wait(0.5) -- Arka arkaya spam atmaması için küçük bir bekleme
+                            end
+                        end
                     end
                 end
-            end
-        end)
-        showNotification("Auto Shoot", "Gelişmiş Auto Shoot aktif!", true)
-    else
-        if mm2AutoShootConn then
-            mm2AutoShootConn:Disconnect()
-            mm2AutoShootConn = nil
+            end)
         end
-        showNotification("Auto Shoot", "Durduruldu.", false)
     end
 end)
 
@@ -2817,22 +2857,23 @@ end)
 
 
 -- ==========================================
--- 3. GÜNCELLENMİŞ VE HATASIZ REMOTE SPY
+-- 3. GÜNCELLENMİŞ VE GÜVENLİ REMOTE SPY
 -- ==========================================
 local isSpyActive = false
 
--- Ana Remote Spy Çerçevesi
+-- Ana Remote Spy Çerçevesi (Boyut ve Pozisyon tam ekran kaplayacak şekilde netleştirildi)
 local SpyMainFrame = Instance.new("Frame")
 SpyMainFrame.Parent = SpyTabPage
 SpyMainFrame.BackgroundTransparency = 1
 SpyMainFrame.Size = UDim2.new(1, 0, 1, 0)
+SpyMainFrame.Position = UDim2.new(0, 0, 0, 0)
 SpyMainFrame.Visible = false
 
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Parent = SpyMainFrame
 LogScroll.BackgroundTransparency = 1
 LogScroll.Position = UDim2.new(0, 0, 0, 0)
-LogScroll.Size = UDim2.new(1, -10, 1, 0)
+LogScroll.Size = UDim2.new(1, 0, 1, 0) -- Boyut tam ekran yapıldı, taşma önlendi
 LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LogScroll.ScrollBarThickness = 3
@@ -2853,7 +2894,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
         if loggedRemotes[remoteKey] then
             local data = loggedRemotes[remoteKey]
             data.count = data.count + 1
-            data.infoText.Text = "[" .. remoteType .. "] " .. remoteObj.Name + " (x" .. data.count .. ")"
+            data.infoText.Text = "[" .. remoteType .. "] " .. remoteObj.Name .. " (x" .. data.count .. ")"
         else
             local entryFrame = Instance.new("Frame")
             entryFrame.Parent = LogScroll
@@ -2913,7 +2954,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
     end)
 end
 
--- Güvenli Metatable Hook Kontrolü (Xeno uyumlu)
+-- Güvenli Metatable Hook Kontrolü
 pcall(function()
     if type(hookmetamethod) == "function" and type(getnamecallmethod) == "function" then
         local oldNamecall
@@ -2929,7 +2970,7 @@ pcall(function()
     end
 end)
 
--- Gelen Remote'ları (OnClientEvent) Dinleme
+-- Gelen Remote'ları Dinleme
 pcall(function()
     for _, v in ipairs(game:GetDescendants()) do
         if v:IsA("RemoteEvent") then
@@ -2948,7 +2989,7 @@ pcall(function()
     end)
 end)
 
--- Açıklamalı Standart Format
+-- Açıklamalı Standart Format (Toggle Entegrasyonu)
 if type(createModernToggle) == "function" then
     createModernToggle(SpyTabPage, "Remote Spy Aktif Et", "Oyun içerisindeki FireServer ve InvokeServer isteklerini yakalar.", function(state)
         isSpyActive = state
