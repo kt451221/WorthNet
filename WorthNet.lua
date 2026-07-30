@@ -157,7 +157,8 @@ local minLogo = Instance.new("TextButton")
 minLogo.Name = "WorthNetMiniLogo"
 minLogo.Parent = screenGui -- Ana ScreenGui değişkenin
 minLogo.BackgroundColor3 = THEME.Card
-minLogo.Position = UDim2.new(0, 30, 0.5, -25)
+minLogo.ZIndex = 1000
+minLogo.Position = UDim2.new(0, 100, 0.5, -25)
 minLogo.Size = UDim2.new(0, 48, 0, 48)
 minLogo.Font = Enum.Font.Code
 minLogo.Text = ">_"
@@ -2615,37 +2616,21 @@ end
 -- 2. Oyuna sonradan girecek olanları dinle
 Players.PlayerAdded:Connect(monitorPlayer)
 
--- UI Toggle Key (Sağ Shift ile menüyü gizleme/açma)
+-- UI Toggle Key ("K" tuşu ile menüyü gizleme/açma)
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        -- Kendi arayüz değişkenine göre MainUI durumunu ayarlayabilirsin
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.K then
+        -- Menünün görünürlüğünü tersine çeviriyoruz (Açıksa kapatır, kapalıysa açar)
+        hubFrame.Visible = not hubFrame.Visible
+        
+        -- Eğer küçük logo (minLogo) kullanıyorsan, menü gizlendiğinde logonun görünmesini, 
+        -- menü açıkken logonun gizlenmesini isteyebilirsin:
+        if minLogo then
+            minLogo.Visible = not hubFrame.Visible
+        end
     end
 end)
 
--- Arayüze eklenecek toggle (Settings veya ayrı bir Troll sekmesine koyabilirsin)
-createModernToggle(settingsTab, "Auto Remote Spam", "ReplicatedStorage'daki tüm eventleri bulur ve spamler.", function(state)
-    _G.RemoteSpamActive = state
-    
-    if _G.RemoteSpamActive then
-        task.spawn(function()
-            while _G.RemoteSpamActive do
-                local foundRemotes = getRemotes()
-                
-                for _, remote in ipairs(foundRemotes) do
-                    if not _G.RemoteSpamActive then break end
-                    
-                    -- Güvenli bir şekilde spam at (Hata verip scripti durdurmaması için pcall kullanıyoruz)
-                    pcall(function()
-                        remote:FireServer("WorthNetSpam", math.random(1, 999999), {}, true)
-                    end)
-                end
-                
-                task.wait() -- Hızlı döngü
-            end
-        end)
-    end
-end)
 
 createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapatarak FPS'i artırır.", function(state)
     if state then
@@ -2806,6 +2791,64 @@ task.spawn(function()
     end
 end)
 
+-- ==========================================
+-- 2. GİZLİ VE HIZLI AUTO GUNDROP
+-- ==========================================
+local autoGunDropEnabled = false
+
+createModernToggle(mm2Tab, "Auto GunDrop Magnet", "Karakterini bozmadan silahı sana çeker.", function(state)
+    autoGunDropEnabled = state
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.2) -- Süreyi biraz daha hızlandırdık
+        if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = player.Character.HumanoidRootPart
+            local targetPart = nil
+
+            -- Workspace içinde GunDrop arama dövüsü
+            for _, item in ipairs(workspace:GetChildren()) do
+                if item.Name == "GunDrop" then
+                    targetPart = item:IsA("Model") and (item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")) or (item:IsA("BasePart") and item)
+                    if targetPart then break end
+                elseif item:IsA("Model") or item:IsA("Folder") then
+                    local foundInMap = item:FindFirstChild("GunDrop", true)
+                    if foundInMap then
+                        if foundInMap:IsA("Model") then
+                            targetPart = foundInMap.PrimaryPart or foundInMap:FindFirstChildWhichIsA("BasePart")
+                        elseif foundInMap:IsA("BasePart") then
+                            targetPart = foundInMap
+                        end
+                        if targetPart then break end
+                    end
+                end
+            end
+
+            if targetPart then
+                pcall(function()
+                    -- YÖNTEM: Karakteri kıpırdatmadan, silahı senin kordinatına çekiyoruz!
+                    -- Böylece kimse ışınlandığını veya hareket ettiğini görmez.
+                    if targetPart.Parent:IsA("Model") then
+                        targetPart.Parent:SetPrimaryPartCFrame(rootPart.CFrame)
+                    else
+                        targetPart.CFrame = rootPart.CFrame
+                    end
+
+                    -- Temas olayını tetikle
+                    if targetPart:IsA("BasePart") then
+                        firetouchinterest(rootPart, targetPart, 0)
+                        firetouchinterest(rootPart, targetPart, 1)
+                    end
+
+                    showNotification("Auto GunDrop", "Silah gizlice alındı!", true)
+                    task.wait(0.5) -- Spam atmasını engellemek için kısa bir bekleme
+                end)
+            end
+        end
+    end
+end)
+
 
 
 
@@ -2833,7 +2876,7 @@ end)
 
 
 -- ==========================================
--- 3. REMOTE SPY SİSTEMİ (PERFORMANSLI TAB)
+-- 3. GÜNCELLENMİŞ VE TAM FONKSİYONEL REMOTE SPY
 -- ==========================================
 local isSpyActive = false
 local SpyMainFrame = Instance.new("Frame")
@@ -2955,6 +2998,19 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
     end)
 end
 
+-- Giden Remote'ları (FireServer / InvokeServer) yakalamak için Hook (Metatable Hook)
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    if isSpyActive and (method == "FireServer" or method == "InvokeServer") then
+        if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
+            AddSpyLogEntry(method, self, {...})
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+
+-- Gelen Remote'ları (OnClientEvent) Dinleme
 pcall(function()
     for _, v in ipairs(game:GetDescendants()) do
         if v:IsA("RemoteEvent") then
@@ -2963,6 +3019,15 @@ pcall(function()
             end)
         end
     end
+    
+    -- Sonradan eklenen remote'ları kaçırmamak için
+    game.DescendantAdded:Connect(function(v)
+        if v:IsA("RemoteEvent") then
+            v.OnClientEvent:Connect(function(...)
+                if isSpyActive then AddSpyLogEntry("OnClientEvent", v, {...}) end
+            end)
+        end
+    end)
 end)
 
 SpyToggleBtn.MouseButton1Click:Connect(function()
