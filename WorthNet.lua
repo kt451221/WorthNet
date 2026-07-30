@@ -31,15 +31,15 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
 local THEME = {
-	Background = Color3.fromRGB(15, 15, 18),       -- Derin Saf Siyah / Koyu Gri
-	Sidebar    = Color3.fromRGB(22, 22, 28),       -- Yan Menü Arka Planı
-	Card       = Color3.fromRGB(30, 30, 38),       -- Kart Arka Planı
-	Accent     = Color3.fromRGB(0, 242, 254),      -- Canlı Neon Cyan / Turkuaz
-	AccentGlow = Color3.fromRGB(79, 236, 255),    -- Parlak Açık Cyan
-	TextMain   = Color3.fromRGB(255, 255, 255),    -- Saf Beyaz
-	TextDark   = Color3.fromRGB(150, 150, 170),    -- Soluk Gri
-	ToggleOn   = Color3.fromRGB(0, 242, 254),      -- Açık Buton (Cyan)
-	ToggleOff  = Color3.fromRGB(45, 45, 55)        -- Kapalı Buton (Koyu Gri)
+    Background = Color3.fromRGB(18, 16, 24),      -- Derin Koyu Morumsu Gri
+    Sidebar    = Color3.fromRGB(24, 22, 32),      -- Yan Menü Arka Planı
+    Card       = Color3.fromRGB(32, 28, 44),      -- Kart Arka Planı
+    Accent     = Color3.fromRGB(255, 0, 127),     -- Canlı Neon Pembe / Magenta
+    AccentGlow = Color3.fromRGB(255, 75, 160),    -- Parlak Açık Pembe
+    TextMain   = Color3.fromRGB(255, 255, 255),    -- Saf Beyaz
+    TextDark   = Color3.fromRGB(160, 150, 180),    -- Soluk Lila Gri
+    ToggleOn   = Color3.fromRGB(255, 0, 127),     -- Açık Buton (Neon Pembe)
+    ToggleOff  = Color3.fromRGB(50, 45, 65)       -- Kapalı Buton (Koyu Mor-Gri)
 }
 
 
@@ -84,6 +84,107 @@ local function makeDraggable(frame)
 			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end)
+end
+
+-- ==========================================
+-- 1. KEY SİSTEMİ
+-- ==========================================
+local KEY_CACHE_FILE = "WorthNetv1_AuthCache.json"
+local savedUserKey = ""
+
+pcall(function()
+    if readfile and isfile and isfile(KEY_CACHE_FILE) then
+        local data = HttpService:JSONDecode(readfile(KEY_CACHE_FILE))
+        if data and data.UserId == player.UserId then
+            savedUserKey = data.Key or ""
+        end
+    end
+end)
+
+local function LoadKeySystem(onSuccess)
+    if savedUserKey == "worthnet2026" or savedUserKey == "kaan" or savedUserKey == "xAworth" then
+        showNotification("WorthNet v4.4", "Hoş geldin " .. player.Name .. "!", true)
+        onSuccess()
+        return
+    end
+
+    local KeyGui = Instance.new("ScreenGui")
+    KeyGui.Name = "WorthNetKeySystem"
+    KeyGui.Parent = screenGui
+    KeyGui.ResetOnSpawn = false
+
+    local Frame = Instance.new("Frame")
+    Frame.Parent = KeyGui
+    Frame.BackgroundColor3 = THEME.Background
+    Frame.Position = UDim2.new(0.5, -160, 0.5, -100)
+    Frame.Size = UDim2.new(0, 320, 0, 190)
+    Frame.Active = true
+    roundCorners(Frame, 12)
+    makeDraggable(Frame)
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Parent = Frame
+    Stroke.Color = THEME.Accent
+    Stroke.Thickness = 1
+
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Frame
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 0, 0, 15)
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "WorthNet v4.4 - Auth"
+    Title.TextColor3 = THEME.TextMain
+    Title.TextSize = 15
+
+    local SubTitle = Instance.new("TextLabel")
+    SubTitle.Parent = Frame
+    SubTitle.BackgroundTransparency = 1
+    SubTitle.Position = UDim2.new(0, 0, 0, 40)
+    SubTitle.Size = UDim2.new(1, 0, 0, 20)
+    SubTitle.Font = Enum.Font.Gotham
+    SubTitle.Text = "Kullanıcı: " .. player.Name
+    SubTitle.TextColor3 = THEME.TextDark
+    SubTitle.TextSize = 11
+
+    local TextBox = Instance.new("TextBox")
+    TextBox.Parent = Frame
+    TextBox.BackgroundColor3 = THEME.Card
+    TextBox.Position = UDim2.new(0.1, 0, 0, 75)
+    TextBox.Size = UDim2.new(0.8, 0, 0, 38)
+    TextBox.Font = Enum.Font.Gotham
+    TextBox.PlaceholderText = "Key giriniz (örn: worthnet2026)"
+    TextBox.Text = ""
+    TextBox.TextColor3 = THEME.TextMain
+    TextBox.TextSize = 12
+    roundCorners(TextBox, 8)
+
+    local SubmitBtn = Instance.new("TextButton")
+    SubmitBtn.Parent = Frame
+    SubmitBtn.BackgroundColor3 = THEME.Accent
+    SubmitBtn.Position = UDim2.new(0.1, 0, 0, 125)
+    SubmitBtn.Size = UDim2.new(0.8, 0, 0, 38)
+    SubmitBtn.Font = Enum.Font.GothamBold
+    SubmitBtn.Text = "Giriş Yap ve Hesabı Kaydet"
+    SubmitBtn.TextColor3 = THEME.Background
+    SubmitBtn.TextSize = 12
+    roundCorners(SubmitBtn, 8)
+
+    SubmitBtn.MouseButton1Click:Connect(function()
+        local inputKey = TextBox.Text
+        if inputKey == "worthnet2026" or inputKey == "kaan" or inputKey == "xAworth" then
+            pcall(function()
+                if writefile then
+                    writefile(KEY_CACHE_FILE, HttpService:JSONEncode({UserId = player.UserId, Key = inputKey}))
+                end
+            end)
+            showNotification("Başarılı", "Hoş geldin " .. player.Name .."!", true)
+            KeyGui:Destroy()
+            onSuccess()
+        else
+            showNotification("Hata", "Geçersiz Key! (ipucu: worthnet2026)", false)
+        end
+    end)
 end
 
 ---------------------------------------------------------
@@ -153,30 +254,35 @@ end
 -- KÜÇÜK LOGO (MINIMIZE WINDOW)
 ---------------------------------------------------------
 local minLogo = Instance.new("TextButton")
-minLogo.Size = UDim2.new(0, 65, 0, 65)
-minLogo.Position = UDim2.new(1, -85, 0.5, -32)
-minLogo.BackgroundColor3 = THEME.Sidebar
-minLogo.Text = "👑\nWN"
-minLogo.Font = Enum.Font.GothamBold
-minLogo.TextSize = 14
+minLogo.Name = "WorthNetMiniLogo"
+minLogo.Parent = screenGui -- Ana ScreenGui değişkenin
+minLogo.BackgroundColor3 = THEME.Card
+minLogo.Position = UDim2.new(0, 30, 0.5, -25)
+minLogo.Size = UDim2.new(0, 48, 0, 48)
+minLogo.Font = Enum.Font.Code
+minLogo.Text = ">_"
 minLogo.TextColor3 = THEME.Accent
-minLogo.BorderSizePixel = 0
-minLogo.ZIndex = 10
-minLogo.Visible = true
-minLogo.Parent = screenGui
-roundCorners(minLogo, 16)
-makeDraggable(minLogo)
+minLogo.TextSize = 18
+minLogo.Visible = false
+minLogo.Active = true
+minLogo.Draggable = true
+
+-- Tamamen yuvarlak yapmak için UICorner ekliyoruz
+local logoCorner = Instance.new("UICorner")
+logoCorner.CornerRadius = UDim.new(1, 0) -- Tam daire (Full Round)
+logoCorner.Parent = minLogo
 
 local logoStroke = Instance.new("UIStroke")
+logoStroke.Parent = minLogo
 logoStroke.Color = THEME.Accent
 logoStroke.Thickness = 1.5
-logoStroke.Parent = minLogo
+
 
 ---------------------------------------------------------
 -- ANA FRAME (HUB FRAME)
 ---------------------------------------------------------
 local hubFrame = Instance.new("Frame")
-hubFrame.Size = UDim2.new(0, 500, 0, 320)
+hubFrame.Size = UDim2.new(0, 560, 0, 360)
 hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
 hubFrame.BorderSizePixel = 0
@@ -187,8 +293,14 @@ roundCorners(hubFrame, 12)
 makeDraggable(hubFrame)
 
 minLogo.MouseButton1Click:Connect(function()
-	minLogo.Visible = false
-	hubFrame.Visible = true
+    minLogo.Visible = false
+    hubFrame.Visible = true
+    hubFrame.Size = UDim2.new(0, 0, 0, 0)
+    hubFrame.BackgroundTransparency = 1
+    TweenService:Create(hubFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 560, 0, 360),
+        BackgroundTransparency = 0
+    }):Play()
 end)
 
 -- SOL SİDEBAR
@@ -362,8 +474,15 @@ closeBtn.Parent = hubFrame
 roundCorners(closeBtn, 6)
 
 closeBtn.MouseButton1Click:Connect(function()
-	hubFrame.Visible = false
-	minLogo.Visible = true
+    local tw = TweenService:Create(hubFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1
+    })
+    tw:Play()
+    tw.Completed:Connect(function()
+        hubFrame.Visible = false
+        minLogo.Visible = true
+    end)
 end)
 
 local minimizeBtn = Instance.new("TextButton")
@@ -576,12 +695,13 @@ local function createModernSlider(parentTab, name, description, min, max, defaul
 end
 
 -- TAB'LARI OLUŞTURMA
-local mainTab     = createTab("Main", "❖")
+local mainTab     = createTab("Main", "⌂")
 local combatTab   = createTab("Combat", "⚔")
-local visualsTab  = createTab("Visuals", "◈")
-local moveTab     = createTab("Movement", "⚡")
-local mm2Tab      = createTab("MM2 Special", "🎯")
-local globalExploitsTab = createTab("Global & Server", "🌐")
+local visualsTab  = createTab("Visuals", "👁")
+local moveTab     = createTab("Movement", "»")
+local mm2Tab      = createTab("MM2 Special", "◎")
+local SpyTabPage  = createTab("Remote Spy", "⌕")
+local globalExploitsTab = createTab("Global & Server", "⌘")
 local settingsTab = createTab("Settings", "⚙")
 
 if activeTabs[1] then
@@ -857,11 +977,54 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- WorthNet Kesin Çözüm Fly Scripti (Joystick Yönü Sabitlendi)
+-- WorthNet Gelişmiş Mobil ve PC Uyumlu Fly Scripti
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
 local flyActive = false
 local flySpeed = 30
 local bv, bg
 local flyConnection
+
+-- PC Tuş Kontrolleri İçin Durum Tablosu
+local keysPressed = {
+	W = false,
+	S = false,
+	A = false,
+	D = false,
+	Space = false,
+	LeftShift = false,
+	LeftControl = false
+}
+
+-- Tuş Dinleyicileri (PC)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.W then keysPressed.W = true end
+	if input.KeyCode == Enum.KeyCode.S then keysPressed.S = true end
+	if input.KeyCode == Enum.KeyCode.A then keysPressed.A = true end
+	if input.KeyCode == Enum.KeyCode.D then keysPressed.D = true end
+	if input.KeyCode == Enum.KeyCode.Space then keysPressed.Space = true end
+	if input.KeyCode == Enum.KeyCode.LeftShift then keysPressed.LeftShift = true end
+	if input.KeyCode == Enum.KeyCode.LeftControl then keysPressed.LeftControl = true end
+	
+	-- P tuşu ile hızlı aç/kapat
+	if input.KeyCode == Enum.KeyCode.P then
+		updateBodyVelocityFly(not flyActive)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.W then keysPressed.W = false end
+	if input.KeyCode == Enum.KeyCode.S then keysPressed.S = false end
+	if input.KeyCode == Enum.KeyCode.A then keysPressed.A = false end
+	if input.KeyCode == Enum.KeyCode.D then keysPressed.D = false end
+	if input.KeyCode == Enum.KeyCode.Space then keysPressed.Space = false end
+	if input.KeyCode == Enum.KeyCode.LeftShift then keysPressed.LeftShift = false end
+	if input.KeyCode == Enum.KeyCode.LeftControl then keysPressed.LeftControl = false end
+end)
 
 local function updateBodyVelocityFly(state)
 	flyActive = state
@@ -898,40 +1061,50 @@ local function updateBodyVelocityFly(state)
 			
 			local camera = workspace.CurrentCamera
 			local moveDirection = Vector3.new(0, 0, 0)
+			local camCFrame = camera.CFrame
+			local camLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
+			local camRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit
 			
-			-- Joystick veya Tuş girdilerini alıyoruz
-			local rawMoveDir = hum.MoveDirection
+			-- 1. PC Tuş Kontrollerini Kontrol Et
+			local pcMoveDir = Vector3.new(0, 0, 0)
+			if keysPressed.W then pcMoveDir = pcMoveDir + camLook end
+			if keysPressed.S then pcMoveDir = pcMoveDir - camLook end
+			if keysPressed.A then pcMoveDir = pcMoveDir - camRight end
+			if keysPressed.D then pcMoveDir = pcMoveDir + camRight end
 			
-			if rawMoveDir.Magnitude > 0 then
-				local camCFrame = camera.CFrame
-				
-				-- Kameranın sadece YATAY (sağ/sol) yönlerini alıyoruz
-				local camLook = camCFrame.LookVector
-				local camRight = camCFrame.RightVector
-				
-				camLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
-				camRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
-				
-				-- DÜZELTME: İleri/geri tersliğini gidermek için eski eksi(-) formüle geri döndük
-				local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
-				moveDirection = finalDir.Unit
-			end
-			
-			-- Zıplama tuşuna basınca yukarı süzülür
-			if hum.Jump then
+			if keysPressed.Space then
 				moveDirection = moveDirection + Vector3.new(0, 1, 0)
+			end
+			if keysPressed.LeftShift or keysPressed.LeftControl then
+				moveDirection = moveDirection - Vector3.new(0, 1, 0)
+			end
+
+			-- 2. Mobil Joystick Girdilerini Kontrol Et (Eğer PC tuşlarına basılmıyorsa)
+			if pcMoveDir.Magnitude > 0 then
+				moveDirection = moveDirection + pcMoveDir.Unit
+			else
+				local rawMoveDir = hum.MoveDirection
+				if rawMoveDir.Magnitude > 0 then
+					-- İleri/geri tersliğini gideren optimize edilmiş yön hesaplaması
+					local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
+					moveDirection = moveDirection + finalDir.Unit
+				end
+				
+				-- Mobilde zıplama tuşuna basıldığında yukarı çıkması için
+				if hum.Jump then
+					moveDirection = moveDirection + Vector3.new(0, 1, 0)
+				end
 			end
 			
 			if moveDirection.Magnitude > 0 then
-				bv.Velocity = moveDirection * flySpeed
+				bv.Velocity = moveDirection.Unit * flySpeed
 			else
-				-- Hiçbir şeye dokunulmadığı an havada sabit kalır
 				bv.Velocity = Vector3.new(0, 0, 0)
 			end
 			
-			-- Karakterin dik durmasını ve kameranın yatay açısına bakmasını sağlar
-			local camLook = camera.CFrame.LookVector
-			local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+			-- Karakterin kamerasının yönüne bakmasını sağla
+			local flatLook = camCFrame.LookVector
+			flatLook = Vector3.new(flatLook.X, 0, flatLook.Z).Unit
 			if flatLook.Magnitude > 0 then
 				bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), flatLook)
 			end
@@ -950,15 +1123,8 @@ local function updateBodyVelocityFly(state)
 	end
 end
 
-createModernToggle(moveTab, "Fly (Mobil Kusursuz)", "Joystick nereye giderse düzgünce oraya uçarsın (Duvar geçirir).", function(state)
+createModernToggle(moveTab, "Fly (Mobil & PC Uyumlu)", "Joystick veya W-A-S-D tuşları ile akıcı uçuş ve duvar geçişi.", function(state)
 	updateBodyVelocityFly(state)
-end)
-
--- PC kullanıcıları için P tuşu kısayolu
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-		updateBodyVelocityFly(not flyActive)
-	end
 end)
 
 
@@ -1747,20 +1913,40 @@ createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı s
 	end
 end)
 
--- FullBright
+-- ==========================================
+-- FULLBRIGHT & PARLAKLIK SEVİYESİ SİSTEMİ
+-- ==========================================
+local fullBrightActive = false
+local brightMultiplier = 3 -- Manuel başlangıç değeri
 local origAmbient, origColorShift, brightLoop = nil, nil, nil
+
+local function applyBrightness(multiplier)
+    Lighting.Ambient = Color3.fromRGB(255 * (multiplier / 3), 255 * (multiplier / 3), 255 * (multiplier / 3))
+    Lighting.ColorShift_Top = Color3.fromRGB(255 * (multiplier / 3), 255 * (multiplier / 3), 255 * (multiplier / 3))
+end
+
 createModernToggle(visualsTab, "FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
-	if state then
-		origAmbient = Lighting.Ambient
-		origColorShift = Lighting.ColorShift_Top
-		brightLoop = RunService.RenderStepped:Connect(function()
-			Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-			Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255)
-		end)
-	else
-		if brightLoop then brightLoop:Disconnect() brightLoop = nil end
-		if origAmbient then Lighting.Ambient = origAmbient Lighting.ColorShift_Top = origColorShift end
-	end
+    fullBrightActive = state
+    if fullBrightActive then
+        origAmbient = Lighting.Ambient
+        origColorShift = Lighting.ColorShift_Top
+        applyBrightness(brightMultiplier)
+        brightLoop = RunService.RenderStepped:Connect(function()
+            if fullBrightActive then
+                applyBrightness(brightMultiplier)
+            end
+        end)
+    else
+        if brightLoop then brightLoop:Disconnect() brightLoop = nil end
+        if origAmbient then Lighting.Ambient = origAmbient Lighting.ColorShift_Top = origColorShift end
+    end
+end)
+
+createModernSlider(visualsTab, "Parlaklık Seviyesi", "FullBright aktifken uygulanacak parlaklık çarpanı.", 1, 10, 3, function(value)
+    brightMultiplier = value
+    if fullBrightActive then
+        applyBrightness(brightMultiplier)
+    end
 end)
 
 -- No Fog
@@ -2464,23 +2650,6 @@ task.spawn(function()
         end
     end
 end)
--- Auto Remote Event Spam & Argument Flooding
-_G.RemoteFloodActive = false
-createModernToggle(combatTab, "Remote & Arg Flood", "ReplicatedStorage'daki eventlere büyük veriler spamler.", function(state)
-    _G.RemoteFloodActive = state
-    task.spawn(function()
-        while _G.RemoteFloodActive do
-            for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-                if v:IsA("RemoteEvent") then
-                    pcall(function()
-                        v:FireServer(string.rep("WorthNet", 5000), math.huge, {})
-                    end)
-                end
-            end
-            task.wait()
-        end
-    end)
-end)
 
 -- Custom FOV
 local Camera = workspace.CurrentCamera
@@ -2545,92 +2714,6 @@ end
 
 -- 2. Oyuna sonradan girecek olanları dinle
 Players.PlayerAdded:Connect(monitorPlayer)
-
--- Freecam / Camera Lock
-_G.FreecamActive = false
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-
-local freecamPos = Vector3.new(0, 0, 0)
-local freecamAngles = Vector2.new(0, 0)
-local connection = nil
-local inputConnection = nil
-
-createModernToggle(visualsTab, "Freecam", "Kamerayı karakterden bağımsız serbest gezdirir.", function(state)
-    _G.FreecamActive = state
-    
-    if state then
-        -- Kameranın mevcut pozisyon ve açılarını al
-        freecamPos = Camera.CFrame.Position
-        local rx, ry, rz = Camera.CFrame:ToOrientation()
-        freecamAngles = Vector2.new(ry, rx)
-        
-        -- Karakteri dondur
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 0
-            LocalPlayer.Character.Humanoid.JumpPower = 0
-        end
-        
-        Camera.CameraType = Enum.CameraType.Scriptable
-        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
-        
-        -- Mouse hareketlerini algılamak için
-        inputConnection = UserInputService.InputChanged:Connect(function(input, gameProcessed)
-            if input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = input.Delta
-                freecamAngles = freecamAngles - Vector2.new(delta.X / 300, delta.Y / 300)
-                -- Yukarı ve aşağı bakış açısını sınırla (-90 ile +90 derece arası)
-                freecamAngles = Vector2.new(freecamAngles.X, math.clamp(freecamAngles.Y, -math.pi/2, math.pi/2))
-            end
-        end)
-        
-        -- Her karede çalışan ana döngü
-        RunService:BindToRenderStep("WorthNetFreecam", Enum.RenderPriority.Camera.Value + 1, function(dt)
-            if not _G.FreecamActive then return end
-            
-            local moveVector = Vector3.new(0, 0, 0)
-            
-            -- WASD / QE Kontrolleri
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVector = moveVector + Vector3.new(0, 0, -1) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVector = moveVector + Vector3.new(0, 0, 1) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVector = moveVector + Vector3.new(-1, 0, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVector = moveVector + Vector3.new(1, 0, 0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.E) then moveVector = moveVector + Vector3.new(0, 1, 0) end -- Yukarı
-            if UserInputService:IsKeyDown(Enum.KeyCode.Q) then moveVector = moveVector + Vector3.new(0, -1, 0) end -- Aşağı
-            
-            -- Kameranın rotasyonunu oluştur
-            local rotationCFrame = CFrame.Angles(0, freecamAngles.X, 0) * CFrame.Angles(freecamAngles.Y, 0, 0)
-            
-            -- Hız ayarı (İstiyorsan buradaki sayıyı büyüterek hızı artırabilirsin)
-            moveVector = rotationCFrame:VectorToWorldSpace(moveVector) * (50 * dt * 3)
-            freecamPos = freecamPos + moveVector
-            
-            -- Kameraya yeni pozisyonu uygula
-            Camera.CFrame = CFrame.new(freecamPos) * rotationCFrame
-        end)
-    else
-        -- Kapatıldığında her şeyi eski haline döndür
-        _G.FreecamActive = false
-        RunService:UnbindFromRenderStep("WorthNetFreecam")
-        
-        if inputConnection then
-            inputConnection:Disconnect()
-            inputConnection = nil
-        end
-        
-        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-        Camera.CameraType = Enum.CameraType.Custom
-        
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Normal hız
-            LocalPlayer.Character.Humanoid.JumpPower = 50 -- Normal zıplama (varsayılan)
-        end
-    end
-end)
-
 
 -- UI Toggle Key (Sağ Shift ile menüyü gizleme/açma)
 local UserInputService = game:GetService("UserInputService")
@@ -2735,6 +2818,94 @@ createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı 
     end
 end)
 
+-- ==========================================
+-- 1. YUVARLAK VE SEMBOLLÜ LOGO (AÇILIŞ/KAPANIŞ)
+-- ==========================================
+-- Eski minLogo yerine geçecek yuvarlak ve sembollü tasarım:
+local minLogo = Instance.new("TextButton")
+minLogo.Name = "WorthNetMiniLogo"
+minLogo.Parent = screenGui -- Ana ScreenGui değişkenin
+minLogo.BackgroundColor3 = THEME.Card
+minLogo.Position = UDim2.new(0, 30, 0.5, -25)
+minLogo.Size = UDim2.new(0, 48, 0, 48)
+minLogo.Font = Enum.Font.Code
+minLogo.Text = ">_"
+minLogo.TextColor3 = THEME.Accent
+minLogo.TextSize = 18
+minLogo.Visible = false
+minLogo.Active = true
+minLogo.Draggable = true
+
+-- Tamamen yuvarlak yapmak için UICorner ekliyoruz
+local logoCorner = Instance.new("UICorner")
+logoCorner.CornerRadius = UDim.new(1, 0) -- Tam daire (Full Round)
+logoCorner.Parent = minLogo
+
+local logoStroke = Instance.new("UIStroke")
+logoStroke.Parent = minLogo
+logoStroke.Color = THEME.Accent
+logoStroke.Thickness = 1.5
+
+-- ==========================================
+-- 2. HARİTA İÇİNDEKİLERİ DE TARIYAN AUTO GUNDROP
+-- ==========================================
+local autoGunDropEnabled = false
+
+createModernToggle(mm2Tab, "Auto GunDrop", "Harita içindeki GunDrop'ları otomatik toplar.", function(state)
+    autoGunDropEnabled = state
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.4)
+        if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = player.Character.HumanoidRootPart
+            local originalCFrame = rootPart.CFrame
+            local targetPart = nil
+
+            -- Önce Workspace genelinde, sonra Workspace içindeki harita modellerinde (Factory, Workplace vb.) arama yapıyoruz
+            for _, item in ipairs(workspace:GetChildren()) do
+                if item.Name == "GunDrop" then
+                    targetPart = item:IsA("Model") and (item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")) or (item:IsA("BasePart") and item)
+                    if targetPart then break end
+                elseif item:IsA("Model") or item:IsA("Folder") then
+                    -- Harita modelinin (Factory, Workplace vb.) içine girip GunDrop arıyoruz
+                    local foundInMap = item:FindFirstChild("GunDrop", true)
+                    if foundInMap then
+                        if foundInMap:IsA("Model") then
+                            targetPart = foundInMap.PrimaryPart or foundInMap:FindFirstChildWhichIsA("BasePart")
+                        elseif foundInMap:IsA("BasePart") then
+                            targetPart = foundInMap
+                        end
+                        if targetPart then break end
+                    end
+                end
+            end
+
+            if targetPart then
+                pcall(function()
+                    -- Silahın tepesine ışınlan
+                    rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.2)
+                    
+                    -- Silahı oyuncuya çekme/temas etme tetiklemesi
+                    if targetPart:IsA("BasePart") then
+                        firetouchinterest(rootPart, targetPart, 0)
+                        firetouchinterest(rootPart, targetPart, 1)
+                    end
+
+                    showNotification("Auto GunDrop", "Silah alındı, geri dönülüyor!", true)
+                    task.wait(0.2)
+                    
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = originalCFrame
+                    end
+                end)
+            end
+        end
+    end
+end)
+
 
 
 
@@ -2761,39 +2932,145 @@ createModernToggle(globalExploitsTab, "Infinite Ammo & Rapid Fire", "Mermileri s
 end)
 
 
----------------------------------------------------------
--- 2. DUPE GLITCH (Eşya Kopyalama Simülasyonu)
----------------------------------------------------------
-createModernToggle(globalExploitsTab, "Dupe Glitch", "Sunucu gecikmesinden yararlanarak envanterdeki eşyaları senkronize eder.", function(state)
-	if state then
-		pcall(function()
-			-- Sunucu ve istemci arasındaki verimlilik döngüsünü tetikler
-			for i = 1, 3 do
-				game:GetService("RunService").Heartbeat:Wait()
-			end
-			showNotification("Dupe", "Eşya senkronizasyonu tetiklendi (Sunucu gecikmesi kullanıldı).", true)
-		end)
-	end
+-- ==========================================
+-- 3. REMOTE SPY SİSTEMİ (PERFORMANSLI TAB)
+-- ==========================================
+local isSpyActive = false
+local SpyMainFrame = Instance.new("Frame")
+SpyMainFrame.Parent = SpyTabPage
+SpyMainFrame.BackgroundTransparency = 1
+SpyMainFrame.Size = UDim2.new(1, 0, 1, 0)
+
+local SpyTopBar = Instance.new("Frame")
+SpyTopBar.Parent = SpyMainFrame
+SpyTopBar.BackgroundColor3 = THEME.Card
+SpyTopBar.Size = UDim2.new(1, -10, 0, 35)
+SpyTopBar.BorderSizePixel = 0
+roundCorners(SpyTopBar, 6)
+
+local SpyStatusLbl = Instance.new("TextLabel")
+SpyStatusLbl.Parent = SpyTopBar
+SpyStatusLbl.BackgroundTransparency = 1
+SpyStatusLbl.Position = UDim2.new(0, 10, 0, 0)
+SpyStatusLbl.Size = UDim2.new(0, 200, 1, 0)
+SpyStatusLbl.Font = Enum.Font.GothamBold
+SpyStatusLbl.Text = "Durum: Durduruldu"
+SpyStatusLbl.TextColor3 = Color3.fromRGB(200, 60, 60)
+SpyStatusLbl.TextSize = 12
+SpyStatusLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local SpyToggleBtn = Instance.new("TextButton")
+SpyToggleBtn.Parent = SpyTopBar
+SpyToggleBtn.BackgroundColor3 = THEME.Accent
+SpyToggleBtn.Position = UDim2.new(1, -95, 0.5, -12)
+SpyToggleBtn.Size = UDim2.new(0, 85, 0, 24)
+SpyToggleBtn.Font = Enum.Font.GothamBold
+SpyToggleBtn.Text = "Başlat"
+SpyToggleBtn.TextColor3 = THEME.Background
+SpyToggleBtn.TextSize = 11
+roundCorners(SpyToggleBtn, 4)
+
+local LogScroll = Instance.new("ScrollingFrame")
+LogScroll.Parent = SpyMainFrame
+LogScroll.BackgroundTransparency = 1
+LogScroll.Position = UDim2.new(0, 0, 0, 42)
+LogScroll.Size = UDim2.new(1, -10, 1, -50)
+LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogScroll.ScrollBarThickness = 3
+LogScroll.ScrollBarImageColor3 = THEME.Accent
+LogScroll.BorderSizePixel = 0
+
+local LogLayout = Instance.new("UIListLayout") 
+LogLayout.Parent = LogScroll 
+LogLayout.SortOrder = Enum.SortOrder.LayoutOrder 
+LogLayout.Padding = UDim.new(0, 4)
+
+local loggedRemotes = {}
+
+local function AddSpyLogEntry(remoteType, remoteObj, args)
+    if not isSpyActive then return end
+    pcall(function()
+        local remoteKey = remoteObj:GetFullName() .. "_" .. remoteType
+        if loggedRemotes[remoteKey] then
+            local data = loggedRemotes[remoteKey]
+            data.count = data.count + 1
+            data.infoText.Text = "[" .. remoteType .. "] " .. remoteObj.Name .. " (x" .. data.count .. ")"
+        else
+            local entryFrame = Instance.new("Frame")
+            entryFrame.Parent = LogScroll
+            entryFrame.BackgroundColor3 = THEME.Card
+            entryFrame.Size = UDim2.new(1, -6, 0, 45)
+            entryFrame.BorderSizePixel = 0
+            roundCorners(entryFrame, 6)
+
+            local infoText = Instance.new("TextLabel")
+            infoText.Parent = entryFrame 
+            infoText.BackgroundTransparency = 1
+            infoText.Position = UDim2.new(0, 8, 0, 4) 
+            infoText.Size = UDim2.new(1, -100, 0, 18)
+            infoText.Font = Enum.Font.GothamBold 
+            infoText.Text = "[" .. remoteType .. "] " .. remoteObj.Name .. " (x1)"
+            infoText.TextColor3 = THEME.Accent 
+            infoText.TextSize = 11 
+            infoText.TextXAlignment = Enum.TextXAlignment.Left
+
+            local pathText = Instance.new("TextLabel")
+            pathText.Parent = entryFrame 
+            pathText.BackgroundTransparency = 1
+            pathText.Position = UDim2.new(0, 8, 0, 22) 
+            pathText.Size = UDim2.new(1, -100, 0, 18)
+            pathText.Font = Enum.Font.Gotham 
+            pathText.Text = "Yol: " .. remoteObj:GetFullName()
+            pathText.TextColor3 = THEME.TextDark 
+            pathText.TextSize = 10 
+            pathText.TextXAlignment = Enum.TextXAlignment.Left
+
+            local copyBtn = Instance.new("TextButton")
+            copyBtn.Parent = entryFrame 
+            copyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+            copyBtn.Position = UDim2.new(1, -90, 0.5, -12) 
+            copyBtn.Size = UDim2.new(0, 80, 0, 24)
+            copyBtn.Font = Enum.Font.GothamMedium 
+            copyBtn.Text = "Kopyala" 
+            copyBtn.TextColor3 = THEME.TextMain 
+            copyBtn.TextSize = 10
+            roundCorners(copyBtn, 4)
+
+            copyBtn.MouseButton1Click:Connect(function()
+                local argsStr = ""
+                pcall(function() argsStr = HttpService:JSONEncode(args) end)
+                if setclipboard then
+                    setclipboard(remoteObj:GetFullName() .. ":" .. remoteType .. "(" .. argsStr .. ")")
+                    showNotification("Remote Spy", "Panoya kopyalandı!", true)
+                end
+            end)
+
+            loggedRemotes[remoteKey] = {
+                count = 1,
+                infoText = infoText,
+                frame = entryFrame
+            }
+        end
+    end)
+end
+
+pcall(function()
+    for _, v in ipairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            v.OnClientEvent:Connect(function(...)
+                if isSpyActive then AddSpyLogEntry("OnClientEvent", v, {...}) end
+            end)
+        end
+    end
 end)
 
----------------------------------------------------------
--- 3. SUNUCU KONTROLÜ VE AÇIK TETİKLEYİCİLERİ
----------------------------------------------------------
-createModernToggle(globalExploitsTab, "Kick All / Server Shutdown", "Eğer oyunun Remote koruması zayıfsa sunucudaki herkesi etkiler.", function(state)
-	if state then
-		pcall(function()
-			-- Güvenlik açığı barındıran RemoteEvent'leri tarayıp tetikler
-			for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-				if v:IsA("RemoteEvent") then
-					local name = v.Name:lower()
-					if name:find("admin") or name:find("kick") or name:find("ban") or name:find("shutdown") then
-						v:FireServer("all")
-					end
-				end
-			end
-			showNotification("Server Control", "Sunucu tetikleme sinyalleri gönderildi!", true)
-		end)
-	end
+SpyToggleBtn.MouseButton1Click:Connect(function()
+    isSpyActive = not isSpyActive
+    SpyStatusLbl.Text = isSpyActive and "Durum: Aktif" or "Durum: Durduruldu"
+    SpyStatusLbl.TextColor3 = isSpyActive and Color3.fromRGB(50, 220, 50) or Color3.fromRGB(200, 60, 60)
+    SpyToggleBtn.Text = isSpyActive and "Durdur" or "Başlat"
+    showNotification("Remote Spy", isSpyActive and "Dinleme başlatıldı." or "Dinleme durduruldu.", isSpyActive)
 end)
 
 
