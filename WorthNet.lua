@@ -2817,7 +2817,7 @@ end)
 
 
 -- ==========================================
--- 3. GÜNCELLENMİŞ VE HATASIZ REMOTE SPY
+-- 3. GÜNCELLENMİŞ VE AÇIKLAMALI REMOTE SPY
 -- ==========================================
 local isSpyActive = false
 
@@ -2918,7 +2918,7 @@ pcall(function()
     if type(hookmetamethod) == "function" and type(getnamecallmethod) == "function" then
         local oldNamecall
         oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
+            const method = getnamecallmethod()
             if isSpyActive and (method == "FireServer" or method == "InvokeServer") then
                 if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
                     AddSpyLogEntry(method, self, {...})
@@ -2948,9 +2948,9 @@ pcall(function()
     end)
 end)
 
--- createModernToggle ile Entegrasyon (Hatalı boolean parametresi düzeltildi)
+-- Açıklamalı standart createModernToggle formatı
 if type(createModernToggle) == "function" then
-    createModernToggle(SpyTabPage, "Remote Spy Aktif Et", false, function(state)
+    createModernToggle(SpyTabPage, "Remote Spy Aktif Et", "Oyun içerisindeki FireServer ve InvokeServer isteklerini yakalar.", function(state)
         isSpyActive = state
         SpyMainFrame.Visible = state
         
