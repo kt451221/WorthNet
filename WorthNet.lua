@@ -2251,19 +2251,19 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
 end)
 
 -- ==========================================
--- MM2 AUTO SHOT (360 DERECE - NET İSABET)
+-- MM2 AUTO SHOT (BULDUĞUN GUNFIRED İLE GÜNCELLENDİ)
 -- ==========================================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 local autoShotEnabled = false
 
-createModernToggle(mm2Tab, "Auto Shot (Sheriff)", "Kameran sabitlenmez, arkanda olsa bile mermiyi doğrudan katile gönderir.", function(state)
+createModernToggle(mm2Tab, "Auto Shot (GunFired)", "Kamerayı sarsmadan doğrudan GunFired remote ile vurur.", function(state)
     autoShotEnabled = state
 end)
 
--- Duvar Kontrolü (Raycast)
 local function hasLineOfSight(targetPart)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
@@ -2278,25 +2278,19 @@ local function hasLineOfSight(targetPart)
     raycastParams.IgnoreWater = true
     
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-    if raycastResult then
-        return false -- Arada duvar var
-    end
-    
-    return true -- Önü açık
+    if raycastResult then return false end
+    return true
 end
 
--- Katili Bulma ve Ateş Etme Döngüsü
 task.spawn(function()
     while true do
-        task.wait(0.05)
-        
+        task.wait(0.03)
         if autoShotEnabled then
             pcall(function()
                 local character = LocalPlayer.Character
                 local humanoid = character and character:FindFirstChildOfClass("Humanoid")
                 if not character or not humanoid or humanoid.Health <= 0 then return end
                 
-                -- 1. Silahı kontrol et / kuşan
                 local gunInChar = character:FindFirstChild("Gun")
                 local gunInBackpack = LocalPlayer.Backpack:FindFirstChild("Gun")
                 local activeGun = gunInChar or gunInBackpack
@@ -2304,7 +2298,7 @@ task.spawn(function()
                 if activeGun then
                     if gunInBackpack and not gunInChar then
                         humanoid:EquipTool(activeGun)
-                        task.wait(0.1)
+                        task.wait(0.05)
                         return
                     end
                     
@@ -2313,12 +2307,10 @@ task.spawn(function()
                         local targetPlayer = nil
                         local targetPart = nil
                         
-                        -- 2. Katili bul (Knife taşıyan)
                         for _, player in ipairs(Players:GetPlayers()) do
                             if player ~= LocalPlayer and player.Character then
                                 local pChar = player.Character
                                 local pBackpack = player:FindFirstChild("Backpack")
-                                
                                 local hasKnife = pChar:FindFirstChild("Knife") or (pBackpack and pBackpack:FindFirstChild("Knife"))
                                 
                                 if hasKnife then
@@ -2334,23 +2326,22 @@ task.spawn(function()
                             end
                         end
                         
-                        -- 3. Katil bulundu ve duvar yoksa -> Kameraya dokunmadan mermiyi hedefe kitle
                         if targetPlayer and targetPart then
                             if hasLineOfSight(targetPart) then
+                                -- Senin bulduğun nokta atışı remote yolu:
+                                local gunFiredRemote = ReplicatedStorage:FindFirstChild("ClientServices") 
+                                    and ReplicatedStorage.ClientServices:FindFirstChild("WeaponService") 
+                                    and ReplicatedStorage.ClientServices.WeaponService:FindFirstChild("GunFired")
                                 
-                                -- Silahın ateş etme fonksiyonunu veya RemoteEvent'ini buluyoruz
-                                local gunRemote = currentGun:FindFirstChild("Shoot") or currentGun:FindFirstChild("Fire") or currentGun:FindFirstChildOfClass("RemoteEvent")
-                                
-                                if gunRemote and gunRemote:IsA("RemoteEvent") then
-                                    -- Doğrudan katilin pozisyonunu sunucuya işliyoruz (Boşluğa gitmez)
-                                    gunRemote:FireServer(targetPart.Position)
+                                if gunFiredRemote then
+                                    -- Doğrudan sunucuya merminin gittiği konumu bildiriyoruz
+                                    gunFiredRemote:FireServer(targetPart.Position)
                                 else
-                                    -- Eğer özel remote yoksa, tool'un kendi vuruşunu tetiklemeden önce 
-                                    -- merminin yönünü simüle etmek için alternatif tetikleme
+                                    -- Alternatif fallback
                                     currentGun:Activate()
                                 end
                                 
-                                task.wait(0.6) -- Seri spam engeli
+                                task.wait(0.5)
                             end
                         end
                     end
