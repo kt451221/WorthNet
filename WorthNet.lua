@@ -2742,7 +2742,7 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(0.08)
+        task.wait(0.1)
         if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local rootPart = player.Character.HumanoidRootPart
             local originalCFrame = rootPart.CFrame
@@ -2771,7 +2771,7 @@ task.spawn(function()
                 pcall(function()
                     -- Silahın tepesine ışınlan
                     rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-                    task.wait(0.08)
+                    task.wait(0.1)
                     
                     -- Silahı oyuncuya çekme/temas etme tetiklemesi
                     if targetPart:IsA("BasePart") then
@@ -2819,7 +2819,7 @@ end)
 
 
 -- ==========================================
--- 3. GÜNCELLENMİŞ VE TAM FONKSİYONEL REMOTE SPY
+-- GÜNVENLİ VE XENO UYUMLU REMOTE SPY
 -- ==========================================
 local isSpyActive = false
 
@@ -2828,17 +2828,17 @@ local SpyMainFrame = Instance.new("Frame")
 SpyMainFrame.Parent = SpyTabPage
 SpyMainFrame.BackgroundTransparency = 1
 SpyMainFrame.Size = UDim2.new(1, 0, 1, 0)
-SpyMainFrame.Visible = false -- Başlangıçta toggle durumuna göre yönetilecek
+SpyMainFrame.Visible = false
 
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Parent = SpyMainFrame
 LogScroll.BackgroundTransparency = 1
-LogScroll.Position = UDim2.new(0, 0, 0, 0) -- Üst barı kaldırdık, alan tamamen loglara kaldı
+LogScroll.Position = UDim2.new(0, 0, 0, 0)
 LogScroll.Size = UDim2.new(1, -10, 1, 0)
 LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LogScroll.ScrollBarThickness = 3
-LogScroll.ScrollBarImageColor3 = THEME.Accent
+LogScroll.ScrollBarImageColor3 = THEME and THEME.Accent or Color3.fromRGB(255, 255, 255)
 LogScroll.BorderSizePixel = 0
 
 local LogLayout = Instance.new("UIListLayout") 
@@ -2859,10 +2859,10 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
         else
             local entryFrame = Instance.new("Frame")
             entryFrame.Parent = LogScroll
-            entryFrame.BackgroundColor3 = THEME.Card
+            entryFrame.BackgroundColor3 = THEME and THEME.Card or Color3.fromRGB(30, 30, 30)
             entryFrame.Size = UDim2.new(1, -6, 0, 45)
             entryFrame.BorderSizePixel = 0
-            if roundCorners then roundCorners(entryFrame, 6) end
+            if type(roundCorners) == "function" then roundCorners(entryFrame, 6) end
 
             local infoText = Instance.new("TextLabel")
             infoText.Parent = entryFrame 
@@ -2871,7 +2871,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             infoText.Size = UDim2.new(1, -100, 0, 18)
             infoText.Font = Enum.Font.GothamBold 
             infoText.Text = "[" .. remoteType .. "] " .. remoteObj.Name .. " (x1)"
-            infoText.TextColor3 = THEME.Accent 
+            infoText.TextColor3 = THEME and THEME.Accent or Color3.fromRGB(200, 200, 200)
             infoText.TextSize = 11 
             infoText.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2882,7 +2882,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             pathText.Size = UDim2.new(1, -100, 0, 18)
             pathText.Font = Enum.Font.Gotham 
             pathText.Text = "Yol: " .. remoteObj:GetFullName()
-            pathText.TextColor3 = THEME.TextDark 
+            pathText.TextColor3 = THEME and THEME.TextDark or Color3.fromRGB(150, 150, 150)
             pathText.TextSize = 10 
             pathText.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2893,16 +2893,16 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             copyBtn.Size = UDim2.new(0, 80, 0, 24)
             copyBtn.Font = Enum.Font.GothamMedium 
             copyBtn.Text = "Kopyala" 
-            copyBtn.TextColor3 = THEME.TextMain 
+            copyBtn.TextColor3 = THEME and THEME.TextMain or Color3.fromRGB(255, 255, 255)
             copyBtn.TextSize = 10
-            if roundCorners then roundCorners(copyBtn, 4) end
+            if type(roundCorners) == "function" then roundCorners(copyBtn, 4) end
 
             copyBtn.MouseButton1Click:Connect(function()
                 local argsStr = ""
                 pcall(function() argsStr = HttpService:JSONEncode(args) end)
                 if setclipboard then
                     setclipboard(remoteObj:GetFullName() .. ":" .. remoteType .. "(" .. argsStr .. ")")
-                    if showNotification then showNotification("Remote Spy", "Panoya kopyalandı!", true) end
+                    if type(showNotification) == "function" then showNotification("Remote Spy", "Panoya kopyalandı!", true) end
                 end
             end)
 
@@ -2915,16 +2915,20 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
     end)
 end
 
--- Giden Remote'ları (FireServer / InvokeServer) yakalamak için Hook
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    if isSpyActive and (method == "FireServer" or method == "InvokeServer") then
-        if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
-            AddSpyLogEntry(method, self, {...})
-        end
+-- Güvenli Metatable Hook Kontrolü (Xeno uyumlu)
+pcall(function()
+    if type(hookmetamethod) == "function" and type(getnamecallmethod) == "function" then
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if isSpyActive and (method == "FireServer" or method == "InvokeServer") then
+                if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
+                    AddSpyLogEntry(method, self, {...})
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
     end
-    return oldNamecall(self, ...)
 end)
 
 -- Gelen Remote'ları (OnClientEvent) Dinleme
@@ -2947,14 +2951,16 @@ pcall(function()
 end)
 
 -- createModernToggle ile Entegrasyon
-createModernToggle(SpyTabPage, "Remote Spy Aktif Et", false, function(state)
-    isSpyActive = state
-    SpyMainFrame.Visible = state
-    
-    if showNotification then
-        showNotification("Remote Spy", state and "Dinleme başlatıldı." or "Dinleme durduruldu.", state)
-    end
-end)
+if type(createModernToggle) == "function" then
+    createModernToggle(SpyTabPage, "Remote Spy Aktif Et", false, function(state)
+        isSpyActive = state
+        SpyMainFrame.Visible = state
+        
+        if type(showNotification) == "function" then
+            showNotification("Remote Spy", state and "Dinleme başlatıldı." or "Dinleme durduruldu.", state)
+        end
+    end)
+end
 
 
 
