@@ -2736,13 +2736,13 @@ logoStroke.Thickness = 1.5
 -- ==========================================
 local autoGunDropEnabled = false
 
-createModernToggle(mm2Tab, "Auto GunDrop", "Harita içindeki GunDrop'ları otomatik toplar.", function(state)
+createModernToggle(mm2Tab, "Auto GunDrop", "Harita içindeki Silahı otomatik toplar.", function(state)
     autoGunDropEnabled = state
 end)
 
 task.spawn(function()
     while true do
-        task.wait(0.4)
+        task.wait(0.08)
         if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local rootPart = player.Character.HumanoidRootPart
             local originalCFrame = rootPart.CFrame
@@ -2771,7 +2771,7 @@ task.spawn(function()
                 pcall(function()
                     -- Silahın tepesine ışınlan
                     rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-                    task.wait(0.2)
+                    task.wait(0.08)
                     
                     -- Silahı oyuncuya çekme/temas etme tetiklemesi
                     if targetPart:IsA("BasePart") then
@@ -2791,63 +2791,6 @@ task.spawn(function()
     end
 end)
 
--- ==========================================
--- 2. GİZLİ VE HIZLI AUTO GUNDROP
--- ==========================================
-local autoGunDropEnabled = false
-
-createModernToggle(mm2Tab, "Auto GunDrop Magnet", "Karakterini bozmadan silahı sana çeker.", function(state)
-    autoGunDropEnabled = state
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(0.2) -- Süreyi biraz daha hızlandırdık
-        if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local rootPart = player.Character.HumanoidRootPart
-            local targetPart = nil
-
-            -- Workspace içinde GunDrop arama dövüsü
-            for _, item in ipairs(workspace:GetChildren()) do
-                if item.Name == "GunDrop" then
-                    targetPart = item:IsA("Model") and (item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")) or (item:IsA("BasePart") and item)
-                    if targetPart then break end
-                elseif item:IsA("Model") or item:IsA("Folder") then
-                    local foundInMap = item:FindFirstChild("GunDrop", true)
-                    if foundInMap then
-                        if foundInMap:IsA("Model") then
-                            targetPart = foundInMap.PrimaryPart or foundInMap:FindFirstChildWhichIsA("BasePart")
-                        elseif foundInMap:IsA("BasePart") then
-                            targetPart = foundInMap
-                        end
-                        if targetPart then break end
-                    end
-                end
-            end
-
-            if targetPart then
-                pcall(function()
-                    -- YÖNTEM: Karakteri kıpırdatmadan, silahı senin kordinatına çekiyoruz!
-                    -- Böylece kimse ışınlandığını veya hareket ettiğini görmez.
-                    if targetPart.Parent:IsA("Model") then
-                        targetPart.Parent:SetPrimaryPartCFrame(rootPart.CFrame)
-                    else
-                        targetPart.CFrame = rootPart.CFrame
-                    end
-
-                    -- Temas olayını tetikle
-                    if targetPart:IsA("BasePart") then
-                        firetouchinterest(rootPart, targetPart, 0)
-                        firetouchinterest(rootPart, targetPart, 1)
-                    end
-
-                    showNotification("Auto GunDrop", "Silah gizlice alındı!", true)
-                    task.wait(0.5) -- Spam atmasını engellemek için kısa bir bekleme
-                end)
-            end
-        end
-    end
-end)
 
 
 
@@ -2879,45 +2822,19 @@ end)
 -- 3. GÜNCELLENMİŞ VE TAM FONKSİYONEL REMOTE SPY
 -- ==========================================
 local isSpyActive = false
+
+-- Ana Remote Spy Çerçevesi
 local SpyMainFrame = Instance.new("Frame")
 SpyMainFrame.Parent = SpyTabPage
 SpyMainFrame.BackgroundTransparency = 1
 SpyMainFrame.Size = UDim2.new(1, 0, 1, 0)
-
-local SpyTopBar = Instance.new("Frame")
-SpyTopBar.Parent = SpyMainFrame
-SpyTopBar.BackgroundColor3 = THEME.Card
-SpyTopBar.Size = UDim2.new(1, -10, 0, 35)
-SpyTopBar.BorderSizePixel = 0
-roundCorners(SpyTopBar, 6)
-
-local SpyStatusLbl = Instance.new("TextLabel")
-SpyStatusLbl.Parent = SpyTopBar
-SpyStatusLbl.BackgroundTransparency = 1
-SpyStatusLbl.Position = UDim2.new(0, 10, 0, 0)
-SpyStatusLbl.Size = UDim2.new(0, 200, 1, 0)
-SpyStatusLbl.Font = Enum.Font.GothamBold
-SpyStatusLbl.Text = "Durum: Durduruldu"
-SpyStatusLbl.TextColor3 = Color3.fromRGB(200, 60, 60)
-SpyStatusLbl.TextSize = 12
-SpyStatusLbl.TextXAlignment = Enum.TextXAlignment.Left
-
-local SpyToggleBtn = Instance.new("TextButton")
-SpyToggleBtn.Parent = SpyTopBar
-SpyToggleBtn.BackgroundColor3 = THEME.Accent
-SpyToggleBtn.Position = UDim2.new(1, -95, 0.5, -12)
-SpyToggleBtn.Size = UDim2.new(0, 85, 0, 24)
-SpyToggleBtn.Font = Enum.Font.GothamBold
-SpyToggleBtn.Text = "Başlat"
-SpyToggleBtn.TextColor3 = THEME.Background
-SpyToggleBtn.TextSize = 11
-roundCorners(SpyToggleBtn, 4)
+SpyMainFrame.Visible = false -- Başlangıçta toggle durumuna göre yönetilecek
 
 local LogScroll = Instance.new("ScrollingFrame")
 LogScroll.Parent = SpyMainFrame
 LogScroll.BackgroundTransparency = 1
-LogScroll.Position = UDim2.new(0, 0, 0, 42)
-LogScroll.Size = UDim2.new(1, -10, 1, -50)
+LogScroll.Position = UDim2.new(0, 0, 0, 0) -- Üst barı kaldırdık, alan tamamen loglara kaldı
+LogScroll.Size = UDim2.new(1, -10, 1, 0)
 LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LogScroll.ScrollBarThickness = 3
@@ -2945,7 +2862,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             entryFrame.BackgroundColor3 = THEME.Card
             entryFrame.Size = UDim2.new(1, -6, 0, 45)
             entryFrame.BorderSizePixel = 0
-            roundCorners(entryFrame, 6)
+            if roundCorners then roundCorners(entryFrame, 6) end
 
             local infoText = Instance.new("TextLabel")
             infoText.Parent = entryFrame 
@@ -2978,14 +2895,14 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             copyBtn.Text = "Kopyala" 
             copyBtn.TextColor3 = THEME.TextMain 
             copyBtn.TextSize = 10
-            roundCorners(copyBtn, 4)
+            if roundCorners then roundCorners(copyBtn, 4) end
 
             copyBtn.MouseButton1Click:Connect(function()
                 local argsStr = ""
                 pcall(function() argsStr = HttpService:JSONEncode(args) end)
                 if setclipboard then
                     setclipboard(remoteObj:GetFullName() .. ":" .. remoteType .. "(" .. argsStr .. ")")
-                    showNotification("Remote Spy", "Panoya kopyalandı!", true)
+                    if showNotification then showNotification("Remote Spy", "Panoya kopyalandı!", true) end
                 end
             end)
 
@@ -2998,7 +2915,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
     end)
 end
 
--- Giden Remote'ları (FireServer / InvokeServer) yakalamak için Hook (Metatable Hook)
+-- Giden Remote'ları (FireServer / InvokeServer) yakalamak için Hook
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
@@ -3020,7 +2937,6 @@ pcall(function()
         end
     end
     
-    -- Sonradan eklenen remote'ları kaçırmamak için
     game.DescendantAdded:Connect(function(v)
         if v:IsA("RemoteEvent") then
             v.OnClientEvent:Connect(function(...)
@@ -3030,12 +2946,14 @@ pcall(function()
     end)
 end)
 
-SpyToggleBtn.MouseButton1Click:Connect(function()
-    isSpyActive = not isSpyActive
-    SpyStatusLbl.Text = isSpyActive and "Durum: Aktif" or "Durum: Durduruldu"
-    SpyStatusLbl.TextColor3 = isSpyActive and Color3.fromRGB(50, 220, 50) or Color3.fromRGB(200, 60, 60)
-    SpyToggleBtn.Text = isSpyActive and "Durdur" or "Başlat"
-    showNotification("Remote Spy", isSpyActive and "Dinleme başlatıldı." or "Dinleme durduruldu.", isSpyActive)
+-- createModernToggle ile Entegrasyon
+createModernToggle(SpyTabPage, "Remote Spy Aktif Et", false, function(state)
+    isSpyActive = state
+    SpyMainFrame.Visible = state
+    
+    if showNotification then
+        showNotification("Remote Spy", state and "Dinleme başlatıldı." or "Dinleme durduruldu.", state)
+    end
 end)
 
 
