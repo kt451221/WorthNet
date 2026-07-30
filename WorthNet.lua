@@ -29,15 +29,15 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = player.PlayerGui
 
 local THEME = {
-    Background = Color3.fromRGB(18, 16, 24),      -- Derin Koyu Morumsu Gri
-    Sidebar    = Color3.fromRGB(24, 22, 32),      -- Yan Menü Arka Planı
-    Card       = Color3.fromRGB(32, 28, 44),      -- Kart Arka Planı
-    Accent     = Color3.fromRGB(255, 0, 127),     -- Canlı Neon Pembe / Magenta
-    AccentGlow = Color3.fromRGB(255, 75, 160),    -- Parlak Açık Pembe
-    TextMain   = Color3.fromRGB(255, 255, 255),    -- Saf Beyaz
-    TextDark   = Color3.fromRGB(160, 150, 180),    -- Soluk Lila Gri
-    ToggleOn   = Color3.fromRGB(255, 0, 127),     -- Açık Buton (Neon Pembe)
-    ToggleOff  = Color3.fromRGB(50, 45, 65)       -- Kapalı Buton (Koyu Mor-Gri)
+    Background = Color3.fromRGB(12, 12, 15),      -- Derin Saf Siyah-Gri
+    Sidebar    = Color3.fromRGB(16, 16, 20),      -- Yan Menü Arka Planı
+    Card       = Color3.fromRGB(20, 20, 26),      -- Kart Arka Planı
+    Accent     = Color3.fromRGB(0, 225, 255),     -- Canlı Siber Buz Mavisi (Cyan)
+    AccentGlow = Color3.fromRGB(70, 240, 255),     -- Parlak Açık Cyan
+    TextMain   = Color3.fromRGB(240, 240, 245),   -- Saf Beyaz
+    TextDark   = Color3.fromRGB(130, 130, 145),   -- Soluk Füme Gri
+    ToggleOn   = Color3.fromRGB(0, 225, 255),     -- Açık Buton (Cyan)
+    ToggleOff  = Color3.fromRGB(35, 35, 45)       -- Kapalı Buton (Koyu Siyah-Gri)
 }
 
 
@@ -2252,7 +2252,7 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
 end)
 
 -- ==========================================
--- MM2 AUTO SHOT (WALL CHECK İLE)
+-- MM2 AUTO SHOT (GELİŞTİRİLMİŞ & OTOMATİK KUŞANMA)
 -- ==========================================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -2260,88 +2260,99 @@ local LocalPlayer = Players.LocalPlayer
 
 local autoShotEnabled = false
 
-createModernToggle(mm2Tab, "Auto Shot (Sheriff)", "Katil görüş açısındaysa ve duvar yoksa otomatik vurur.", function(state)
+createModernToggle(mm2Tab, "Auto Shot (Sheriff)", "Katil görüş açısındaysa ve duvar yoksa silahı alıp otomatik vurur.", function(state)
     autoShotEnabled = state
 end)
 
--- Duvar Kontrolü (Raycast Fonksiyonu)
+-- Geliştirilmiş Duvar Kontrolü (Raycast)
 local function hasLineOfSight(targetPart)
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
     
     local origin = character.HumanoidRootPart.Position
     local destination = targetPart.Position
+    local direction = destination - origin
     
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    -- Hem kendi karakterimizi hem de hedef oyuncunun karakterini filtreden hariç tutuyoruz
     raycastParams.FilterDescendantsInstances = {character, targetPart.Parent}
     raycastParams.IgnoreWater = true
     
-    local raycastResult = Workspace:Raycast(origin, destination - origin, raycastParams)
+    local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
     
-    -- Eğer ray bir şeye çarptıysa arada duvar/engel var demektir
+    -- Eğer ray bir şeye çarptıysa, araya engel girmiştir
     if raycastResult then
         return false
     end
     
-    return true -- Önü tamamen açık
+    return true -- Önü tamamen temiz
 end
 
--- Katili Bulma ve Ateş Etme Döngüsü
+-- Katili Bulma ve Otomatik Tetikleme Döngüsü
 task.spawn(function()
     while true do
-        task.wait(0.1) -- Performans ve hız dengesi için 0.1 saniye
+        task.wait(0.05) -- Hızı biraz daha artırdık (0.05 sn)
         
         if autoShotEnabled then
             pcall(function()
                 local character = LocalPlayer.Character
-                if not character then return end
+                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                if not character or not humanoid or humanoid.Health <= 0 then return end
                 
-                -- 1. Envanterde (Karakterde veya Backpack'te) "Gun" var mı kontrol et
-                local hasGun = character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+                -- 1. Silah karakterin üzerindemi veya Backpack'te mi?
+                local gunInChar = character:FindFirstChild("Gun")
+                local gunInBackpack = LocalPlayer.Backpack:FindFirstChild("Gun")
+                local activeGun = gunInChar or gunInBackpack
                 
-                if hasGun then
-                    local targetPlayer = nil
-                    local targetPart = nil
+                if activeGun then
+                    -- Eğer silah çantadaysa otomatik olarak ele al (Equip et)
+                    if gunInBackpack and not gunInChar then
+                        humanoid:EquipTool(activeGun)
+                        task.wait(0.1) -- El değiştirmesi için kısa bir bekleme
+                        return
+                    end
                     
-                    -- 2. Katili (Knife taşıyanı) bul
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer and player.Character then
-                            local pChar = player.Character
-                            local pBackpack = player:FindFirstChild("Backpack")
-                            
-                            -- Katil tespiti: Elinde veya çantasında Bıçak (Knife) olan kişi
-                            if (pChar:FindFirstChild("Knife") or (pBackpack and pBackpack:FindFirstChild("Knife"))) then
-                                local torso = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
-                                if torso and pChar:FindFirstChild("Humanoid") and pChar.Humanoid.Health > 0 then
-                                    targetPlayer = player
-                                    targetPart = torso
-                                    break
+                    -- Silah artık elindeyse devam et
+                    if character:FindFirstChild("Gun") then
+                        local targetPlayer = nil
+                        local targetPart = nil
+                        
+                        -- 2. Katili (Knife taşıyanı) tespit et
+                        for _, player in ipairs(Players:GetPlayers()) do
+                            if player ~= LocalPlayer and player.Character then
+                                local pChar = player.Character
+                                local pBackpack = player:FindFirstChild("Backpack")
+                                
+                                local hasKnife = pChar:FindFirstChild("Knife") or (pBackpack and pBackpack:FindFirstChild("Knife"))
+                                
+                                if hasKnife then
+                                    local pHumanoid = pChar:FindFirstChildOfClass("Humanoid")
+                                    local torso = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
+                                    
+                                    if torso and pHumanoid and pHumanoid.Health > 0 then
+                                        targetPlayer = player
+                                        targetPart = torso
+                                        break
+                                    end
                                 end
                             end
                         end
-                    end
-                    
-                    -- 3. Katil bulunduysa Wall Check yap ve ateş et
-                    if targetPlayer and targetPart then
-                        if hasLineOfSight(targetPart) then
-                            -- Silah elindeyse veya eline alınabilecekse ateş tetiklemesi
-                            local gun = character:FindFirstChild("Gun")
-                            if gun then
-                                -- Silah karakterin elindeyse Mouse1Click veya RemoteEvent ile ateş açılır
-                                local mouse = LocalPlayer:GetMouse()
-                                
-                                -- Kamerayı katile odakla (İsteğe bağlı ufak bir kilitlenme)
+                        
+                        -- 3. Katil bulunduysa ve duvar yoksa ateş et
+                        if targetPlayer and targetPart then
+                            if hasLineOfSight(targetPart) then
+                                -- Kamerayı katile odakla
                                 Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, targetPart.Position)
                                 
-                                -- Ateş etme simülasyonu
+                                -- Ateş etme tetikleyicisi
                                 task.spawn(function()
                                     mouse1press()
-                                    task.wait(0.05)
+                                    task.wait(0.03)
                                     mouse1release()
                                 end)
                                 
-                                task.wait(0.5) -- Arka arkaya spam atmaması için küçük bir bekleme
+                                task.wait(0.6) -- Seri atıp mermi tüketmemesi ve spam olmaması için bekleme
                             end
                         end
                     end
@@ -2863,6 +2874,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local isSpyActive = false
 
@@ -2960,7 +2972,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-game:GetService("RunService").RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function()
     if dragging and dragInput then
         local delta = dragInput.Position - dragStart
         MainSpyWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -2973,11 +2985,14 @@ local loggedRemotes = {}
 local function AddSpyLogEntry(remoteType, remoteObj, args)
     if not isSpyActive then return end
     pcall(function()
-        local remoteKey = (typeof(remoteObj) == "Instance" and remoteObj:GetFullName() or "Test") .. "_" .. remoteType
+        local remoteName = (typeof(remoteObj) == "Instance" and remoteObj.Name or "Unknown")
+        local remoteFullName = (typeof(remoteObj) == "Instance" and remoteObj:GetFullName() or "Unknown")
+        local remoteKey = remoteFullName .. "_" .. remoteType
+
         if loggedRemotes[remoteKey] then
             local data = loggedRemotes[remoteKey]
             data.count = data.count + 1
-            data.infoText.Text = "[" .. remoteType .. "] " .. (typeof(remoteObj) == "Instance" and remoteObj.Name or "Test") .. " (x" .. data.count .. ")"
+            data.infoText.Text = "[" .. remoteType .. "] " .. remoteName .. " (x" .. data.count .. ")"
         else
             local entryFrame = Instance.new("Frame")
             entryFrame.Parent = LogScroll
@@ -2992,7 +3007,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             infoText.Position = UDim2.new(0, 10, 0, 5) 
             infoText.Size = UDim2.new(1, -100, 0, 18)
             infoText.Font = Enum.Font.GothamBold 
-            infoText.Text = "[" .. remoteType .. "] " .. (typeof(remoteObj) == "Instance" and remoteObj.Name or "Test") .. " (x1)"
+            infoText.Text = "[" .. remoteType .. "] " .. remoteName .. " (x1)"
             infoText.TextColor3 = THEME and THEME.Accent or Color3.fromRGB(255, 100, 150)
             infoText.TextSize = 11 
             infoText.TextXAlignment = Enum.TextXAlignment.Left
@@ -3003,7 +3018,7 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
             pathText.Position = UDim2.new(0, 10, 0, 22) 
             pathText.Size = UDim2.new(1, -100, 0, 18)
             pathText.Font = Enum.Font.Gotham 
-            pathText.Text = "Yol: " .. (typeof(remoteObj) == "Instance" and remoteObj:GetFullName() or "Workspace")
+            pathText.Text = "Yol: " .. remoteFullName
             pathText.TextColor3 = Color3.fromRGB(160, 160, 160)
             pathText.TextSize = 10 
             pathText.TextXAlignment = Enum.TextXAlignment.Left
@@ -3037,14 +3052,14 @@ local function AddSpyLogEntry(remoteType, remoteObj, args)
     end)
 end
 
--- Hook İşlemi
+-- Hook İşlemi (Gerçek Remotelar İçin)
 pcall(function()
     if type(hookmetamethod) == "function" and type(getnamecallmethod) == "function" then
         local oldNamecall
         oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             local method = getnamecallmethod()
             if isSpyActive and (method == "FireServer" or method == "InvokeServer") then
-                if self:IsA("RemoteEvent") or self:IsA("RemoteFunction") then
+                if typeof(self) == "Instance" and (self:IsA("RemoteEvent") or self:IsA("RemoteFunction")) then
                     AddSpyLogEntry(method, self, {...})
                 end
             end
@@ -3058,10 +3073,6 @@ if type(createModernToggle) == "function" then
     createModernToggle(SpyTabPage, "Remote Spy Penceresi", "Bağımsız taşınabilir Remote Spy penceresini açar.", function(state)
         isSpyActive = state
         SpyScreenGui.Enabled = state
-        
-        if state then
-            AddSpyLogEntry("System", {Name = "SpyBaslatildi", GetFullName = function() return "WorthNet.RemoteSpy" end}, {})
-        end
         
         if type(showNotification) == "function" then
             showNotification("Remote Spy", state and "Pencere açıldı." or "Pencere kapatıldı.")
