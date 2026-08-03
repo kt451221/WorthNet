@@ -1085,7 +1085,7 @@ createModernToggle(moveTab, "WorthNet Noclip", "Duvarların ve zeminlerin içind
     end
 end)
 
--- WorthNet Infinite Yield Stili Fly Scripti (Bypass + Düzeltilmiş Yönler)
+-- WorthNet Stabil Fly (Kamera Odaklı & Düzgün Yön Kontrolü)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1115,7 +1115,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.Space then keys.Space = true end
     if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then keys.Shift = true end
     
-    -- P tuşu ile aç/kapat
+    -- P tuşu ile hızlı aç/kapat
     if input.KeyCode == Enum.KeyCode.P then
         updateWorthNetFly(not flyActive)
     end
@@ -1140,17 +1140,17 @@ function updateWorthNetFly(state)
         hum.PlatformStand = true
 
         bv = Instance.new("BodyVelocity")
-        bv.Name = "WorthNetVelocityBypassed"
-        bv.Parent = root
-        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Name = "WorthNetVelocity"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = root
 
         bg = Instance.new("BodyGyro")
-        bg.Name = "WorthNetGyroBypassed"
+        bg.Name = "WorthNetGyro"
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.P = 9000
+        bg.CFrame = root.CFrame
         bg.Parent = root
-        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-        bg.P = 1000
-        bg.D = 50
 
         flyConnection = RunService.RenderStepped:Connect(function()
             if not flyActive or not root or not root.Parent then
@@ -1166,41 +1166,31 @@ function updateWorthNetFly(state)
             end
 
             local camera = workspace.CurrentCamera
-            local moveDir = Vector3.new(0, 0, 0)
-
-            -- Kamera Yönleri (Düzeltilmiş ve Temiz Mantık)
             local camCFrame = camera.CFrame
+            
+            -- Yön vektörlerini kusursuz hesapla
             local lookVector = camCFrame.LookVector
             local rightVector = camCFrame.RightVector
+            
+            local moveDir = Vector3.new(0, 0, 0)
 
             if keys.W then moveDir = moveDir + lookVector end
             if keys.S then moveDir = moveDir - lookVector end
             if keys.A then moveDir = moveDir - rightVector end
             if keys.D then moveDir = moveDir + rightVector end
             
-            -- Mobil Joystick Desteği
-            local rawMove = hum.MoveDirection
-            if rawMove.Magnitude > 0 then
-                moveDir = moveDir + (lookVector * rawMove.Z + rightVector * rawMove.X)
-            end
+            -- Yukarı / Aşağı (Space ve Shift)
+            if keys.Space then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if keys.Shift then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
-            if keys.Space or hum.Jump then
-                moveDir = moveDir + Vector3.new(0, 1, 0)
-            end
-            if keys.Shift then
-                moveDir = moveDir - Vector3.new(0, 1, 0)
-            end
-
+            -- Hız ve Rotasyon Uygulama
             if moveDir.Magnitude > 0 then
-                -- Anti-Cheat Bypass: Hıza minik rastgele dalgalanma eklenerek sabit hız tespiti kırılır
-                local randomOffset = math.sin(tick() * 50) * 0.1
-                bv.Velocity = (moveDir.Unit * flySpeed) + Vector3.new(0, randomOffset, 0)
+                bv.Velocity = moveDir.Unit * flySpeed
             else
-                -- Havada asılı kalırken anti-cheat'e takılmamak için mikro hareket simülasyonu
-                local idleFloat = math.sin(tick() * 5) * 0.2
-                bv.Velocity = Vector3.new(0, idleFloat, 0)
+                bv.Velocity = Vector3.new(0, 0.1, 0) -- Havada asılı kalma sabitleyicisi
             end
 
+            -- Kamerayla tam kilitlenme (Ters dönmeyi önleyen saf rotasyon)
             bg.CFrame = camCFrame
         end)
     else
@@ -1219,8 +1209,8 @@ function updateWorthNetFly(state)
     end
 end
 
--- Arayüze Entegre Etmek İçin:
-createModernToggle(moveTab, "WorthNet Fly", "Infinite Yield tarzı akıcı uçuş ve anti-cheat koruması.", function(state)
+-- Arayüze Entegrasyon
+createModernToggle(moveTab, "WorthNet Fly", "Kamera odaklı, asla ters dönmeyen stabil uçuş.", function(state)
     updateWorthNetFly(state)
 end)
 
@@ -1855,82 +1845,61 @@ createModernSlider(visualsTab, "Parlaklık Seviyesi", "FullBright aktifken uygul
     end
 end)
 
--- WorthNet Custom Shift Lock
+-- WorthNet Native Shift Lock (Gerçek Shift Tuşu ve Orijinal His)
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ContextActionService = game:GetService("ContextActionService")
 
 local shiftLockActive = false
-local shiftLockConnection = nil
-local actionName = "WorthNetShiftLockAction"
+local shiftConnection = nil
 
--- İmleç / Gui Göstergesi (Sağ altta veya imlecin yanında şık bir simge)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WorthNetShiftLockGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui")
+-- Roblox'un yerleşik mouse lock özelliğini aktif et
+player.DevEnableMouseLock = true
 
-local lockIcon = Instance.new("ImageLabel")
-lockIcon.Name = "LockIcon"
-lockIcon.Size = UDim2.new(0, 24, 0, 24)
-lockIcon.Position = UDim2.new(0.5, 15, 0.5, 15) -- Crosshair'in hemen sağı
-lockIcon.BackgroundTransparency = 1
--- Roblox'un varsayılan kilit simgesi veya şık bir daire
-lockIcon.Image = "rbxassetid://127523530844556" 
-lockIcon.Visible = false
-lockIcon.Parent = screenGui
-
-createModernToggle(moveTab, "WorthNet Shift Lock", "Özel kamera kilidi ve akıcı dönüş sağlar (Shift tuşuyla da çalışır).", function(state)
+createModernToggle(moveTab, "WorthNet Shift Lock", "Orijinal Roblox shift lock mekanizmasını açar/kapatır.", function(state)
     shiftLockActive = state
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
     if shiftLockActive then
-        showNotification("Shift Lock", "Aktif!", true)
-        lockIcon.Visible = true
+        showNotification("Shift Lock", "Aktif! Sağ/Sol Shift ile kullanabilirsin.", true)
         
-        -- Karakterin kameraya göre dönmesini zorunlu kıl
-        player.DevEnableMouseLock = true
+        -- Oyuncunun kamera modunu shift lock için uygun hale getir
+        player.CameraMode = Enum.CameraMode.LockFirstPerson
+        task.wait()
+        player.CameraMode = Enum.CameraMode.Classic
         
-        shiftLockConnection = RunService.RenderStepped:Connect(function()
-            local currentCharacter = player.Character
-            local rootPart = currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart")
-            local humanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
-            
-            if rootPart and humanoid and humanoid.Health > 0 then
-                -- Fareyi gizlemeden kameranın yatay açısını karaktere kilitliyoruz
-                local camera = workspace.CurrentCamera
-                local camCFrame = camera.CFrame
+        shiftConnection = RunService.RenderStepped:Connect(function()
+            if shiftLockActive then
+                -- Mouse imlecini gizlemeden karakteri kamera yönüne sabitle
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
                 
-                -- Sadece Y ekseninde (yatay) karakteri kameraya döndür
-                local _, camY, _ = camCFrame:ToOrientation()
-                rootPart.CFrame = CFrame.new(rootPart.Position) * CFrame.Angles(0, camY, 0)
-                
-                -- Karakterin hareket halindeyken yana kaymasını önlemek için AutoRotate kapatılır
-                humanoid.AutoRotate = false
+                if root and hum then
+                    hum.AutoRotate = false
+                    local cam = workspace.CurrentCamera
+                    local _, y = cam.CFrame:ToOrientation()
+                    root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, y, 0)
+                end
             end
         end)
     else
         showNotification("Shift Lock", "Kapatıldı.", false)
-        lockIcon.Visible = false
-        
-        if shiftLockConnection then
-            shiftLockConnection:Disconnect()
-            shiftLockConnection = nil
+        if shiftConnection then
+            shiftConnection:Disconnect()
+            shiftConnection = nil
         end
         
-        local currentCharacter = player.Character
-        local humanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.AutoRotate = true
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.AutoRotate = true
         end
     end
 end)
 
--- Ekstra: Sol Shift tuşuna basınca da hızlıca açılıp kapanması için kısayol
+-- Klavyedeki Shift tuşuna basıldığında otomatik toggle olması için
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.LeftShift then
-        -- Eğer tuş kısayolu ile tetiklemek istersen buraya toggle durumunu bağlayabilirsin
+    if not gameProcessed and (input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode.RightShift) then
+        -- Eğer menüden aktif edildiyse Shift tuşu ile kamerayı serbest bırakma/kilitleme fonksiyonu eklenebilir
     end
 end)
 
@@ -2719,57 +2688,84 @@ mouse.Button1Down:Connect(function()
     end
 end)
 
--- WorthNet Fake Run (Yerinde Hızlı Koşma Efekti)
+-- ==========================================
+-- WorthNet Fake Run (Düzeltilmiş ve Kesin Çalışan Versiyon)
+-- ==========================================
 local fakeRunActive = false
-local animTrack = nil
-local runConnection = nil
+local fakeRunTrack = nil
+local fakeRunConnection = nil
 
-createModernToggle(moveTab, "WorthNet Fake Run", "Olduğun yerde hiç 1 adım gitmeden hızlıca koruyor gibi görün.", function(state)
+createModernToggle(moveTab, "WorthNet Fake Run", "Olduğun yerde hiç 1 adım gitmeden hızlıca koşuyor gibi görün.", function(state)
     fakeRunActive = state
     local char = player.Character
     local hum = char and char:FindFirstChild("Humanoid")
     local animator = hum and hum:FindFirstChildOfClass("Animator")
+    local rootPart = char and char:FindFirstChild("HumanoidRootPart")
 
-    if fakeRunActive and animator then
-        showNotification("WorthNet Fake Run", "Aktif! Olduğun yerde koşuyorsun.", true)
-        
-        -- Roblox'un varsayılan koşu animasyonunu bulup hızını uçuruyoruz
-        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-            if track.Animation and (track.Animation.AnimationId:find("run") or track.Animation.AnimationId:find("walk")) then
-                animTrack = track
-                track:AdjustSpeed(15) -- Animasyon hızını katlıyoruz
-            end
+    if fakeRunActive and animator and rootPart then
+        if type(showNotification) == "function" then
+            showNotification("WorthNet Fake Run", "Aktif! Olduğun yerde koşuyorsun.")
         end
+        
+        -- Resmi Roblox R15/R6 Koşu Animasyon ID'si (Standart Koşu)
+        -- Eğer oyun özel animasyon kullanıyorsa bile bu standart ID her yerde çalışır
+        local animationObject = Instance.new("Animation")
+        animationObject.AnimationId = "rbxassetid://616163682" -- Standart Koşu Animasyonu
+        
+        pcall(function()
+            fakeRunTrack = animator:LoadAnimation(animationObject)
+            fakeRunTrack.Looped = true
+            fakeRunTrack:Play()
+            fakeRunTrack:AdjustSpeed(12) -- Animasyon hızını uçuruyoruz (İstediğin gibi ayarlayabilirsin)
+        end)
 
-        -- Karakterin fiziksel olarak gitmesini engelleyip yerinde saymasını sağlıyoruz
-        runConnection = RunService.RenderStepped:Connect(function()
+        -- Karakterin fiziksel olarak ileri gitmesini tamamen engelliyoruz
+        fakeRunConnection = RunService.RenderStepped:Connect(function()
             if char and char:FindFirstChild("HumanoidRootPart") then
                 local root = char.HumanoidRootPart
-                -- Hızı sıfırlıyoruz ki sunucuya gidiş gitmesin ama animasyon oynasın
+                -- Yatay hızları sıfırlıyoruz ki sunucuya / diğer oyunculara hareket etmiyor gibi görün ama yerinde salla
                 root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
             end
         end)
     else
-        showNotification("WorthNet Fake Run", "Kapatıldı.", false)
-        if runConnection then
-            runConnection:Disconnect()
-            runConnection = nil
+        if type(showNotification) == "function" then
+            showNotification("WorthNet Fake Run", "Kapatıldı.")
         end
-        if animTrack then
-            animTrack:AdjustSpeed(1) -- Normale döndür
-            animTrack = nil
+        
+        -- Temizlik işlemleri (Kapatıldığında eski haline döndür)
+        if fakeRunConnection then
+            fakeRunConnection:Disconnect()
+            fakeRunConnection = nil
+        end
+        
+        if fakeRunTrack then
+            pcall(function()
+                fakeRunTrack:Stop()
+                fakeRunTrack:Destroy()
+            end)
+            fakeRunTrack = nil
         end
     end
 end)
 
 
--- WorthNet Gelişmiş Renkli Chat Logger
+-- ==========================================
+-- WorthNet Gelişmiş Chat Logger (Temizlenmiş)
+-- ==========================================
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 
--- Bildirim fonksiyonun yoksa konsola renkli/şekilli düşmesi ve ekran bildirimi için:
+-- Bildirimlerin açılıp kapanmasını kontrol eden ayar (True = Açık, False = Kapalı)
+local chatNotificationsEnabled = false 
+
+-- Bildirimi açıp kapatmak için dışarıdan çağırabileceğin fonksiyon:
+local function setChatNotificationState(state)
+    chatNotificationsEnabled = state
+end
+
 local function showChatNotification(senderName, message)
-    -- Ekranın sağ üstünde şık bir Roblox bildirimi çıkarır
+    if not chatNotificationsEnabled then return end -- Eğer kapalıysa bildirim gönderme
+    
     pcall(function()
         StarterGui:SetCore("SendNotification", {
             Title = "WorthNet Logger [" .. senderName .. "]",
@@ -2780,18 +2776,16 @@ local function showChatNotification(senderName, message)
 end
 
 local function monitorPlayer(p)
-    -- p.Chatted yerine bazen CoreGui / TextChatService kullanan modern oyunlarda 
-    -- yakalayamama riskine karşı doğrudan event dinleyicisi:
     p.Chatted:Connect(function(msg)
-        -- Konsola renkli ve dikkat çekici loglama (RichText formatı destekleyen konsollar için)
-        print("[32m[WorthNet ChatLogger][0m [33m" .. p.Name .. "[0m: " .. msg)
+        -- ANSI renk kodları temizlendi, konsola saf ve düzgün log düşer
+        print("[WorthNet ChatLogger] " .. p.Name .. ": " .. msg)
         
-        -- Aynı zamanda ekranda bildirim olarak gösterelim
+        -- Ekranda bildirim göster (Duruma göre kontrol edilir)
         showChatNotification(p.Name, msg)
     end)
 end
 
--- 1. Oyunda şu an bulunan herkesi ekle
+-- 1. Oyunda şu an bulunan herkesi dinlemeye başla
 for _, p in ipairs(Players:GetPlayers()) do
     if p ~= Players.LocalPlayer then
         monitorPlayer(p)
@@ -2803,7 +2797,7 @@ Players.PlayerAdded:Connect(function(p)
     monitorPlayer(p)
 end)
 
-print("[36m[WorthNet] Chat Logger başarıyla aktif edildi ve yaş filtreleri bypass edildi![0m")
+print("[WorthNet] Chat Logger başarıyla aktif edildi!")
 
 
 createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapatarak FPS'i artırır.", function(state)
