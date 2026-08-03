@@ -3,87 +3,101 @@ local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+
 local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-local mouse = player:GetMouse()
+local playerGui = player:WaitForChild("PlayerGui")
 
-local function isAlive()
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	return hum and hum.Health > 0
-end
-
-local function getEnemyFolder()
-	return workspace
+--// Anti-CoreGui Detection & Protection (Kick Önleme Katmanı)
+local ProtectedParent = playerGui
+if syn and syn.protect_gui then
+	local gui = Instance.new("ScreenGui")
+	syn.protect_gui(gui)
+	ProtectedParent = gui
+elseif gethui then
+	ProtectedParent = gethui()
 end
 
 -- Ekrandaki eski yapıları temizle
-local oldGui = player.PlayerGui:FindFirstChild("WorthNetSystem")
+local oldGui = playerGui:FindFirstChild("WorthNetSystem")
 if oldGui then oldGui:Destroy() end
+
+local oldCoreGui = CoreGui:FindFirstChild("WorthNetSystem")
+if oldCoreGui then oldCoreGui:Destroy() end
 
 -- ANA EKRAN CONTAINER
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "WorthNetSystem"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = player.PlayerGui
+screenGui.DisplayOrder = 2147483647
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+pcall(function()
+	if syn and syn.protect_gui then
+		syn.protect_gui(screenGui)
+		screenGui.Parent = CoreGui
+	else
+		screenGui.Parent = ProtectedParent
+	end
+end)
+
+if not screenGui.Parent then
+	screenGui.Parent = playerGui
+end
 
 local THEME = {
     Background = Color3.fromRGB(12, 12, 15),      -- Derin Saf Siyah-Gri
     Sidebar    = Color3.fromRGB(16, 16, 20),      -- Yan Menü Arka Planı
     Card       = Color3.fromRGB(20, 20, 26),      -- Kart Arka Planı
     Accent     = Color3.fromRGB(0, 225, 255),     -- Canlı Siber Buz Mavisi (Cyan)
-    AccentGlow = Color3.fromRGB(70, 240, 255),     -- Parlak Açık Cyan
+    AccentGlow = Color3.fromRGB(70, 240, 255),    -- Parlak Açık Cyan
     TextMain   = Color3.fromRGB(240, 240, 245),   -- Saf Beyaz
     TextDark   = Color3.fromRGB(130, 130, 145),   -- Soluk Füme Gri
     ToggleOn   = Color3.fromRGB(0, 225, 255),     -- Açık Buton (Cyan)
     ToggleOff  = Color3.fromRGB(35, 35, 45)       -- Kapalı Buton (Koyu Siyah-Gri)
 }
 
-
-
 local function roundCorners(obj, radius)
-	local uiCorner = Instance.new("UICorner")
-	uiCorner.CornerRadius = UDim.new(0, radius or 8)
-	uiCorner.Parent = obj
-	return uiCorner
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, radius or 8)
+    uiCorner.Parent = obj
+    return uiCorner
 end
 
 ---------------------------------------------------------
 -- KUSURSUZ SÜRÜKLENME MOTORU (Son Sürüm)
 ---------------------------------------------------------
 local function makeDraggable(frame)
-	local dragging = false
-	local dragInput, dragStart, startPos
+    local dragging = false
+    local dragInput, dragStart, startPos
 
-	frame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = frame.Position
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
 
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then 
-					dragging = false 
-				end
-			end)
-		end
-	end)
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then 
+                    dragging = false 
+                end
+            end)
+        end
+    end)
 
-	frame.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			dragInput = input
-		end
-	end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
 
-	UserInputService.InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
-			local delta = input.Position - dragStart
-			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
-	end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
 end
-
 
 ---------------------------------------------------------
 -- MERKEZİ BİLDİRİM SİSTEMİ
@@ -91,69 +105,130 @@ end
 local activeNotifications = {}
 
 local function rearrangeNotifications()
-	for index, notif in ipairs(activeNotifications) do
-		local targetY = 20 + ((index - 1) * 60)
-		TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(1, -240, 0, targetY)
-		}):Play()
-	end
+    for index, notif in ipairs(activeNotifications) do
+        local targetY = 20 + ((index - 1) * 60)
+        TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = UDim2.new(1, -240, 0, targetY)
+        }):Play()
+    end
 end
 
 local function showNotification(title, message, isSuccess)
-	local notifFrame = Instance.new("Frame")
-	notifFrame.Size = UDim2.new(0, 220, 0, 50)
-	
-	local initialY = 20 + (#activeNotifications * 60)
-	notifFrame.Position = UDim2.new(1, 30, 0, initialY)
-	notifFrame.BackgroundColor3 = THEME.Sidebar
-	notifFrame.BorderSizePixel = 0
-	notifFrame.Parent = screenGui
-	roundCorners(notifFrame, 8)
-	
-	local stroke = Instance.new("UIStroke", notifFrame)
-	stroke.Color = isSuccess and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
-	stroke.Thickness = 1.5
-	
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, -20, 1, 0)
-	label.Position = UDim2.new(0, 10, 0, 0)
-	label.BackgroundTransparency = 1
-	label.Text = "🔔 [" .. title .. "]\n" .. message
-	label.TextColor3 = THEME.TextMain
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 11
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = notifFrame
-	
-	table.insert(activeNotifications, notifFrame)
-	rearrangeNotifications()
-	
-	task.delay(2.5, function()
-		local foundIndex = table.find(activeNotifications, notifFrame)
-		if foundIndex then
-			table.remove(activeNotifications, foundIndex)
-		end
-		
-		local currentY = notifFrame.Position.Y.Offset
-		local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(1, 30, 0, currentY)
-		})
-		closeTween:Play()
-		
-		rearrangeNotifications()
-		
-		closeTween.Completed:Connect(function() 
-			notifFrame:Destroy() 
-		end)
-	end)
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Size = UDim2.new(0, 220, 0, 50)
+    
+    local initialY = 20 + (#activeNotifications * 60)
+    notifFrame.Position = UDim2.new(1, 30, 0, initialY)
+    notifFrame.BackgroundColor3 = THEME.Sidebar
+    notifFrame.BorderSizePixel = 0
+    notifFrame.Parent = screenGui
+    roundCorners(notifFrame, 8)
+    
+    local stroke = Instance.new("UIStroke", notifFrame)
+    stroke.Color = isSuccess and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
+    stroke.Thickness = 1.5
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "🔔 [" .. title .. "]\n" .. message
+    label.TextColor3 = THEME.TextMain
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 11
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = notifFrame
+    
+    table.insert(activeNotifications, notifFrame)
+    rearrangeNotifications()
+    
+    task.delay(2.5, function()
+        local foundIndex = table.find(activeNotifications, notifFrame)
+        if foundIndex then
+            table.remove(activeNotifications, foundIndex)
+        end
+        
+        local currentY = notifFrame.Position.Y.Offset
+        local closeTween = TweenService:Create(notifFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, 30, 0, currentY)
+        })
+        closeTween:Play()
+        
+        rearrangeNotifications()
+        
+        closeTween.Completed:Connect(function() 
+            notifFrame:Destroy() 
+        end)
+    end)
 end
+
+---------------------------------------------------------
+-- KEY SİSTEMİ EKRANI
+---------------------------------------------------------
+local KEYS = {"xAworth", "WorthNet2026", "WorthNet"}
+
+local keyScreen = Instance.new("Frame")
+keyScreen.Size = UDim2.new(0, 320, 0, 190)
+keyScreen.Position = UDim2.new(0.5, -160, 0.5, -95)
+keyScreen.BackgroundColor3 = THEME.Background
+keyScreen.BorderSizePixel = 0
+keyScreen.ZIndex = 20
+keyScreen.Parent = screenGui
+roundCorners(keyScreen, 12)
+makeDraggable(keyScreen)
+
+local keyStroke = Instance.new("UIStroke")
+keyStroke.Color = THEME.Accent
+keyStroke.Thickness = 1.5
+keyStroke.Parent = keyScreen
+
+local keyTitle = Instance.new("TextLabel")
+keyTitle.Size = UDim2.new(1, 0, 0, 45)
+keyTitle.BackgroundTransparency = 1
+keyTitle.Text = "🔐 WorthNet // Authentication"
+keyTitle.TextColor3 = THEME.Accent
+keyTitle.Font = Enum.Font.GothamBold
+keyTitle.TextSize = 14
+keyTitle.ZIndex = 21
+keyTitle.Parent = keyScreen
+
+local keyBox = Instance.new("TextBox")
+keyBox.Size = UDim2.new(0.85, 0, 0, 38)
+keyBox.Position = UDim2.new(0.075, 0, 0, 60)
+keyBox.BackgroundColor3 = THEME.Card
+keyBox.Font = Enum.Font.Gotham
+keyBox.PlaceholderText = "Key giriniz (Örn: xAworth)..."
+keyBox.PlaceholderColor3 = THEME.TextDark
+keyBox.Text = ""
+keyBox.TextColor3 = THEME.TextMain
+keyBox.TextSize = 12
+keyBox.ZIndex = 21
+keyBox.Parent = keyScreen
+roundCorners(keyBox, 6)
+
+local keyBoxStroke = Instance.new("UIStroke")
+keyBoxStroke.Color = Color3.fromRGB(40, 40, 50)
+keyBoxStroke.Thickness = 1
+keyBoxStroke.Parent = keyBox
+
+local loginBtn = Instance.new("TextButton")
+loginBtn.Size = UDim2.new(0.85, 0, 0, 38)
+loginBtn.Position = UDim2.new(0.075, 0, 0, 115)
+loginBtn.BackgroundColor3 = THEME.Accent
+loginBtn.Font = Enum.Font.GothamBold
+loginBtn.Text = "Giriş Yap"
+loginBtn.TextColor3 = Color3.fromRGB(12, 12, 15)
+loginBtn.TextSize = 13
+loginBtn.ZIndex = 21
+loginBtn.Parent = keyScreen
+roundCorners(loginBtn, 6)
 
 ---------------------------------------------------------
 -- KÜÇÜK LOGO (MINIMIZE WINDOW)
 ---------------------------------------------------------
 local minLogo = Instance.new("TextButton")
 minLogo.Name = "WorthNetMiniLogo"
-minLogo.Parent = screenGui -- Ana ScreenGui değişkenin
+minLogo.Parent = screenGui
 minLogo.BackgroundColor3 = THEME.Card
 minLogo.ZIndex = 1000
 minLogo.Position = UDim2.new(0, 100, 0.5, -25)
@@ -166,16 +241,14 @@ minLogo.Visible = false
 minLogo.Active = true
 minLogo.Draggable = true
 
--- Tamamen yuvarlak yapmak için UICorner ekliyoruz
 local logoCorner = Instance.new("UICorner")
-logoCorner.CornerRadius = UDim.new(1, 0) -- Tam daire (Full Round)
+logoCorner.CornerRadius = UDim.new(1, 0)
 logoCorner.Parent = minLogo
 
 local logoStroke = Instance.new("UIStroke")
 logoStroke.Parent = minLogo
 logoStroke.Color = THEME.Accent
 logoStroke.Thickness = 1.5
-
 
 ---------------------------------------------------------
 -- ANA FRAME (HUB FRAME)
@@ -200,6 +273,43 @@ minLogo.MouseButton1Click:Connect(function()
         Size = UDim2.new(0, 560, 0, 360),
         BackgroundTransparency = 0
     }):Play()
+end)
+
+-- Key Doğrulama Fonksiyonu
+loginBtn.MouseButton1Click:Connect(function()
+    local enteredKey = keyBox.Text
+    local isValid = false
+    
+    for _, k in ipairs(KEYS) do
+        if enteredKey == k then
+            isValid = true
+            break
+        end
+    end
+    
+    if isValid then
+        showNotification("Auth", "Giriş başarılı, hoş geldin!", true)
+        
+        TweenService:Create(keyScreen, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        
+        task.wait(0.3)
+        keyScreen:Destroy()
+        
+        hubFrame.Visible = true
+        hubFrame.Size = UDim2.new(0, 0, 0, 0)
+        hubFrame.BackgroundTransparency = 1
+        TweenService:Create(hubFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 560, 0, 360),
+            BackgroundTransparency = 0
+        }):Play()
+    else
+        showNotification("Auth", "Hatalı Key girdiniz!", false)
+        keyBox.Text = ""
+        keyBox.PlaceholderText = "Tekrar deneyin..."
+    end
 end)
 
 -- SOL SİDEBAR
@@ -260,13 +370,13 @@ ytStroke.Thickness = 1
 ytStroke.Parent = ytBtn
 
 ytBtn.MouseButton1Click:Connect(function()
-	local myYoutubeLink = "https://www.youtube.com/@xAworth" 
-	if setclipboard then
-		setclipboard(myYoutubeLink)
-		showNotification("YouTube", "Kanal linki panoya kopyalandı!", true)
-	else
-		showNotification("YouTube", "Link: worthnet.youtube", true)
-	end
+    local myYoutubeLink = "https://www.youtube.com/@xAworth" 
+    if setclipboard then
+        setclipboard(myYoutubeLink)
+        showNotification("YouTube", "Kanal linki panoya kopyalandı!", true)
+    else
+        showNotification("YouTube", "Link: https://www.youtube.com/@xAworth", true)
+    end
 end)
 
 ---------------------------------------------------------
@@ -291,73 +401,73 @@ sidebarLayout.Padding = UDim.new(0, 6)
 sidebarLayout.Parent = sidebarTabContainer
 
 local function createTab(tabName, iconSymbol)
-	local tabBtn = Instance.new("TextButton")
-	tabBtn.Size = UDim2.new(1, 0, 0, 36)
-	tabBtn.BackgroundColor3 = THEME.Card
-	tabBtn.Text = "  " .. (iconSymbol or "📌") .. "  " .. tabName
-	tabBtn.TextColor3 = THEME.TextDark
-	tabBtn.Font = Enum.Font.GothamBold
-	tabBtn.TextSize = 12
-	tabBtn.TextXAlignment = Enum.TextXAlignment.Left
-	tabBtn.ZIndex = 8
-	tabBtn.Parent = sidebarTabContainer
-	roundCorners(tabBtn, 8)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(1, 0, 0, 36)
+    tabBtn.BackgroundColor3 = THEME.Card
+    tabBtn.Text = "   " .. (iconSymbol or "📌") .. "   " .. tabName
+    tabBtn.TextColor3 = THEME.TextDark
+    tabBtn.Font = Enum.Font.GothamBold
+    tabBtn.TextSize = 12
+    tabBtn.TextXAlignment = Enum.TextXAlignment.Left
+    tabBtn.ZIndex = 8
+    tabBtn.Parent = sidebarTabContainer
+    roundCorners(tabBtn, 8)
 
-	local tabFrame = Instance.new("ScrollingFrame")
-	tabFrame.Size = UDim2.new(1, -180, 1, -60)
-	tabFrame.Position = UDim2.new(0, 170, 0, 50)
-	tabFrame.BackgroundTransparency = 1
-	tabFrame.BorderSizePixel = 0
-	tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	tabFrame.ScrollBarThickness = 4
-	tabFrame.ScrollBarImageColor3 = THEME.Accent
-	tabFrame.ZIndex = 6
-	tabFrame.Visible = false
-	tabFrame.Parent = hubFrame
+    local tabFrame = Instance.new("ScrollingFrame")
+    tabFrame.Size = UDim2.new(1, -180, 1, -60)
+    tabFrame.Position = UDim2.new(0, 170, 0, 50)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.BorderSizePixel = 0
+    tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    tabFrame.ScrollBarThickness = 4
+    tabFrame.ScrollBarImageColor3 = THEME.Accent
+    tabFrame.ZIndex = 6
+    tabFrame.Visible = false
+    tabFrame.Parent = hubFrame
 
-	local uiListLayout = Instance.new("UIListLayout")
-	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	uiListLayout.Padding = UDim.new(0, 10)
-	uiListLayout.Parent = tabFrame
+    local uiListLayout = Instance.new("UIListLayout")
+    uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    uiListLayout.Padding = UDim.new(0, 10)
+    uiListLayout.Parent = tabFrame
 
-	table.insert(activeTabs, tabFrame)
-	table.insert(tabButtons, tabBtn)
+    table.insert(activeTabs, tabFrame)
+    table.insert(tabButtons, tabBtn)
 
-	tabBtn.MouseButton1Click:Connect(function()
-		for _, frame in ipairs(activeTabs) do
-			frame.Visible = false
-		end
-		for _, btn in ipairs(tabButtons) do
-			btn.TextColor3 = THEME.TextDark
-			btn.BackgroundColor3 = THEME.Card
-		end
-		
-		tabFrame.Visible = true
-		tabBtn.TextColor3 = THEME.TextMain
-		tabBtn.BackgroundColor3 = THEME.Accent
-	end)
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, frame in ipairs(activeTabs) do
+            frame.Visible = false
+        end
+        for _, btn in ipairs(tabButtons) do
+            btn.TextColor3 = THEME.TextDark
+            btn.BackgroundColor3 = THEME.Card
+        end
+        
+        tabFrame.Visible = true
+        tabBtn.TextColor3 = THEME.TextMain
+        tabBtn.BackgroundColor3 = THEME.Accent
+    end)
 
-	return tabFrame
+    return tabFrame
 end
 
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-	local searchText = string.lower(searchBox.Text)
-	for _, tabFrame in ipairs(activeTabs) do
-		for _, card in ipairs(tabFrame:GetChildren()) do
-			if card:IsA("Frame") then
-				local titleLabel = card:FindFirstChild("HackyTitle")
-				if titleLabel then
-					local name = string.lower(titleLabel.Text)
-					if string.find(name, searchText) then
-						card.Visible = true
-					else
-						card.Visible = false
-					end
-				end
-			end
-		end
-	end
+    local searchText = string.lower(searchBox.Text)
+    for _, tabFrame in ipairs(activeTabs) do
+        for _, card in ipairs(tabFrame:GetChildren()) do
+            if card:IsA("Frame") then
+                local titleLabel = card:FindFirstChild("HackyTitle")
+                if titleLabel then
+                    local name = string.lower(titleLabel.Text)
+                    if string.find(name, searchText) then
+                        card.Visible = true
+                    else
+                        card.Visible = false
+                    end
+                end
+            end
+        end
+    end
 end)
 
 local closeBtn = Instance.new("TextButton")
@@ -397,215 +507,215 @@ minimizeBtn.Parent = hubFrame
 roundCorners(minimizeBtn, 6)
 
 minimizeBtn.MouseButton1Click:Connect(function()
-	hubFrame.Visible = false
-	minLogo.Visible = true
+    hubFrame.Visible = false
+    minLogo.Visible = true
 end)
 
 _G.toggleRegistry = _G.toggleRegistry or {}
 
 local function createModernToggle(parentTab, name, description, callback)
-	local cardFrame = Instance.new("Frame")
-	cardFrame.Size = UDim2.new(1, -10, 0, 55)
-	cardFrame.BackgroundColor3 = THEME.Card
-	cardFrame.BorderSizePixel = 0
-	cardFrame.ZIndex = 7
-	cardFrame.Parent = parentTab
-	roundCorners(cardFrame, 8)
-	
-	local title = Instance.new("TextLabel")
-	title.Name = "HackyTitle"
-	title.Size = UDim2.new(0, 200, 0, 25)
-	title.Position = UDim2.new(0, 15, 0, 5)
-	title.BackgroundTransparency = 1
-	title.Text = name
-	title.TextColor3 = THEME.TextMain
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.ZIndex = 8
-	title.Parent = cardFrame
-	
-	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(0, 250, 0, 20)
-	desc.Position = UDim2.new(0, 15, 0, 26)
-	desc.BackgroundTransparency = 1
-	desc.Text = description
-	desc.TextColor3 = THEME.TextDark
-	desc.Font = Enum.Font.Gotham
-	desc.TextSize = 11
-	desc.TextXAlignment = Enum.TextXAlignment.Left
-	desc.ZIndex = 8
-	desc.Parent = cardFrame
-	
-	local switch = Instance.new("TextButton")
-	switch.Size = UDim2.new(0, 45, 0, 22)
-	switch.Position = UDim2.new(1, -60, 0.5, -11)
-	switch.BackgroundColor3 = THEME.ToggleOff
-	switch.Text = ""
-	switch.ZIndex = 8
-	switch.Parent = cardFrame
-	roundCorners(switch, 11)
-	
-	local pin = Instance.new("Frame")
-	pin.Size = UDim2.new(0, 16, 0, 16)
-	pin.Position = UDim2.new(0, 3, 0.5, -8)
-	pin.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	pin.ZIndex = 9
-	pin.Parent = switch
-	roundCorners(pin, 8)
-	
-	local isOn = false
-	
-	local function updateState(targetState, suppressNotification)
-		if isOn == targetState then return end
-		isOn = targetState
-		
-		local targetPos = isOn and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-		local targetColor = isOn and THEME.ToggleOn or THEME.ToggleOff
-		
-		TweenService:Create(pin, TweenInfo.new(0.18), {Position = targetPos}):Play()
-		TweenService:Create(switch, TweenInfo.new(0.18), {BackgroundColor3 = targetColor}):Play()
-		
-		if not suppressNotification then
-			if isOn then
-				showNotification(name, "Aktif edildi!", true)
-			else
-				showNotification(name, "Devre dışı bırakıldı.", false)
-			end
-		end
-		
-		callback(isOn)
-	end
-	
-	switch.MouseButton1Click:Connect(function()
-		updateState(not isOn)
-	end)
-	
-	_G.toggleRegistry[name] = updateState
+    local cardFrame = Instance.new("Frame")
+    cardFrame.Size = UDim2.new(1, -10, 0, 55)
+    cardFrame.BackgroundColor3 = THEME.Card
+    cardFrame.BorderSizePixel = 0
+    cardFrame.ZIndex = 7
+    cardFrame.Parent = parentTab
+    roundCorners(cardFrame, 8)
+    
+    local title = Instance.new("TextLabel")
+    title.Name = "HackyTitle"
+    title.Size = UDim2.new(0, 200, 0, 25)
+    title.Position = UDim2.new(0, 15, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = name
+    title.TextColor3 = THEME.TextMain
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 8
+    title.Parent = cardFrame
+    
+    local desc = Instance.new("TextLabel")
+    desc.Size = UDim2.new(0, 250, 0, 20)
+    desc.Position = UDim2.new(0, 15, 0, 26)
+    desc.BackgroundTransparency = 1
+    desc.Text = description
+    desc.TextColor3 = THEME.TextDark
+    desc.Font = Enum.Font.Gotham
+    desc.TextSize = 11
+    desc.TextXAlignment = Enum.TextXAlignment.Left
+    desc.ZIndex = 8
+    desc.Parent = cardFrame
+    
+    local switch = Instance.new("TextButton")
+    switch.Size = UDim2.new(0, 45, 0, 22)
+    switch.Position = UDim2.new(1, -60, 0.5, -11)
+    switch.BackgroundColor3 = THEME.ToggleOff
+    switch.Text = ""
+    switch.ZIndex = 8
+    switch.Parent = cardFrame
+    roundCorners(switch, 11)
+    
+    local pin = Instance.new("Frame")
+    pin.Size = UDim2.new(0, 16, 0, 16)
+    pin.Position = UDim2.new(0, 3, 0.5, -8)
+    pin.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    pin.ZIndex = 9
+    pin.Parent = switch
+    roundCorners(pin, 8)
+    
+    local isOn = false
+    
+    local function updateState(targetState, suppressNotification)
+        if isOn == targetState then return end
+        isOn = targetState
+        
+        local targetPos = isOn and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+        local targetColor = isOn and THEME.ToggleOn or THEME.ToggleOff
+        
+        TweenService:Create(pin, TweenInfo.new(0.18), {Position = targetPos}):Play()
+        TweenService:Create(switch, TweenInfo.new(0.18), {BackgroundColor3 = targetColor}):Play()
+        
+        if not suppressNotification then
+            if isOn then
+                showNotification(name, "Aktif edildi!", true)
+            else
+                showNotification(name, "Devre dışı bırakıldı.", false)
+            end
+        end
+        
+        callback(isOn)
+    end
+    
+    switch.MouseButton1Click:Connect(function()
+        updateState(not isOn)
+    end)
+    
+    _G.toggleRegistry[name] = updateState
 end
 
 local function createModernSlider(parentTab, name, description, min, max, default, callback)
-	local cardFrame = Instance.new("Frame")
-	cardFrame.Name = name
-	cardFrame.Size = UDim2.new(1, -10, 0, 65)
-	cardFrame.BackgroundColor3 = THEME.Card
-	cardFrame.BorderSizePixel = 0
-	cardFrame.ZIndex = 7
-	cardFrame.Parent = parentTab
-	roundCorners(cardFrame, 8)
-	
-	local title = Instance.new("TextLabel")
-	title.Name = "HackyTitle"
-	title.Size = UDim2.new(0, 200, 0, 20)
-	title.Position = UDim2.new(0, 15, 0, 5)
-	title.BackgroundTransparency = 1
-	title.Text = name
-	title.TextColor3 = THEME.TextMain
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.ZIndex = 8
-	title.Parent = cardFrame
-	
-	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(0, 250, 0, 15)
-	desc.Position = UDim2.new(0, 15, 0, 25)
-	desc.BackgroundTransparency = 1
-	desc.Text = description
-	desc.TextColor3 = THEME.TextDark
-	desc.Font = Enum.Font.Gotham
-	desc.TextSize = 11
-	desc.TextXAlignment = Enum.TextXAlignment.Left
-	desc.ZIndex = 8
-	desc.Parent = cardFrame
-	
-	local valLabel = Instance.new("TextLabel")
-	valLabel.Size = UDim2.new(0, 60, 0, 20)
-	valLabel.Position = UDim2.new(1, -75, 0, 5)
-	valLabel.BackgroundTransparency = 1
-	valLabel.Text = tostring(default)
-	valLabel.TextColor3 = THEME.Accent
-	valLabel.Font = Enum.Font.GothamBold
-	valLabel.TextSize = 13
-	valLabel.TextXAlignment = Enum.TextXAlignment.Right
-	valLabel.ZIndex = 8
-	valLabel.Parent = cardFrame
-	
-	local sliderBar = Instance.new("Frame")
-	sliderBar.Size = UDim2.new(1, -30, 0, 6)
-	sliderBar.Position = UDim2.new(0, 15, 0, 48)
-	sliderBar.BackgroundColor3 = THEME.ToggleOff
-	sliderBar.BorderSizePixel = 0
-	sliderBar.ZIndex = 8
-	sliderBar.Parent = cardFrame
-	roundCorners(sliderBar, 3)
-	
-	local sliderFill = Instance.new("Frame")
-	sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-	sliderFill.BackgroundColor3 = THEME.Accent
-	sliderFill.BorderSizePixel = 0
-	sliderFill.ZIndex = 9
-	sliderFill.Parent = sliderBar
-	roundCorners(sliderFill, 3)
-	
-	local sliderBtn = Instance.new("TextButton")
-	sliderBtn.Size = UDim2.new(1, 10, 1, 10)
-	sliderBtn.Position = UDim2.new(0, -5, 0, -5)
-	sliderBtn.BackgroundTransparency = 1
-	sliderBtn.Text = ""
-	sliderBtn.ZIndex = 10
-	sliderBtn.Parent = sliderBar
-	
-	local dragging = false
-	local currentValue = default
-	
-	local function updateSlider(input)
-		local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
-		sliderFill.Size = UDim2.new(pos, 0, 1, 0)
-		currentValue = math.floor(min + ((max - min) * pos))
-		valLabel.Text = tostring(currentValue)
-		callback(currentValue)
-	end
-	
-	sliderBtn.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-		end
-	end)
-	
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = false
-		end
-	end)
-	
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			updateSlider(input)
-		end
-	end)
-	
-	sliderBar.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			updateSlider(input)
-			dragging = true
-		end
-	end)
+    local cardFrame = Instance.new("Frame")
+    cardFrame.Name = name
+    cardFrame.Size = UDim2.new(1, -10, 0, 65)
+    cardFrame.BackgroundColor3 = THEME.Card
+    cardFrame.BorderSizePixel = 0
+    cardFrame.ZIndex = 7
+    cardFrame.Parent = parentTab
+    roundCorners(cardFrame, 8)
+    
+    local title = Instance.new("TextLabel")
+    title.Name = "HackyTitle"
+    title.Size = UDim2.new(0, 200, 0, 20)
+    title.Position = UDim2.new(0, 15, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = name
+    title.TextColor3 = THEME.TextMain
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 8
+    title.Parent = cardFrame
+    
+    local desc = Instance.new("TextLabel")
+    desc.Size = UDim2.new(0, 250, 0, 15)
+    desc.Position = UDim2.new(0, 15, 0, 25)
+    desc.BackgroundTransparency = 1
+    desc.Text = description
+    desc.TextColor3 = THEME.TextDark
+    desc.Font = Enum.Font.Gotham
+    desc.TextSize = 11
+    desc.TextXAlignment = Enum.TextXAlignment.Left
+    desc.ZIndex = 8
+    desc.Parent = cardFrame
+    
+    local valLabel = Instance.new("TextLabel")
+    valLabel.Size = UDim2.new(0, 60, 0, 20)
+    valLabel.Position = UDim2.new(1, -75, 0, 5)
+    valLabel.BackgroundTransparency = 1
+    valLabel.Text = tostring(default)
+    valLabel.TextColor3 = THEME.Accent
+    valLabel.Font = Enum.Font.GothamBold
+    valLabel.TextSize = 13
+    valLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valLabel.ZIndex = 8
+    valLabel.Parent = cardFrame
+    
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Size = UDim2.new(1, -30, 0, 6)
+    sliderBar.Position = UDim2.new(0, 15, 0, 48)
+    sliderBar.BackgroundColor3 = THEME.ToggleOff
+    sliderBar.BorderSizePixel = 0
+    sliderBar.ZIndex = 8
+    sliderBar.Parent = cardFrame
+    roundCorners(sliderBar, 3)
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = THEME.Accent
+    sliderFill.BorderSizePixel = 0
+    sliderFill.ZIndex = 9
+    sliderFill.Parent = sliderBar
+    roundCorners(sliderFill, 3)
+    
+    local sliderBtn = Instance.new("TextButton")
+    sliderBtn.Size = UDim2.new(1, 10, 1, 10)
+    sliderBtn.Position = UDim2.new(0, -5, 0, -5)
+    sliderBtn.BackgroundTransparency = 1
+    sliderBtn.Text = ""
+    sliderBtn.ZIndex = 10
+    sliderBtn.Parent = sliderBar
+    
+    local dragging = false
+    local currentValue = default
+    
+    local function updateSlider(input)
+        local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        currentValue = math.floor(min + ((max - min) * pos))
+        valLabel.Text = tostring(currentValue)
+        callback(currentValue)
+    end
+    
+    sliderBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input)
+        end
+    end)
+    
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            updateSlider(input)
+            dragging = true
+        end
+    end)
 end
 
 -- TAB'LARI OLUŞTURMA
-local mainTab     = createTab("Main", "⌂")
-local combatTab   = createTab("Combat", "⚔")
-local visualsTab  = createTab("Visuals", "👁")
-local moveTab     = createTab("Movement", "»")
-local mm2Tab      = createTab("MM2 Special", "◎")
+local mainTab    = createTab("Main", "⌂")
+local combatTab  = createTab("Combat", "⚔")
+local visualsTab = createTab("Visuals", "👁")
+local moveTab    = createTab("Movement", "»")
+local mm2Tab     = createTab("MM2 Special", "◎")
 local globalExploitsTab = createTab("Global & Server", "⌘")
 local settingsTab = createTab("Settings", "⚙")
 
 if activeTabs[1] then
-	activeTabs[1].Visible = true
-	tabButtons[1].TextColor3 = THEME.TextMain
-	tabButtons[1].BackgroundColor3 = THEME.Accent
+    activeTabs[1].Visible = true
+    tabButtons[1].TextColor3 = THEME.TextMain
+    tabButtons[1].BackgroundColor3 = THEME.Accent
 end
 
 ---------------------------------------------------------
@@ -656,36 +766,38 @@ kbBtn.Parent = keybindCard
 roundCorners(kbBtn, 6)
 
 kbBtn.MouseButton1Click:Connect(function()
-	isSettingKey = true
-	kbBtn.Text = "Bas bekleniyor..."
+    isSettingKey = true
+    kbBtn.Text = "Bas bekleniyor..."
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if isSettingKey and input.UserInputType == Enum.UserInputType.Keyboard then
-		toggleKey = input.KeyCode
-		kbBtn.Text = toggleKey.Name
-		isSettingKey = false
-		showNotification("Keybind", "Yeni tuş atandı: " .. toggleKey.Name, true)
-	elseif not gameProcessed and input.KeyCode == toggleKey then
-		hubFrame.Visible = not hubFrame.Visible
-		minLogo.Visible = not hubFrame.Visible
-	end
+    if isSettingKey and input.UserInputType == Enum.UserInputType.Keyboard then
+        toggleKey = input.KeyCode
+        kbBtn.Text = toggleKey.Name
+        isSettingKey = false
+        showNotification("Keybind", "Yeni tuş atandı: " .. toggleKey.Name, true)
+    elseif not gameProcessed and input.KeyCode == toggleKey then
+        if hubFrame.Parent then
+            hubFrame.Visible = not hubFrame.Visible
+            minLogo.Visible = not hubFrame.Visible
+        end
+    end
 end)
 
 createModernSlider(settingsTab, "UI Transparency", "Arayüz şeffaflığını ayarlar.", 0, 90, 0, function(val)
-	local alpha = val / 100
-	hubFrame.BackgroundTransparency = alpha
-	sidebar.BackgroundTransparency = alpha
+    local alpha = val / 100
+    hubFrame.BackgroundTransparency = alpha
+    sidebar.BackgroundTransparency = alpha
 end)
 
 createModernToggle(settingsTab, "Rejoin Server", "Bulunduğunuz sunucuya tekrar bağlanır.", function()
-	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
 createModernToggle(settingsTab, "Unload Script", "Tüm sistemleri durdurur ve UI'ı siler.", function()
-	showNotification("System", "Script kaldırılıyor...", false)
-	task.wait(0.5)
-	screenGui:Destroy()
+    showNotification("System", "Script kaldırılıyor...", false)
+    task.wait(0.5)
+    screenGui:Destroy()
 end)
 
 ---------------------------------------------------------
@@ -2688,39 +2800,6 @@ end)
 
 
 
--- 5. Rainbow Lighting (Gökkuşağı Işıklandırma)
-local rainbowLightActive = false
-createModernToggle(visualsTab, "Rainbow Lighting", "Haritayı parti ortamına çevirir.", function(state)
-    rainbowLightActive = state
-    task.spawn(function()
-        while rainbowLightActive do
-            for i = 0, 1, 0.01 do
-                if not rainbowLightActive then break end
-                Lighting.Ambient = Color3.fromHSV(i, 1, 1)
-                task.wait(0.1)
-            end
-        end
-        Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-    end)
-end)
-
--- 7. Custom Crosshair (Özel Nişangah)
-local crosshairGui
-createModernToggle(visualsTab, "Custom Crosshair", "Ekrana özel nişangah sabitler.", function(state)
-    if state then
-        crosshairGui = Instance.new("ScreenGui", game.CoreGui)
-        local dot = Instance.new("Frame", crosshairGui)
-        dot.Size = UDim2.new(0, 6, 0, 6)
-        dot.Position = UDim2.new(0.5, -3, 0.5, -3)
-        dot.BackgroundColor3 = Color3.fromRGB(0, 255, 128)
-        dot.BorderSizePixel = 0
-        dot.Name = "WorthNetCrosshair"
-    else
-        if crosshairGui then crosshairGui:Destroy() end
-    end
-end)
-
-
 
 -- 20. Crash Protection (Sunucu Çökme Koruması)
 createModernToggle(mainTab, "Crash Protection", "İstemciyi çökmelere karşı korur.", function(state)
@@ -2745,8 +2824,8 @@ end)
 -- ==========================================
 -- Eski minLogo yerine geçecek yuvarlak ve sembollü tasarım:
 local minLogo = Instance.new("TextButton")
-minLogo.Name = "WorthNetMiniLogo"
-minLogo.Parent = screenGui -- Ana ScreenGui değişkenin
+minLogo.Name = ""
+minLogo.Parent = screenGui 
 minLogo.BackgroundColor3 = THEME.Card
 minLogo.Position = UDim2.new(0, 30, 0.5, -25)
 minLogo.Size = UDim2.new(0, 48, 0, 48)
