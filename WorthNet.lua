@@ -1903,22 +1903,26 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- WorthNet Anti-Flashbang / Whiteout Remover
+-- WorthNet Anti-Flashbang / Whiteout Remover (Optimize Edilmiş Sürüm)
 local antiFlashActive = false
 local flashConnection = nil
 local lighting = game:GetService("Lighting")
-local guiService = game:GetService("CoreGui")
 
-createModernToggle(visualsTab, "WorthNet Anti-Flashbang", "Ekrana gelen kör edici beyaz flashbang efektlerini engeller.", function(state)
+createModernToggle(visualsTab, "WorthNet Anti-Flashbang", "Kasma yapmayan optimize edilmiş flashbang engelleyici.", function(state)
     antiFlashActive = state
     local playerGui = player:FindFirstChild("PlayerGui")
     
     if antiFlashActive then
-        showNotification("Anti-Flash", "Aktif! Artık kör olmayacaksın.", true)
+        showNotification("Anti-Flash", "Aktif! Artık kasma yapmayacak.", true)
         
-        -- Sürekli tarama yaparak ekrana gelen flash GUI'lerini ve Lighting efektlerini temizler
-        flashConnection = RunService.RenderStepped:Connect(function()
-            -- 1. Lighting (Işıklandırma) üzerindeki blinding efektlerini sıfırla
+        -- Her kare (RenderStepped) yerine saniyede birkaç kez kontrol ederek kasma engellenir
+        local timer = 0
+        flashConnection = RunService.RenderStepped:Connect(function(dt)
+            timer = timer + dt
+            if timer < 0.2 then return end -- Her 0.2 saniyede bir çalışır (FPS'i düşürmez)
+            timer = 0
+            
+            -- 1. Lighting efektlerini düzenle
             for _, effect in ipairs(lighting:GetChildren()) do
                 if effect:IsA("ColorCorrectionEffect") then
                     if effect.Brightness > 0.5 or effect.Contrast > 0.5 then
@@ -1929,13 +1933,12 @@ createModernToggle(visualsTab, "WorthNet Anti-Flashbang", "Ekrana gelen kör edi
                 end
             end
             
-            -- 2. PlayerGui içindeki ani beyaz/siyah ekran flash panellerini yok et
+            -- 2. PlayerGui taramasını optimize edilmiş şekilde yap
             if playerGui then
                 for _, gui in ipairs(playerGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") then
+                    if gui:IsA("ScreenGui") and gui.Name ~= "WorthNetGui" then -- Kendi menümüzü taramasın
                         for _, frame in ipairs(gui:GetDescendants()) do
-                            if frame:IsA("Frame") or frame:IsA("ImageLabel") then
-                                -- Eğer ekranı tamamen kaplayan beyaz/parlak bir GUI frame'i varsa görünmez yap
+                            if (frame:IsA("Frame") or frame:IsA("ImageLabel")) and frame.Visible then
                                 if (frame.BackgroundColor3 == Color3.new(1, 1, 1) or frame.BackgroundColor3 == Color3.fromRGB(255, 255, 255)) 
                                    and frame.BackgroundTransparency < 0.5 
                                    and frame.Size.X.Scale >= 0.9 then
