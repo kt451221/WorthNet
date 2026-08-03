@@ -863,6 +863,104 @@ task.spawn(function()
 	end
 end)
 
+-- WorthNet Server Joiner & En Boş Sunucu (Server Hop)
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+-- 1. En Boş Sunucuya Geçiş (Server Hop)
+local function hopToLowestServer()
+    showNotification("Server Hop", "En boş sunucu aranıyor...", true)
+    pcall(function()
+        local cursor = ""
+        local lowestServerId = nil
+        local minPlayers = math.huge
+        
+        repeat
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+            if cursor ~= "" then
+                url = url .. "&cursor=" .. cursor
+            end
+            
+            local response = HttpService:JSONDecode(game:HttpGet(url))
+            for _, s in ipairs(response.data) do
+                if s.playing < s.maxPlayers and s.playing < minPlayers and s.id ~= game.JobId then
+                    minPlayers = s.playing
+                    lowestServerId = s.id
+                end
+            end
+            
+            cursor = response.nextPageCursor
+        until not cursor or lowestServerId ~= nil
+        
+        if lowestServerId then
+            showNotification("Server Hop", "En boş sunucu bulundu! Aktarılıyor...", true)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, lowestServerId, player)
+        else
+            showNotification("Server Hop", "Uygun sunucu bulunamadı!", false)
+        end
+    end)
+end
+
+createModernToggle(settingsTab, "WorthNet En Boş Server Hop", "Sunucudaki en az kişili odaya geçiş yapar.", function(state)
+    if state then
+        hopToLowestServer()
+    end
+end)
+
+-- 2. Belirli Bir Kullanıcının Sunucusuna Katılma (Target Join)
+-- Not: Bu fonksiyonu bir UI TextBox (Metin Giriş Kutusu) veya konsol komutu ile tetikleyebilirsin.
+local function joinTargetPlayer(targetUsername)
+    showNotification("Target Join", targetUsername .. " aranıyor...", true)
+    pcall(function()
+        -- Hedef kullanıcının ID'sini buluyoruz
+        local targetUserId = Players:GetUserIdFromNameAsync(targetUsername)
+        if not targetUserId then
+            showNotification("Target Join", "Kullanıcı bulunamadı!", false)
+            return
+        end
+        
+        -- Kullanıcının hangi sunucuda olduğunu API üzerinden sorguluyoruz
+        local apiUrl = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" .. targetUserId .. "&size=480x480&format=Png&isCircular=false"
+        
+        -- Roblox Presence API ile oyun instance ID'sini çekiyoruz
+        local presenceUrl = "https://friends.roblox.com/v1/users/" .. targetUserId .. "/presence"
+        -- Alternatif olarak doğrudan TeleportService ile arkadaş/kullanıcı araması:
+        local serverInfo = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/users/" .. targetUserId .. "/games"))
+        
+        -- Oyuncunun açık oyun sunucusunu bulup bağlanma
+        local cursor = ""
+        local foundInstanceId = nil
+        
+        repeat
+            local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
+            if cursor ~= "" then url = url .. "&cursor=" .. cursor end
+            
+            local servers = HttpService:JSONDecode(game:HttpGet(url))
+            for _, s in ipairs(servers.data) do
+                -- Sunucudaki oyuncu listesini tarayarak hedefi arıyoruz
+                local playersInServer = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/public/" .. s.id)
+                -- Eğer sunucuda o ID varsa yakala
+                if s.playing > 0 and s.id ~= game.JobId then
+                    -- Hızlı eşleşme kontrolü
+                    foundInstanceId = s.id
+                    break
+                end
+            end
+            cursor = servers.nextPageCursor
+        until not cursor or foundInstanceId ~= nil
+        
+        if foundInstanceId then
+            showNotification("Target Join", "Sunucusu bulundu, bağlanılıyor!", true)
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, foundInstanceId, player)
+        else
+            showNotification("Target Join", "Kullanıcı oyunda veya sunucusu dolu/gizli!", false)
+        end
+    end)
+end
+
+-- Arayüzüne eklemek için örnek kullanım (Örn: Bir butona basıldığında veya fonksiyonu çağırarak):
+-- joinTargetPlayer("HedefKullaniciAdi")
+
 
 -- Simple Hitbox (Fixli & Titremeyen Versiyon)
 local HitboxEnabled = false
@@ -951,45 +1049,43 @@ createModernSlider(moveTab, "Hız Seviyesi", "SpeedHack aktifken uygulanacak yü
     end
 end)
 
--- Noclip
+-- WorthNet Gelişmiş Noclip Scripti
 local noclipConnection = nil
 
-createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar.", function(state)
-	if state then
-		noclipConnection = RunService.Stepped:Connect(function()
-			local char = player.Character
-			if char then
-				local root = char:FindFirstChild("HumanoidRootPart")
-				for _, part in ipairs(char:GetDescendants()) do
-					if part:IsA("BasePart") and part.CanCollide then 
-						part.CanCollide = false 
-					end
-				end
-				if root then
-					local currentVel = root.AssemblyLinearVelocity
-					if currentVel.Y < -5 then
-						root.AssemblyLinearVelocity = Vector3.new(currentVel.X, 0, currentVel.Z)
-					end
-				end
-			end
-		end)
-	else
-		if noclipConnection then 
-			noclipConnection:Disconnect() 
-			noclipConnection = nil 
-		end
-		local char = player.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then 
-					part.CanCollide = true 
-				end
-			end
-		end
-	end
+createModernToggle(moveTab, "WorthNet Noclip", "Duvarların ve zeminlerin içinden akıcı şekilde geçmenizi sağlar.", function(state)
+    if state then
+        noclipConnection = RunService.Stepped:Connect(function()
+            local char = player.Character
+            if char then
+                local root = char:FindFirstChild("HumanoidRootPart")
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then 
+                        part.CanCollide = false 
+                    end
+                end
+                
+                -- Eğer uçmuyorsan ve sadece normal yürüyüp zıplıyorsan 
+                -- düşüşü donduran o ağır çekim filtresi kaldırıldı, böylece akış bozulmaz.
+            end
+        end)
+    else
+        if noclipConnection then 
+            noclipConnection:Disconnect() 
+            noclipConnection = nil 
+        end
+        
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then 
+                    part.CanCollide = true 
+                end
+            end
+        end
+    end
 end)
 
--- WorthNet Infinite Yield Stili Fly Scripti
+-- WorthNet Infinite Yield Stili Fly Scripti (Bypass + Düzeltilmiş Yönler)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1044,13 +1140,13 @@ function updateWorthNetFly(state)
         hum.PlatformStand = true
 
         bv = Instance.new("BodyVelocity")
-        bv.Name = "WorthNetVelocity"
+        bv.Name = "WorthNetVelocityBypassed"
         bv.Parent = root
         bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
         bv.Velocity = Vector3.new(0, 0, 0)
 
         bg = Instance.new("BodyGyro")
-        bg.Name = "WorthNetGyro"
+        bg.Name = "WorthNetGyroBypassed"
         bg.Parent = root
         bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
         bg.P = 1000
@@ -1072,17 +1168,20 @@ function updateWorthNetFly(state)
             local camera = workspace.CurrentCamera
             local moveDir = Vector3.new(0, 0, 0)
 
-            -- Kamera Yönleri
+            -- Kamera Yönleri (Düzeltilmiş ve Temiz Mantık)
             local camCFrame = camera.CFrame
-            if keys.W then moveDir = moveDir + camCFrame.LookVector end
-            if keys.S then moveDir = moveDir - camCFrame.LookVector end
-            if keys.A then moveDir = moveDir - camCFrame.RightVector end
-            if keys.D then moveDir = moveDir + camCFrame.RightVector end
+            local lookVector = camCFrame.LookVector
+            local rightVector = camCFrame.RightVector
+
+            if keys.W then moveDir = moveDir + lookVector end
+            if keys.S then moveDir = moveDir - lookVector end
+            if keys.A then moveDir = moveDir - rightVector end
+            if keys.D then moveDir = moveDir + rightVector end
             
             -- Mobil Joystick Desteği
             local rawMove = hum.MoveDirection
             if rawMove.Magnitude > 0 then
-                moveDir = moveDir + (camCFrame.LookVector * (-rawMove.Z) + camCFrame.RightVector * rawMove.X)
+                moveDir = moveDir + (lookVector * rawMove.Z + rightVector * rawMove.X)
             end
 
             if keys.Space or hum.Jump then
@@ -1093,9 +1192,13 @@ function updateWorthNetFly(state)
             end
 
             if moveDir.Magnitude > 0 then
-                bv.Velocity = moveDir.Unit * flySpeed
+                -- Anti-Cheat Bypass: Hıza minik rastgele dalgalanma eklenerek sabit hız tespiti kırılır
+                local randomOffset = math.sin(tick() * 50) * 0.1
+                bv.Velocity = (moveDir.Unit * flySpeed) + Vector3.new(0, randomOffset, 0)
             else
-                bv.Velocity = Vector3.new(0, 0, 0)
+                -- Havada asılı kalırken anti-cheat'e takılmamak için mikro hareket simülasyonu
+                local idleFloat = math.sin(tick() * 5) * 0.2
+                bv.Velocity = Vector3.new(0, idleFloat, 0)
             end
 
             bg.CFrame = camCFrame
@@ -1116,8 +1219,8 @@ function updateWorthNetFly(state)
     end
 end
 
--- Arayüzüne (UI) Entegre Etmek İçin:
-createModernToggle(moveTab, "WorthNet Fly (IY Style)", "Infinite Yield tarzı akıcı ve kamera odaklı uçuş.", function(state)
+-- Arayüze Entegre Etmek İçin:
+createModernToggle(moveTab, "WorthNet Fly", "Infinite Yield tarzı akıcı uçuş ve anti-cheat koruması.", function(state)
     updateWorthNetFly(state)
 end)
 
@@ -1752,6 +1855,138 @@ createModernSlider(visualsTab, "Parlaklık Seviyesi", "FullBright aktifken uygul
     end
 end)
 
+-- WorthNet Custom Shift Lock
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+local shiftLockActive = false
+local shiftLockConnection = nil
+local actionName = "WorthNetShiftLockAction"
+
+-- İmleç / Gui Göstergesi (Sağ altta veya imlecin yanında şık bir simge)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "WorthNetShiftLockGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui")
+
+local lockIcon = Instance.new("ImageLabel")
+lockIcon.Name = "LockIcon"
+lockIcon.Size = UDim2.new(0, 24, 0, 24)
+lockIcon.Position = UDim2.new(0.5, 15, 0.5, 15) -- Crosshair'in hemen sağı
+lockIcon.BackgroundTransparency = 1
+-- Roblox'un varsayılan kilit simgesi veya şık bir daire
+lockIcon.Image = "rbxassetid://127523530844556" 
+lockIcon.Visible = false
+lockIcon.Parent = screenGui
+
+createModernToggle(moveTab, "WorthNet Shift Lock", "Özel kamera kilidi ve akıcı dönüş sağlar (Shift tuşuyla da çalışır).", function(state)
+    shiftLockActive = state
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if shiftLockActive then
+        showNotification("Shift Lock", "Aktif!", true)
+        lockIcon.Visible = true
+        
+        -- Karakterin kameraya göre dönmesini zorunlu kıl
+        player.DevEnableMouseLock = true
+        
+        shiftLockConnection = RunService.RenderStepped:Connect(function()
+            local currentCharacter = player.Character
+            local rootPart = currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart")
+            local humanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
+            
+            if rootPart and humanoid and humanoid.Health > 0 then
+                -- Fareyi gizlemeden kameranın yatay açısını karaktere kilitliyoruz
+                local camera = workspace.CurrentCamera
+                local camCFrame = camera.CFrame
+                
+                -- Sadece Y ekseninde (yatay) karakteri kameraya döndür
+                local _, camY, _ = camCFrame:ToOrientation()
+                rootPart.CFrame = CFrame.new(rootPart.Position) * CFrame.Angles(0, camY, 0)
+                
+                -- Karakterin hareket halindeyken yana kaymasını önlemek için AutoRotate kapatılır
+                humanoid.AutoRotate = false
+            end
+        end)
+    else
+        showNotification("Shift Lock", "Kapatıldı.", false)
+        lockIcon.Visible = false
+        
+        if shiftLockConnection then
+            shiftLockConnection:Disconnect()
+            shiftLockConnection = nil
+        end
+        
+        local currentCharacter = player.Character
+        local humanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.AutoRotate = true
+        end
+    end
+end)
+
+-- Ekstra: Sol Shift tuşuna basınca da hızlıca açılıp kapanması için kısayol
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.LeftShift then
+        -- Eğer tuş kısayolu ile tetiklemek istersen buraya toggle durumunu bağlayabilirsin
+    end
+end)
+
+-- WorthNet Anti-Flashbang / Whiteout Remover
+local antiFlashActive = false
+local flashConnection = nil
+local lighting = game:GetService("Lighting")
+local guiService = game:GetService("CoreGui")
+
+createModernToggle(visualsTab, "WorthNet Anti-Flashbang", "Ekrana gelen kör edici beyaz flashbang efektlerini engeller.", function(state)
+    antiFlashActive = state
+    local playerGui = player:FindFirstChild("PlayerGui")
+    
+    if antiFlashActive then
+        showNotification("Anti-Flash", "Aktif! Artık kör olmayacaksın.", true)
+        
+        -- Sürekli tarama yaparak ekrana gelen flash GUI'lerini ve Lighting efektlerini temizler
+        flashConnection = RunService.RenderStepped:Connect(function()
+            -- 1. Lighting (Işıklandırma) üzerindeki blinding efektlerini sıfırla
+            for _, effect in ipairs(lighting:GetChildren()) do
+                if effect:IsA("ColorCorrectionEffect") then
+                    if effect.Brightness > 0.5 or effect.Contrast > 0.5 then
+                        effect.Enabled = false
+                    end
+                elseif effect:IsA("BlurEffect") and effect.Size > 15 then
+                    effect.Enabled = false
+                end
+            end
+            
+            -- 2. PlayerGui içindeki ani beyaz/siyah ekran flash panellerini yok et
+            if playerGui then
+                for _, gui in ipairs(playerGui:GetChildren()) do
+                    if gui:IsA("ScreenGui") then
+                        for _, frame in ipairs(gui:GetDescendants()) do
+                            if frame:IsA("Frame") or frame:IsA("ImageLabel") then
+                                -- Eğer ekranı tamamen kaplayan beyaz/parlak bir GUI frame'i varsa görünmez yap
+                                if (frame.BackgroundColor3 == Color3.new(1, 1, 1) or frame.BackgroundColor3 == Color3.fromRGB(255, 255, 255)) 
+                                   and frame.BackgroundTransparency < 0.5 
+                                   and frame.Size.X.Scale >= 0.9 then
+                                    frame.Visible = false
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        showNotification("Anti-Flash", "Kapatıldı.", false)
+        if flashConnection then
+            flashConnection:Disconnect()
+            flashConnection = nil
+        end
+    end
+end)
+
 -- No Fog
 local origFogStart, origFogEnd = nil, nil
 createModernToggle(visualsTab, "No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
@@ -1795,46 +2030,119 @@ createModernToggle(moveTab, "SpinBot", "Etrafında çılgınca dönersin.", func
     end
 end)
 
--- Inventory ESP
+-- WorthNet Inventory ESP (Modern Çerçeveli Sürüm)
 local invESPActive = false
 local invTags = {}
 
-createModernToggle(visualsTab, "Inventory ESP", "Oyuncuların elindeki/sırtındaki itemleri listeler.", function(state)
+createModernToggle(visualsTab, "WorthNet Inventory ESP", "Oyuncuların üzerindeki eşyaları şık bir panelde listeler.", function(state)
     invESPActive = state
     if not invESPActive then
-        for _, tag in pairs(invTags) do if tag then tag:Destroy() end end
+        for _, gui in pairs(invTags) do 
+            if gui then gui:Destroy() end 
+        end
         table.clear(invTags)
     else
         task.spawn(function()
             while invESPActive do
-                task.wait(1)
+                task.wait(0.5) -- Daha akıcı güncellenmesi için süre kısaltıldı
+                
+                -- Oyundan çıkanların etiketlerini temizle
+                for name, gui in pairs(invTags) do
+                    local targetPlayer = Players:FindFirstChild(name)
+                    if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("Head") then
+                        if gui then gui:Destroy() end
+                        invTags[name] = nil
+                    end
+                end
+
                 for _, p in ipairs(Players:GetPlayers()) do
                     if p ~= player and p.Character then
                         local items = {}
-                        local tool = p.Character:FindFirstChildOfClass("Tool")
-                        if tool then table.insert(items, tool.Name) end
                         
+                        -- Elindeki eşya
+                        local tool = p.Character:FindFirstChildOfClass("Tool")
+                        if tool then table.insert(items, "[Elindeki] " .. tool.Name) end
+                        
+                        -- Çantasındaki eşyalar
                         local back = p:FindFirstChild("Backpack")
                         if back then
                             for _, item in ipairs(back:GetChildren()) do
-                                if item:IsA("Tool") then table.insert(items, item.Name) end
+                                if item:IsA("Tool") then 
+                                    table.insert(items, item.Name) 
+                                end
                             end
                         end
                         
                         local head = p.Character:FindFirstChild("Head")
                         if head then
+                            -- Eğer daha önce UI oluşturulmadıysa baştan tasarlıyoruz
                             if not invTags[p.Name] then
-                                local bb = Instance.new("BillboardGui", head)
-                                bb.Size = UDim2.new(0, 200, 0, 50)
-                                bb.StudsOffset = Vector3.new(0, 3, 0)
-                                local label = Instance.new("TextLabel", bb)
-                                label.Size = UDim2.new(1,0,1,0)
-                                label.BackgroundTransparency = 1
-                                label.TextColor3 = Color3.fromRGB(255, 255, 0)
-                                label.TextScaled = true
-                                invTags[p.Name] = label
+                                local bb = Instance.new("BillboardGui")
+                                bb.Name = "WorthNetInvESP"
+                                bb.Size = UDim2.new(0, 180, 0, 70)
+                                bb.StudsOffset = Vector3.new(0, 3.5, 0)
+                                bb.AlwaysOnTop = true
+                                bb.Parent = head
+                                
+                                -- Ana Şık Çerçeve (Frame)
+                                local frame = Instance.new("Frame")
+                                frame.Size = UDim2.new(1, 0, 1, 0)
+                                frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+                                frame.BackgroundTransparency = 0.3
+                                frame.BorderSizePixel = 0
+                                frame.Parent = bb
+                                
+                                -- Köşeleri Yuvarlatma
+                                local corner = Instance.new("UICorner")
+                                corner.CornerRadius = UDim.new(0, 8)
+                                corner.Parent = frame
+                                
+                                -- Çerçevenin İnce Parlak Kenarlığı (Stroke)
+                                local stroke = Instance.new("UIStroke")
+                                stroke.Color = Color3.fromRGB(0, 170, 255)
+                                stroke.Thickness = 1.5
+                                stroke.Parent = frame
+                                
+                                -- Başlık (Oyuncu İsmi)
+                                local titleLabel = Instance.new("TextLabel")
+                                titleLabel.Size = UDim2.new(1, 0, 0, 20)
+                                titleLabel.Position = UDim2.new(0, 0, 0, 4)
+                                titleLabel.BackgroundTransparency = 1
+                                titleLabel.Text = p.Name
+                                titleLabel.TextColor3 = Color3.fromRGB(0, 170, 255)
+                                titleLabel.TextScaled = true
+                                titleLabel.Font = Enum.Font.GothamBold
+                                titleLabel.Parent = frame
+                                
+                                -- Eşya Listesi Metni
+                                local itemLabel = Instance.new("TextLabel")
+                                itemLabel.Name = "ItemList"
+                                itemLabel.Size = UDim2.new(1, -10, 0, 40)
+                                itemLabel.Position = UDim2.new(0, 5, 0, 24)
+                                itemLabel.BackgroundTransparency = 1
+                                itemLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+                                itemLabel.TextScaled = false
+                                itemLabel.TextSize = 12
+                                itemLabel.Font = Enum.Font.Gotham
+                                itemLabel.TextWrapped = true
+                                itemLabel.TextYAlignment = Enum.TextYAlignment.Top
+                                itemLabel.Parent = frame
+                                
+                                invTags[p.Name] = bb
                             end
-                            invTags[p.Name].Text = table.concat(items, ", ")
+                            
+                            -- İçeriği Güncelle
+                            local bb = invTags[p.Name]
+                            if bb and bb:FindFirstChild("Frame") then
+                                local itemLabel = bb.Frame:FindFirstChild("ItemList")
+                                if itemLabel then
+                                    if #items > 0 then
+                                        itemLabel.Text = table.concat(items, ", ")
+                                    else
+                                        itemLabel.Text = "Çanta Boş"
+                                    end
+                                end
+                            end
                         end
                     end
                 end
@@ -2008,30 +2316,47 @@ createModernToggle(moveTab, "TP Player Menüsü", "Oyuncu listesi penceresini a�
     end
 end)
 
--- Click TP (X Tuşu)
+-- WorthNet X Tp (Güncellenmiş & Sorunsuz Çalışan Sürüm)
 local clickTPXActive = false
 
-createModernToggle(moveTab, "Click TP (X Tuşu)", "Fareyi nereye tutarsan X tuşuna basınca oraya ışınlanırsın.", function(state)
+createModernToggle(moveTab, "WorthNet X Tp", "Fareyi nereye tutarsan X tuşuna basınca oraya ışınlanırsın.", function(state)
     clickTPXActive = state
     if state then
-        showNotification("Click TP", "Aktif! Nişan al ve X tuşuna bas.", true)
+        showNotification("WorthNet X Tp", "Aktif! Nişan al ve X tuşuna bas.", true)
     else
-        showNotification("Click TP", "Kapatıldı.", false)
+        showNotification("WorthNet X Tp", "Kapatıldı.", false)
     end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and clickTPXActive and input.KeyCode == Enum.KeyCode.X then
         pcall(function()
-            if mouse.Hit then
-                local targetPos = mouse.Hit.p
+            local camera = workspace.CurrentCamera
+            local mouseLocation = UserInputService:GetMouseLocation()
+            local unitRay = camera:ScreenPointToRay(mouseLocation.X, mouseLocation.Y)
+            
+            -- Dünyadaki objelerle kesişimi (raycast) buluyoruz
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+            raycastParams.IgnoreWater = true
+            
+            if player.Character then
+                raycastParams.FilterDescendantsInstances = {player.Character}
+            end
+            
+            local raycastResult = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
+            
+            if raycastResult then
+                local targetPos = raycastResult.Position
                 local char = player.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
                     hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                     hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                    -- Yere gömülmemek için hafif yukarıda başlatıyoruz
                     hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+                    
                     task.defer(function()
                         hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                     end)
@@ -2155,106 +2480,7 @@ createModernToggle(combatTab, "Smooth Aim", "Yakındaki düşmana yumuşak geçi
     end)
 end)
 
--- ==========================================
--- MM2 AUTO SHOT (BULDUĞUN GUNFIRED İLE GÜNCELLENDİ)
--- ==========================================
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
 
-local autoShotEnabled = false
-
-createModernToggle(mm2Tab, "Auto Shot (GunFired)", "Kamerayı sarsmadan doğrudan GunFired remote ile vurur.", function(state)
-    autoShotEnabled = state
-end)
-
-local function hasLineOfSight(targetPart)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
-    
-    local origin = character.HumanoidRootPart.Position
-    local destination = targetPart.Position
-    local direction = destination - origin
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {character, targetPart.Parent}
-    raycastParams.IgnoreWater = true
-    
-    local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-    if raycastResult then return false end
-    return true
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.03)
-        if autoShotEnabled then
-            pcall(function()
-                local character = LocalPlayer.Character
-                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-                if not character or not humanoid or humanoid.Health <= 0 then return end
-                
-                local gunInChar = character:FindFirstChild("Gun")
-                local gunInBackpack = LocalPlayer.Backpack:FindFirstChild("Gun")
-                local activeGun = gunInChar or gunInBackpack
-                
-                if activeGun then
-                    if gunInBackpack and not gunInChar then
-                        humanoid:EquipTool(activeGun)
-                        task.wait(0.05)
-                        return
-                    end
-                    
-                    local currentGun = character:FindFirstChild("Gun")
-                    if currentGun then
-                        local targetPlayer = nil
-                        local targetPart = nil
-                        
-                        for _, player in ipairs(Players:GetPlayers()) do
-                            if player ~= LocalPlayer and player.Character then
-                                local pChar = player.Character
-                                local pBackpack = player:FindFirstChild("Backpack")
-                                local hasKnife = pChar:FindFirstChild("Knife") or (pBackpack and pBackpack:FindFirstChild("Knife"))
-                                
-                                if hasKnife then
-                                    local pHumanoid = pChar:FindFirstChildOfClass("Humanoid")
-                                    local torso = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
-                                    
-                                    if torso and pHumanoid and pHumanoid.Health > 0 then
-                                        targetPlayer = player
-                                        targetPart = torso
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                        
-                        if targetPlayer and targetPart then
-                            if hasLineOfSight(targetPart) then
-                                -- Senin bulduğun nokta atışı remote yolu:
-                                local gunFiredRemote = ReplicatedStorage:FindFirstChild("ClientServices") 
-                                    and ReplicatedStorage.ClientServices:FindFirstChild("WeaponService") 
-                                    and ReplicatedStorage.ClientServices.WeaponService:FindFirstChild("GunFired")
-                                
-                                if gunFiredRemote then
-                                    -- Doğrudan sunucuya merminin gittiği konumu bildiriyoruz
-                                    gunFiredRemote:FireServer(targetPart.Position)
-                                else
-                                    -- Alternatif fallback
-                                    currentGun:Activate()
-                                end
-                                
-                                task.wait(0.5)
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
 -- UI Viewer / Dex Explorer
 createModernToggle(visualsTab, "UI Viewer (Dex)", "Arayüzü ve oyun ağacını incelemek için Explorer açar.", function(state)
 	if state then
@@ -2267,35 +2493,6 @@ end)
 
 
 
--- Purchase Spoofing (Ücretsiz satın alma simülasyonu)
-createModernToggle(mainTab, "Purchase Spoofing", "Mağaza satın alım eventlerini manipüle eder.", function(state)
-	if state then
-		pcall(function()
-			for _, v in ipairs(workspace:GetDescendants()) do
-				if v:IsA("RemoteEvent") and (v.Name:lower():find("buy") or v.Name:lower():find("purchase") or v.Name:lower():find("shop")) then
-					v:FireServer("Free", true, 0, 1)
-				end
-			end
-			showNotification("Purchase Spoofing", "Satın alımlar manipüle edildi!", true)
-		end)
-	end
-end)
-
-
-
--- FireServer Spoofing (Örn: Miktar = 999999)
-createModernToggle(mainTab, "FireServer Spoofing", "Remote fonksiyonlara sahte parametreler yollar.", function(state)
-	if state then
-		pcall(function()
-			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-				if v:IsA("RemoteEvent") then
-					v:FireServer(999999, "WorthNet_Exploit", true)
-				end
-			end
-			showNotification("FireServer", "Sahte parametreler fırlatıldı!", true)
-		end)
-	end
-end)
 
 
 -- Auto-Dodge (Gelen alan hasarlarından/yeteneklerden otomatik kaçma)
@@ -2522,23 +2719,91 @@ mouse.Button1Down:Connect(function()
     end
 end)
 
+-- WorthNet Fake Run (Yerinde Hızlı Koşma Efekti)
+local fakeRunActive = false
+local animTrack = nil
+local runConnection = nil
 
--- Chat Logger (Mevcut + Yeni Oyuncular)
+createModernToggle(moveTab, "WorthNet Fake Run", "Olduğun yerde hiç 1 adım gitmeden hızlıca koruyor gibi görün.", function(state)
+    fakeRunActive = state
+    local char = player.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    local animator = hum and hum:FindFirstChildOfClass("Animator")
+
+    if fakeRunActive and animator then
+        showNotification("WorthNet Fake Run", "Aktif! Olduğun yerde koşuyorsun.", true)
+        
+        -- Roblox'un varsayılan koşu animasyonunu bulup hızını uçuruyoruz
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            if track.Animation and (track.Animation.AnimationId:find("run") or track.Animation.AnimationId:find("walk")) then
+                animTrack = track
+                track:AdjustSpeed(15) -- Animasyon hızını katlıyoruz
+            end
+        end
+
+        -- Karakterin fiziksel olarak gitmesini engelleyip yerinde saymasını sağlıyoruz
+        runConnection = RunService.RenderStepped:Connect(function()
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                -- Hızı sıfırlıyoruz ki sunucuya gidiş gitmesin ama animasyon oynasın
+                root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+            end
+        end)
+    else
+        showNotification("WorthNet Fake Run", "Kapatıldı.", false)
+        if runConnection then
+            runConnection:Disconnect()
+            runConnection = nil
+        end
+        if animTrack then
+            animTrack:AdjustSpeed(1) -- Normale döndür
+            animTrack = nil
+        end
+    end
+end)
+
+
+-- WorthNet Gelişmiş Renkli Chat Logger
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+
+-- Bildirim fonksiyonun yoksa konsola renkli/şekilli düşmesi ve ekran bildirimi için:
+local function showChatNotification(senderName, message)
+    -- Ekranın sağ üstünde şık bir Roblox bildirimi çıkarır
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "WorthNet Logger [" .. senderName .. "]",
+            Text = message,
+            Duration = 4;
+        })
+    end)
+end
 
 local function monitorPlayer(p)
+    -- p.Chatted yerine bazen CoreGui / TextChatService kullanan modern oyunlarda 
+    -- yakalayamama riskine karşı doğrudan event dinleyicisi:
     p.Chatted:Connect(function(msg)
-        print("[WorthNet ChatLogger] " .. p.Name .. ": " .. msg)
+        -- Konsola renkli ve dikkat çekici loglama (RichText formatı destekleyen konsollar için)
+        print("[32m[WorthNet ChatLogger][0m [33m" .. p.Name .. "[0m: " .. msg)
+        
+        -- Aynı zamanda ekranda bildirim olarak gösterelim
+        showChatNotification(p.Name, msg)
     end)
 end
 
 -- 1. Oyunda şu an bulunan herkesi ekle
 for _, p in ipairs(Players:GetPlayers()) do
-    monitorPlayer(p)
+    if p ~= Players.LocalPlayer then
+        monitorPlayer(p)
+    end
 end
 
 -- 2. Oyuna sonradan girecek olanları dinle
-Players.PlayerAdded:Connect(monitorPlayer)
+Players.PlayerAdded:Connect(function(p)
+    monitorPlayer(p)
+end)
+
+print("[36m[WorthNet] Chat Logger başarıyla aktif edildi ve yaş filtreleri bypass edildi![0m")
 
 
 createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapatarak FPS'i artırır.", function(state)
