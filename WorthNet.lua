@@ -47,14 +47,14 @@ end
 
 local THEME = {
     Background = Color3.fromRGB(12, 12, 15),      -- Derin Saf Siyah-Gri
-    Sidebar    = Color3.fromRGB(16, 16, 20),      -- Yan Menü Arka Planı
-    Card       = Color3.fromRGB(20, 20, 26),      -- Kart Arka Planı
-    Accent     = Color3.fromRGB(0, 225, 255),     -- Canlı Siber Buz Mavisi (Cyan)
-    AccentGlow = Color3.fromRGB(70, 240, 255),    -- Parlak Açık Cyan
-    TextMain   = Color3.fromRGB(240, 240, 245),   -- Saf Beyaz
-    TextDark   = Color3.fromRGB(130, 130, 145),   -- Soluk Füme Gri
-    ToggleOn   = Color3.fromRGB(0, 225, 255),     -- Açık Buton (Cyan)
-    ToggleOff  = Color3.fromRGB(35, 35, 45)       -- Kapalı Buton (Koyu Siyah-Gri)
+    Sidebar    = Color3.fromRGB(15, 15, 18),      -- Yan Menü Arka Planı
+    Card       = Color3.fromRGB(18, 18, 22),      -- Kart Arka Planı
+    Accent     = Color3.fromRGB(0, 210, 255),     -- Tek Renk Siber Buz Mavisi (Cyan)
+    AccentGlow = Color3.fromRGB(0, 210, 255),    -- Parlak Efekt (Tek Renk)
+    TextMain   = Color3.fromRGB(235, 235, 240),   -- Saf Beyaz Metin
+    TextDark   = Color3.fromRGB(120, 120, 135),   -- Soluk Füme Gri Metin
+    ToggleOn   = Color3.fromRGB(0, 210, 255),     -- Açık Buton
+    ToggleOff  = Color3.fromRGB(30, 30, 38)        -- Kapalı Buton
 }
 
 local function roundCorners(obj, radius)
@@ -257,6 +257,7 @@ local hubFrame = Instance.new("Frame")
 hubFrame.Size = UDim2.new(0, 560, 0, 360)
 hubFrame.Position = UDim2.new(0.5, -300, 0.5, -190)
 hubFrame.BackgroundColor3 = THEME.Background
+hubFrame.BackgroundTransparency = 0.05
 hubFrame.BorderSizePixel = 0
 hubFrame.ZIndex = 5
 hubFrame.Visible = false
@@ -317,6 +318,7 @@ local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 160, 1, 0)
 sidebar.BackgroundColor3 = THEME.Sidebar
 sidebar.BorderSizePixel = 0
+sidebar.BackgroundTransparency = 0.05
 sidebar.ZIndex = 6
 sidebar.Parent = hubFrame
 roundCorners(sidebar, 12)
@@ -704,12 +706,12 @@ local function createModernSlider(parentTab, name, description, min, max, defaul
 end
 
 -- TAB'LARI OLUŞTURMA
-local mainTab    = createTab("Main", "⌂")
+local mainTab    = createTab("Main", "🏠")
 local combatTab  = createTab("Combat", "⚔")
 local visualsTab = createTab("Visuals", "👁")
 local moveTab    = createTab("Movement", "»")
-local mm2Tab     = createTab("MM2 Special", "◎")
-local globalExploitsTab = createTab("Global & Server", "⌘")
+local mm2Tab     = createTab("MM2 Special", "🎯")
+local globalExploitsTab = createTab("Global & Server", "🌐")
 local settingsTab = createTab("Settings", "⚙")
 
 if activeTabs[1] then
@@ -987,154 +989,136 @@ createModernToggle(moveTab, "Noclip", "Duvarların içinden geçmenizi sağlar."
 	end
 end)
 
--- WorthNet Gelişmiş Mobil ve PC Uyumlu Fly Scripti
+-- WorthNet Infinite Yield Stili Fly Scripti
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
 local flyActive = false
-local flySpeed = 30
-local bv, bg
+local flySpeed = 50
+local bg, bv
 local flyConnection
 
--- PC Tuş Kontrolleri İçin Durum Tablosu
-local keysPressed = {
-	W = false,
-	S = false,
-	A = false,
-	D = false,
-	Space = false,
-	LeftShift = false,
-	LeftControl = false
+-- Tuş Durumları
+local keys = {
+    W = false,
+    S = false,
+    A = false,
+    D = false,
+    Space = false,
+    Shift = false
 }
 
--- Tuş Dinleyicileri (PC)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.W then keysPressed.W = true end
-	if input.KeyCode == Enum.KeyCode.S then keysPressed.S = true end
-	if input.KeyCode == Enum.KeyCode.A then keysPressed.A = true end
-	if input.KeyCode == Enum.KeyCode.D then keysPressed.D = true end
-	if input.KeyCode == Enum.KeyCode.Space then keysPressed.Space = true end
-	if input.KeyCode == Enum.KeyCode.LeftShift then keysPressed.LeftShift = true end
-	if input.KeyCode == Enum.KeyCode.LeftControl then keysPressed.LeftControl = true end
-	
-	-- P tuşu ile hızlı aç/kapat
-	if input.KeyCode == Enum.KeyCode.P then
-		updateBodyVelocityFly(not flyActive)
-	end
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.W then keys.W = true end
+    if input.KeyCode == Enum.KeyCode.S then keys.S = true end
+    if input.KeyCode == Enum.KeyCode.A then keys.A = true end
+    if input.KeyCode == Enum.KeyCode.D then keys.D = true end
+    if input.KeyCode == Enum.KeyCode.Space then keys.Space = true end
+    if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then keys.Shift = true end
+    
+    -- P tuşu ile aç/kapat
+    if input.KeyCode == Enum.KeyCode.P then
+        updateWorthNetFly(not flyActive)
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.W then keysPressed.W = false end
-	if input.KeyCode == Enum.KeyCode.S then keysPressed.S = false end
-	if input.KeyCode == Enum.KeyCode.A then keysPressed.A = false end
-	if input.KeyCode == Enum.KeyCode.D then keysPressed.D = false end
-	if input.KeyCode == Enum.KeyCode.Space then keysPressed.Space = false end
-	if input.KeyCode == Enum.KeyCode.LeftShift then keysPressed.LeftShift = false end
-	if input.KeyCode == Enum.KeyCode.LeftControl then keysPressed.LeftControl = false end
+    if input.KeyCode == Enum.KeyCode.W then keys.W = false end
+    if input.KeyCode == Enum.KeyCode.S then keys.S = false end
+    if input.KeyCode == Enum.KeyCode.A then keys.A = false end
+    if input.KeyCode == Enum.KeyCode.D then keys.D = false end
+    if input.KeyCode == Enum.KeyCode.Space then keys.Space = false end
+    if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then keys.Shift = false end
 end)
 
-local function updateBodyVelocityFly(state)
-	flyActive = state
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	local hum = char and char:FindFirstChild("Humanoid")
+function updateWorthNetFly(state)
+    flyActive = state
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
 
-	if flyActive and root and hum then
-		hum.PlatformStand = true
-		
-		-- Fizik nesnelerini oluşturuyoruz
-		bv = Instance.new("BodyVelocity")
-		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-		bv.Velocity = Vector3.new(0, 0, 0)
-		bv.Parent = root
+    if flyActive and root and hum then
+        hum.PlatformStand = true
 
-		bg = Instance.new("BodyGyro")
-		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-		bg.P = 20000
-		bg.Parent = root
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "WorthNetVelocity"
+        bv.Parent = root
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
 
-		flyConnection = RunService.RenderStepped:Connect(function()
-			if not flyActive or not root or not root.Parent then
-				if flyConnection then flyConnection:Disconnect() end
-				return
-			end
-			
-			-- Duvarlardan geçebilmek için Noclip aktif tutulur
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-			
-			local camera = workspace.CurrentCamera
-			local moveDirection = Vector3.new(0, 0, 0)
-			local camCFrame = camera.CFrame
-			local camLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
-			local camRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit
-			
-			-- 1. PC Tuş Kontrollerini Kontrol Et
-			local pcMoveDir = Vector3.new(0, 0, 0)
-			if keysPressed.W then pcMoveDir = pcMoveDir + camLook end
-			if keysPressed.S then pcMoveDir = pcMoveDir - camLook end
-			if keysPressed.A then pcMoveDir = pcMoveDir - camRight end
-			if keysPressed.D then pcMoveDir = pcMoveDir + camRight end
-			
-			if keysPressed.Space then
-				moveDirection = moveDirection + Vector3.new(0, 1, 0)
-			end
-			if keysPressed.LeftShift or keysPressed.LeftControl then
-				moveDirection = moveDirection - Vector3.new(0, 1, 0)
-			end
+        bg = Instance.new("BodyGyro")
+        bg.Name = "WorthNetGyro"
+        bg.Parent = root
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P = 1000
+        bg.D = 50
 
-			-- 2. Mobil Joystick Girdilerini Kontrol Et (Eğer PC tuşlarına basılmıyorsa)
-			if pcMoveDir.Magnitude > 0 then
-				moveDirection = moveDirection + pcMoveDir.Unit
-			else
-				local rawMoveDir = hum.MoveDirection
-				if rawMoveDir.Magnitude > 0 then
-					-- İleri/geri tersliğini gideren optimize edilmiş yön hesaplaması
-					local finalDir = (camLook * (-rawMoveDir.Z) + camRight * rawMoveDir.X)
-					moveDirection = moveDirection + finalDir.Unit
-				end
-				
-				-- Mobilde zıplama tuşuna basıldığında yukarı çıkması için
-				if hum.Jump then
-					moveDirection = moveDirection + Vector3.new(0, 1, 0)
-				end
-			end
-			
-			if moveDirection.Magnitude > 0 then
-				bv.Velocity = moveDirection.Unit * flySpeed
-			else
-				bv.Velocity = Vector3.new(0, 0, 0)
-			end
-			
-			-- Karakterin kamerasının yönüne bakmasını sağla
-			local flatLook = camCFrame.LookVector
-			flatLook = Vector3.new(flatLook.X, 0, flatLook.Z).Unit
-			if flatLook.Magnitude > 0 then
-				bg.CFrame = CFrame.new(Vector3.new(0, 0, 0), flatLook)
-			end
-		end)
-	else
-		if flyConnection then flyConnection:Disconnect() end
-		if bv then bv:Destroy() end
-		if bg then bg:Destroy() end
-		if hum then hum.PlatformStand = false end
-		
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then part.CanCollide = true end
-			end
-		end
-	end
+        flyConnection = RunService.RenderStepped:Connect(function()
+            if not flyActive or not root or not root.Parent then
+                if flyConnection then flyConnection:Disconnect() end
+                return
+            end
+
+            -- Noclip (Duvarlardan geçme)
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = false
+                end
+            end
+
+            local camera = workspace.CurrentCamera
+            local moveDir = Vector3.new(0, 0, 0)
+
+            -- Kamera Yönleri
+            local camCFrame = camera.CFrame
+            if keys.W then moveDir = moveDir + camCFrame.LookVector end
+            if keys.S then moveDir = moveDir - camCFrame.LookVector end
+            if keys.A then moveDir = moveDir - camCFrame.RightVector end
+            if keys.D then moveDir = moveDir + camCFrame.RightVector end
+            
+            -- Mobil Joystick Desteği
+            local rawMove = hum.MoveDirection
+            if rawMove.Magnitude > 0 then
+                moveDir = moveDir + (camCFrame.LookVector * (-rawMove.Z) + camCFrame.RightVector * rawMove.X)
+            end
+
+            if keys.Space or hum.Jump then
+                moveDir = moveDir + Vector3.new(0, 1, 0)
+            end
+            if keys.Shift then
+                moveDir = moveDir - Vector3.new(0, 1, 0)
+            end
+
+            if moveDir.Magnitude > 0 then
+                bv.Velocity = moveDir.Unit * flySpeed
+            else
+                bv.Velocity = Vector3.new(0, 0, 0)
+            end
+
+            bg.CFrame = camCFrame
+        end)
+    else
+        if flyConnection then flyConnection:Disconnect() end
+        if bv then bv:Destroy() end
+        if bg then bg:Destroy() end
+        if hum then hum.PlatformStand = false end
+
+        if char then
+            for _, v in ipairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.CanCollide = true
+                end
+            end
+        end
+    end
 end
 
-createModernToggle(moveTab, "Fly (Mobil & PC Uyumlu)", "Joystick veya W-A-S-D tuşları ile akıcı uçuş ve duvar geçişi.", function(state)
-	updateBodyVelocityFly(state)
+-- Arayüzüne (UI) Entegre Etmek İçin:
+createModernToggle(moveTab, "WorthNet Fly (IY Style)", "Infinite Yield tarzı akıcı ve kamera odaklı uçuş.", function(state)
+    updateWorthNetFly(state)
 end)
 
 
@@ -1165,197 +1149,6 @@ createModernToggle(mainTab, "Haritayı Kaydet (Map Dump)", "Workspace içindeki 
     end
 end)
 
--- Fling Menüsü (Hareket Tahmini / Prediction Eklenmiş Hali)
-local flingPlayerListGui = nil
-local flingScrollingRef = nil
-local flingPlayerConns = {}
-local activeFlingConnection = nil
-local currentlyFlingingTarget = nil
-
-local function createFlingPlayerListWindow()
-	if flingPlayerListGui then
-		flingPlayerListGui.Enabled = true
-		return
-	end
-
-	flingPlayerListGui = Instance.new("ScreenGui")
-	flingPlayerListGui.Name = "WorthNetFlingPlayerListMenu"
-	
-	local success = pcall(function()
-		flingPlayerListGui.Parent = game:GetService("CoreGui")
-	end)
-	if not success then
-		flingPlayerListGui.Parent = player.PlayerGui
-	end
-
-	local mainFrame = Instance.new("Frame")
-	mainFrame.Size = UDim2.new(0, 240, 0, 320)
-	mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-	mainFrame.BackgroundColor3 = THEME.Sidebar
-	mainFrame.BorderSizePixel = 0
-	mainFrame.Active = true
-	mainFrame.Draggable = true
-	mainFrame.Parent = flingPlayerListGui
-	roundCorners(mainFrame, 10)
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0, 40)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "WorthNet Fling Menüsü"
-	titleLabel.TextColor3 = THEME.Accent
-	titleLabel.TextSize = 12
-	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.Parent = mainFrame
-
-	local scrollingFrame = Instance.new("ScrollingFrame")
-	scrollingFrame.Size = UDim2.new(1, -16, 1, -50)
-	scrollingFrame.Position = UDim2.new(0, 8, 0, 42)
-	scrollingFrame.BackgroundTransparency = 1
-	scrollingFrame.BorderSizePixel = 0
-	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scrollingFrame.ScrollBarThickness = 3
-	scrollingFrame.ScrollBarImageColor3 = THEME.Accent
-	scrollingFrame.Parent = mainFrame
-	flingScrollingRef = scrollingFrame
-
-	local uiListLayout = Instance.new("UIListLayout")
-	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	uiListLayout.Padding = UDim.new(0, 6)
-	uiListLayout.Parent = scrollingFrame
-
-	local function refreshFlingList()
-		if not flingScrollingRef then return end
-		
-		for _, child in ipairs(flingScrollingRef:GetChildren()) do
-			if child:IsA("Frame") then
-				child:Destroy()
-			end
-		end
-
-		for _, targetPlayer in ipairs(Players:GetPlayers()) do
-			if targetPlayer ~= player then
-				local itemRow = Instance.new("Frame")
-				itemRow.Size = UDim2.new(1, 0, 0, 32)
-				itemRow.BackgroundColor3 = THEME.Card
-				itemRow.BorderSizePixel = 0
-				itemRow.Parent = flingScrollingRef
-				roundCorners(itemRow, 6)
-
-				local nameLabel = Instance.new("TextLabel")
-				nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
-				nameLabel.Position = UDim2.new(0, 8, 0, 0)
-				nameLabel.BackgroundTransparency = 1
-				nameLabel.Text = targetPlayer.Name
-				nameLabel.TextColor3 = THEME.TextMain
-				nameLabel.TextSize = 11
-				nameLabel.Font = Enum.Font.GothamMedium
-				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-				nameLabel.Parent = itemRow
-
-				local flingButton = Instance.new("TextButton")
-				flingButton.Size = UDim2.new(0.38, 0, 0.75, 0)
-				flingButton.Position = UDim2.new(0.60, 0, 0.125, 0)
-				flingButton.BackgroundColor3 = (currentlyFlingingTarget == targetPlayer) and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 50, 50)
-				flingButton.BorderSizePixel = 0
-				flingButton.Text = (currentlyFlingingTarget == targetPlayer) and "Durdur" or "Fling"
-				flingButton.TextColor3 = THEME.TextMain
-				flingButton.TextSize = 11
-				flingButton.Font = Enum.Font.GothamBold
-				flingButton.Parent = itemRow
-				roundCorners(flingButton, 5)
-
-				flingButton.MouseButton1Click:Connect(function()
-					if currentlyFlingingTarget == targetPlayer then
-						if activeFlingConnection then
-							activeFlingConnection:Disconnect()
-							activeFlingConnection = nil
-						end
-						currentlyFlingingTarget = nil
-						
-						local char = player.Character
-						local rootPart = char and char:FindFirstChild("HumanoidRootPart")
-						if rootPart then
-							rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-							rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-						end
-						
-						showNotification("Fling", targetPlayer.Name .. " serbest bırakıldı.", false)
-						refreshFlingList()
-					else
-						if activeFlingConnection then
-							activeFlingConnection:Disconnect()
-							activeFlingConnection = nil
-						end
-
-						currentlyFlingingTarget = targetPlayer
-						showNotification("Fling", targetPlayer.Name .. " hedeflendi ve fırlatılıyor!", true)
-						refreshFlingList()
-
-						-- HAREKET EDENLERİ YAKALAYAN PREDICTION MANTIĞI
-						activeFlingConnection = RunService.Heartbeat:Connect(function()
-							local character = player.Character
-							local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-							
-							if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and rootPart then
-								local targetRoot = targetPlayer.Character.HumanoidRootPart
-								local moveVelocity = targetRoot.AssemblyLinearVelocity
-								
-								-- Hedefin kaçtığı yöne doğru konum tahmini yaparak yapışır
-								rootPart.CFrame = targetRoot.CFrame + (moveVelocity * 0.05)
-								rootPart.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-								rootPart.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-							else
-								if activeFlingConnection then
-									activeFlingConnection:Disconnect()
-									activeFlingConnection = nil
-								end
-								currentlyFlingingTarget = nil
-								if rootPart then
-									rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-									rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-								end
-								refreshFlingList()
-							end
-						end)
-					end
-				end)
-			end
-		end
-	end
-
-	refreshFlingList()
-
-	table.insert(flingPlayerConns, Players.PlayerAdded:Connect(refreshFlingList))
-	table.insert(flingPlayerConns, Players.PlayerRemoving:Connect(refreshFlingList))
-end
-
-local function hideFlingPlayerListWindow()
-	if flingPlayerListGui then
-		flingPlayerListGui.Enabled = false
-	end
-	
-	if activeFlingConnection then
-		activeFlingConnection:Disconnect()
-		activeFlingConnection = nil
-	end
-	currentlyFlingingTarget = nil
-	
-	local char = player.Character
-	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
-	if rootPart then
-		rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-		rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-	end
-end
-
-createModernToggle(mainTab, "Fling Menüsü 2", "Oyuncu listesini açar, seçtiğini fırlatır.", function(state)
-	if state then
-		createFlingPlayerListWindow()
-	else
-		hideFlingPlayerListWindow()
-	end
-end)
 
 
 -- Fling Menüsü
@@ -2505,24 +2298,6 @@ createModernToggle(mainTab, "FireServer Spoofing", "Remote fonksiyonlara sahte p
 end)
 
 
--- Kill All Players (Herkesin canını düşürme eventini tetikle)
-createModernToggle(combatTab, "Kill All Players", "Can azaltma Remote Event'ini herkes için tetikler.", function(state)
-	if state then
-		pcall(function()
-			for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-				if v:IsA("RemoteEvent") and (v.Name:lower():find("damage") or v.Name:lower():find("hit") or v.Name:lower():find("kill") or v.Name:lower():find("attack")) then
-					for _, p in ipairs(Players:GetPlayers()) do
-						if p ~= player then
-							v:FireServer(p, 999999)
-						end
-					end
-				end
-			end
-			showNotification("Kill All", "Herkes için ölüm paketi gönderildi!", true)
-		end)
-	end
-end)
-
 -- Auto-Dodge (Gelen alan hasarlarından/yeteneklerden otomatik kaçma)
 local autoDodgeActive = false
 createModernToggle(moveTab, "Auto-Dodge", "Yaklaşan tehlikelerden ve AoE alanlardan otomatik kaçar.", function(state)
@@ -2765,21 +2540,6 @@ end
 -- 2. Oyuna sonradan girecek olanları dinle
 Players.PlayerAdded:Connect(monitorPlayer)
 
--- UI Toggle Key ("K" tuşu ile menüyü gizleme/açma)
-local UserInputService = game:GetService("UserInputService")
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.K then
-        -- Menünün görünürlüğünü tersine çeviriyoruz (Açıksa kapatır, kapalıysa açar)
-        hubFrame.Visible = not hubFrame.Visible
-        
-        -- Eğer küçük logo (minLogo) kullanıyorsan, menü gizlendiğinde logonun görünmesini, 
-        -- menü açıkken logonun gizlenmesini isteyebilirsin:
-        if minLogo then
-            minLogo.Visible = not hubFrame.Visible
-        end
-    end
-end)
-
 
 createModernToggle(settingsTab, "FPS Booster", "Gereksiz görsel efektleri kapatarak FPS'i artırır.", function(state)
     if state then
@@ -2848,19 +2608,18 @@ logoStroke.Color = THEME.Accent
 logoStroke.Thickness = 1.5
 
 -- ==========================================
--- 2. HARİTA İÇİNDEKİLERİ DE TARIYAN AUTO GUNDROP
+-- 2. HIZLANDIRILMIŞ VE BUG'SIZ AUTO GUNDROP
 -- ==========================================
 local autoGunDropEnabled = false
 
-createModernToggle(mm2Tab, "Auto GunDrop", "Harita içindeki Silahı otomatik toplar.", function(state)
+createModernToggle(mm2Tab, "Auto GunDrop", "Harita içindeki Silahı anında toplar.", function(state)
     autoGunDropEnabled = state
 end)
 
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait(0.05) -- Kontrol döngüsü hızlandırıldı (0.1 yerine 0.05)
         if autoGunDropEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            -- Backpack'te veya Character'da "Knife" var mı kontrol et
             local backpack = player:FindFirstChild("Backpack")
             local hasKnife = false
             
@@ -2870,13 +2629,12 @@ task.spawn(function()
                 hasKnife = true
             end
 
-            -- Eğer bıçağımız varsa silaha gitme döngüyü atla
+            -- Eğer bıçağımız yoksa silahı ara
             if not hasKnife then
                 local rootPart = player.Character.HumanoidRootPart
                 local originalCFrame = rootPart.CFrame
                 local targetPart = nil
 
-                -- Önce Workspace genelinde, sonra Workspace içindeki harita modellerinde arama yapıyoruz
                 for _, item in ipairs(workspace:GetChildren()) do
                     if item.Name == "GunDrop" then
                         targetPart = item:IsA("Model") and (item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")) or (item:IsA("BasePart") and item)
@@ -2896,23 +2654,32 @@ task.spawn(function()
 
                 if targetPart then
                     pcall(function()
-                        -- Silahın tepesine ışınlan
-                        rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-                        task.wait(0.1)
+                        -- Havada kalma ve bug'ı önlemek için hızları sıfırlamaya hazır ol
+                        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
                         
-                        -- Silahı oyuncuya çekme/temas etme tetiklemesi
+                        -- Anlık ışınlanma (Silahın tam üstü)
+                        rootPart.CFrame = targetPart.CFrame + Vector3.new(0, 2, 0)
+                        
                         if targetPart:IsA("BasePart") then
                             firetouchinterest(rootPart, targetPart, 0)
                             firetouchinterest(rootPart, targetPart, 1)
                         end
 
                         if type(showNotification) == "function" then
-                            showNotification("Auto GunDrop", "Silah alındı, geri dönülüyor!")
+                            showNotification("Auto GunDrop", "Silah anında alındı!")
                         end
-                        task.wait(0.2)
+
+                        -- Bekleme süresi neredeyse sıfırlandı (Anında geri dönüş)
+                        task.wait() 
                         
                         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                            player.Character.HumanoidRootPart.CFrame = originalCFrame
+                            rootPart.CFrame = originalCFrame
+                            
+                            -- Karakterin olduğu yerde kalma/donma (bug) sorununu çözen fizik sıfırlaması
+                            if rootPart:FindFirstChildOfClass("BodyVelocity") == nil then
+                                rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                                rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                            end
                         end
                     end)
                 end
