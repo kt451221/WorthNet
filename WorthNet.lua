@@ -2552,7 +2552,7 @@ task.spawn(function()
                                     end
                                     
                                     -- Ban yememek için hızı daha güvenli ve yumuşak bir değer olan 16-18 arasına düşürdük
-                                    local speed = 11 
+                                    local speed = 13 
                                     local step = RunService.Heartbeat:Wait()
                                     
                                     local direction = (finalTarget - hrp.Position).Unit
@@ -2566,7 +2566,7 @@ task.spawn(function()
                                 task.wait(0.1)
                                 
                                 -- Limit dolunca reset at
-                                if collectedCount >= 39 then
+                                if collectedCount >= 50 then
                                     local humanoid = char:FindFirstChildOfClass("Humanoid")
                                     if humanoid then
                                         humanoid.Health = 0
@@ -2630,66 +2630,6 @@ mouse.Button1Down:Connect(function()
         
         -- Parçayı oyundan tamamen siler
         targetPart:Destroy()
-    end
-end)
-
--- ==========================================
--- WorthNet Fake Run (Düzeltilmiş ve Kesin Çalışan Versiyon)
--- ==========================================
-local fakeRunActive = false
-local fakeRunTrack = nil
-local fakeRunConnection = nil
-
-createModernToggle(moveTab, "WorthNet Fake Run", "Olduğun yerde hiç 1 adım gitmeden hızlıca koşuyor gibi görün.", function(state)
-    fakeRunActive = state
-    local char = player.Character
-    local hum = char and char:FindFirstChild("Humanoid")
-    local animator = hum and hum:FindFirstChildOfClass("Animator")
-    local rootPart = char and char:FindFirstChild("HumanoidRootPart")
-
-    if fakeRunActive and animator and rootPart then
-        if type(showNotification) == "function" then
-            showNotification("WorthNet Fake Run", "Aktif! Olduğun yerde koşuyorsun.")
-        end
-        
-        -- Resmi Roblox R15/R6 Koşu Animasyon ID'si (Standart Koşu)
-        -- Eğer oyun özel animasyon kullanıyorsa bile bu standart ID her yerde çalışır
-        local animationObject = Instance.new("Animation")
-        animationObject.AnimationId = "rbxassetid://616163682" -- Standart Koşu Animasyonu
-        
-        pcall(function()
-            fakeRunTrack = animator:LoadAnimation(animationObject)
-            fakeRunTrack.Looped = true
-            fakeRunTrack:Play()
-            fakeRunTrack:AdjustSpeed(12) -- Animasyon hızını uçuruyoruz (İstediğin gibi ayarlayabilirsin)
-        end)
-
-        -- Karakterin fiziksel olarak ileri gitmesini tamamen engelliyoruz
-        fakeRunConnection = RunService.RenderStepped:Connect(function()
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local root = char.HumanoidRootPart
-                -- Yatay hızları sıfırlıyoruz ki sunucuya / diğer oyunculara hareket etmiyor gibi görün ama yerinde salla
-                root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
-            end
-        end)
-    else
-        if type(showNotification) == "function" then
-            showNotification("WorthNet Fake Run", "Kapatıldı.")
-        end
-        
-        -- Temizlik işlemleri (Kapatıldığında eski haline döndür)
-        if fakeRunConnection then
-            fakeRunConnection:Disconnect()
-            fakeRunConnection = nil
-        end
-        
-        if fakeRunTrack then
-            pcall(function()
-                fakeRunTrack:Stop()
-                fakeRunTrack:Destroy()
-            end)
-            fakeRunTrack = nil
-        end
     end
 end)
 
