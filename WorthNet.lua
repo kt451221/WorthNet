@@ -2552,7 +2552,7 @@ task.spawn(function()
                                     end
                                     
                                     -- Ban yememek için hızı daha güvenli ve yumuşak bir değer olan 16-18 arasına düşürdük
-                                    local speed = 13 
+                                    local speed = 16 
                                     local step = RunService.Heartbeat:Wait()
                                     
                                     local direction = (finalTarget - hrp.Position).Unit
@@ -2566,7 +2566,7 @@ task.spawn(function()
                                 task.wait(0.1)
                                 
                                 -- Limit dolunca reset at
-                                if collectedCount >= 50 then
+                                if collectedCount >= 55 then
                                     local humanoid = char:FindFirstChildOfClass("Humanoid")
                                     if humanoid then
                                         humanoid.Health = 0
@@ -2582,6 +2582,45 @@ task.spawn(function()
                     -- Katil yakınlardaysa burası çalışır: Güvenli olması için haritanın dışına veya alta biraz daha derin inebilirsin
                     task.wait(1)
                 end
+            end
+        end
+    end
+end)
+
+-- WorthNet Lighting & Parlaklık Düşürücü
+local lighting = game:GetService("Lighting")
+
+-- Varsayılan değerleri saklıyoruz (kapatınca eski haline dönebilmesi için)
+local originalBrightness = lighting.Brightness
+local originalExposure = lighting.ExposureCompensation
+local originalClock = lighting.ClockTime
+
+createModernToggle(visualsTab, "WorthNet Parlaklık Kısırlaştırıcı", "Oyunun aşırı parlak ışıklarını ve göz alan parlamalarını düşürür.", function(state)
+    if state then
+        showNotification("Lighting", "Parlaklık düşürüldü!", true)
+        
+        -- Parlaklığı ve pozlamayı aşağı çekiyoruz
+        lighting.Brightness = 1 -- Varsayılan genelde 2 veya üstüdür
+        lighting.ExposureCompensation = -0.5 -- Ekstra ortam pozlamasını kısar
+        lighting.ClockTime = 0 -- Gece/Akşam atmosferi vererek patlamaları önler (isteğe bağlı kaldırılabilir)
+        
+        -- Varsa aşırı parlayan efektleri pasif yap
+        for _, effect in ipairs(lighting:GetChildren()) do
+            if effect:IsA("SunRaysEffect") or effect:IsA("BloomEffect") then
+                effect.Enabled = false
+            end
+        end
+    else
+        showNotification("Lighting", "Normale döndürüldü.", false)
+        
+        -- Eski haline geri yükle
+        lighting.Brightness = originalBrightness
+        lighting.ExposureCompensation = originalExposure
+        lighting.ClockTime = originalClock
+        
+        for _, effect in ipairs(lighting:GetChildren()) do
+            if effect:IsA("SunRaysEffect") or effect:IsA("BloomEffect") then
+                effect.Enabled = true
             end
         end
     end
