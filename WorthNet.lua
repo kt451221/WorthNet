@@ -46,15 +46,15 @@ if not screenGui.Parent then
 end
 
 local THEME = {
-    Background = Color3.fromRGB(12, 12, 15),      -- Derin Saf Siyah-Gri
-    Sidebar    = Color3.fromRGB(15, 15, 18),      -- Yan Menü Arka Planı
-    Card       = Color3.fromRGB(18, 18, 22),      -- Kart Arka Planı
-    Accent     = Color3.fromRGB(0, 210, 255),     -- Tek Renk Siber Buz Mavisi (Cyan)
-    AccentGlow = Color3.fromRGB(0, 210, 255),    -- Parlak Efekt (Tek Renk)
-    TextMain   = Color3.fromRGB(235, 235, 240),   -- Saf Beyaz Metin
-    TextDark   = Color3.fromRGB(120, 120, 135),   -- Soluk Füme Gri Metin
-    ToggleOn   = Color3.fromRGB(0, 210, 255),     -- Açık Buton
-    ToggleOff  = Color3.fromRGB(30, 30, 38)        -- Kapalı Buton
+    Background = Color3.fromRGB(18, 18, 18),      -- Sade Koyu Gri Arka Plan
+    Sidebar    = Color3.fromRGB(22, 22, 22),      -- Yan Menü (Bir tık daha açık)
+    Card       = Color3.fromRGB(28, 28, 28),      -- Kart/Modül Arka Planı
+    Accent     = Color3.fromRGB(240, 240, 240),   -- Vurgu (Temiz Açık Gri / Nötr)
+    AccentGlow = Color3.fromRGB(240, 240, 240),   -- Parlak Efekt Kaldırıldı (Nötr Ton)
+    TextMain   = Color3.fromRGB(245, 245, 245),   -- Ana Metin (Net Beyaz)
+    TextDark   = Color3.fromRGB(130, 130, 130),   -- İkincil Metin (Dengeli Gri)
+    ToggleOn   = Color3.fromRGB(255, 255, 255),   -- Açık Durum (Saf Beyaz)
+    ToggleOff  = Color3.fromRGB(45, 45, 45)       -- Kapalı Durum (Koyu Gri)
 }
 
 local function roundCorners(obj, radius)
@@ -1845,61 +1845,6 @@ createModernSlider(visualsTab, "Parlaklık Seviyesi", "FullBright aktifken uygul
     end
 end)
 
--- WorthNet Anti-Flashbang / Whiteout Remover (Optimize Edilmiş Sürüm)
-local antiFlashActive = false
-local flashConnection = nil
-local lighting = game:GetService("Lighting")
-
-createModernToggle(visualsTab, "WorthNet Anti-Flashbang", "Kasma yapmayan optimize edilmiş flashbang engelleyici.", function(state)
-    antiFlashActive = state
-    local playerGui = player:FindFirstChild("PlayerGui")
-    
-    if antiFlashActive then
-        showNotification("Anti-Flash", "Aktif! Artık kasma yapmayacak.", true)
-        
-        -- Her kare (RenderStepped) yerine saniyede birkaç kez kontrol ederek kasma engellenir
-        local timer = 0
-        flashConnection = RunService.RenderStepped:Connect(function(dt)
-            timer = timer + dt
-            if timer < 0.2 then return end -- Her 0.2 saniyede bir çalışır (FPS'i düşürmez)
-            timer = 0
-            
-            -- 1. Lighting efektlerini düzenle
-            for _, effect in ipairs(lighting:GetChildren()) do
-                if effect:IsA("ColorCorrectionEffect") then
-                    if effect.Brightness > 0.5 or effect.Contrast > 0.5 then
-                        effect.Enabled = false
-                    end
-                elseif effect:IsA("BlurEffect") and effect.Size > 15 then
-                    effect.Enabled = false
-                end
-            end
-            
-            -- 2. PlayerGui taramasını optimize edilmiş şekilde yap
-            if playerGui then
-                for _, gui in ipairs(playerGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") and gui.Name ~= "WorthNetGui" then -- Kendi menümüzü taramasın
-                        for _, frame in ipairs(gui:GetDescendants()) do
-                            if (frame:IsA("Frame") or frame:IsA("ImageLabel")) and frame.Visible then
-                                if (frame.BackgroundColor3 == Color3.new(1, 1, 1) or frame.BackgroundColor3 == Color3.fromRGB(255, 255, 255)) 
-                                   and frame.BackgroundTransparency < 0.5 
-                                   and frame.Size.X.Scale >= 0.9 then
-                                    frame.Visible = false
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        showNotification("Anti-Flash", "Kapatıldı.", false)
-        if flashConnection then
-            flashConnection:Disconnect()
-            flashConnection = nil
-        end
-    end
-end)
 
 -- No Fog
 local origFogStart, origFogEnd = nil, nil
@@ -2600,9 +2545,8 @@ createModernToggle(visualsTab, "WorthNet Parlaklık Kısırlaştırıcı", "Oyun
         showNotification("Lighting", "Parlaklık düşürüldü!", true)
         
         -- Parlaklığı ve pozlamayı aşağı çekiyoruz
-        lighting.Brightness = 1 -- Varsayılan genelde 2 veya üstüdür
+        lighting.Brightness = 0.5 -- Varsayılan genelde 2 veya üstüdür
         lighting.ExposureCompensation = -0.5 -- Ekstra ortam pozlamasını kısar
-        lighting.ClockTime = 0 -- Gece/Akşam atmosferi vererek patlamaları önler (isteğe bağlı kaldırılabilir)
         
         -- Varsa aşırı parlayan efektleri pasif yap
         for _, effect in ipairs(lighting:GetChildren()) do
