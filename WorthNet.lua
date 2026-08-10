@@ -2843,6 +2843,31 @@ end)
 
 
 
+local savedSpawnPos = nil
+local tpSpawnActive = false
+
+createModernToggle(moveTab, "SetSpawn", "Olduğun konumu spawn noktası yap.", function(state)
+    if state then
+        savedSpawnPos = player.Character.HumanoidRootPart.CFrame
+        showNotification("Spawn", "Konum kaydedildi!", true)
+    else
+        savedSpawnPos = nil
+    end
+end)
+
+createModernToggle(moveTab, "TP Spawn", "Kaydedilen konuma sürekli ışınlan.", function(state)
+    tpSpawnActive = state
+    if state then
+        task.spawn(function()
+            while tpSpawnActive do
+                if savedSpawnPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = savedSpawnPos
+                end
+                task.wait(0.3)
+            end
+        end)
+    end
+end)
 
 -- Xeno ve Executor Uyumluluk Metatable Koruması
 pcall(function()
