@@ -1,5 +1,5 @@
 -- =====================================================================
---      WORTHNET ULTIMATE MASTER SYSTEM v7.1 (FIXED & ERROR-FREE)
+--      WORTHNET ULTIMATE MASTER SYSTEM v7.2 (TEK PARÇA & HATASIZ)
 -- =====================================================================
 
 pcall(function()
@@ -176,7 +176,6 @@ function loadWorthNetMenu()
     ProfileImage.Position = UDim2.new(0, 12, 0.5, -17)
     ProfileImage.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
     
-    -- Hata Çıkaran Enum.ThumbnailSize.Size42x42 Düzeltildi (Size150x150 Kullanıldı)
     pcall(function()
         ProfileImage.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
     end)
@@ -186,8 +185,9 @@ function loadWorthNetMenu()
     local gameNameText = "Evrensel Sistem"
     local currentPlaceId = game.PlaceId
     local isMM2 = (currentPlaceId == 142823291 or Workspace:FindFirstChild("CoinContainer"))
+    local isDaGame = (currentPlaceId == 13712164806)
     local isBloxFruits = (currentPlaceId == 2753915549)
-    if isMM2 then gameNameText = "Murder Mystery 2" elseif isBloxFruits then gameNameText = "Blox Fruits" end
+    if isMM2 then gameNameText = "Murder Mystery 2" elseif isBloxFruits then gameNameText = "Blox Fruits" elseif isDaGame then gameNameText = "The Da Hood / Da Game" end
 
     local ProfileName = Instance.new("TextLabel")
     ProfileName.Size = UDim2.new(0.8, 0, 1, 0)
@@ -308,7 +308,8 @@ function loadWorthNetMenu()
     local teleportTab = createTab("Teleport")
     local trollingTab = createTab("Trolling")
     local safetyTab = createTab("Safety")
-    local gameTab = createTab(isMM2 and "MM2" or (isBloxFruits and "Blox Fruits" or "Extra"))
+    local combatTab = createTab("Combat")
+    local gameTab = createTab(isMM2 and "MM2" or (isBloxFruits and "Blox Fruits" or (isDaGame and "Da Game" or "Extra")))
 
     local function createModernToggle(tab, title, desc, callback)
         local ToggleRow = Instance.new("Frame")
@@ -732,6 +733,171 @@ function loadWorthNetMenu()
             _G.SelectedFlingTarget = nil
         end
     end)
+
+    -- =====================================================================
+    -- 4. COMBAT TAB
+    -- =====================================================================
+    local espEnabled = false
+    local espHighlights = {}
+    createModernToggle(combatTab, "Player ESP", "Oyuncuların görünürlüğünü highlight ile açar.", function(state)
+        espEnabled = state
+        if not espEnabled then
+            for _, hl in pairs(espHighlights) do if hl then hl:Destroy() end end
+            table.clear(espHighlights)
+        else
+            task.spawn(function()
+                while espEnabled do
+                    task.wait(0.5)
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if not espEnabled then break end
+                        if p ~= player and p.Character then
+                            local char = p.Character
+                            if not espHighlights[p.Name] or espHighlights[p.Name].Parent ~= char then
+                                if espHighlights[p.Name] then espHighlights[p.Name]:Destroy() end
+                                local hl = Instance.new("Highlight", char)
+                                hl.FillColor = Color3.fromRGB(255, 50, 50)
+                                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                hl.FillTransparency = 0.5
+                                hl.OutlineTransparency = 0
+                                espHighlights[p.Name] = hl
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+
+    local aimbotEnabled = false
+    createModernToggle(combatTab, "Aimbot / Smooth Aim", "En yakın rakibin kafasına otomatik nişan alır.", function(state)
+        aimbotEnabled = state
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        if aimbotEnabled then
+            local camera = Workspace.CurrentCamera
+            local mousePos = UserInputService:GetMouseLocation()
+            local closestTarget = nil
+            local shortestDist = math.huge
+
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then
+                        local head = p.Character.Head
+                        local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                closestTarget = head
+                            end
+                        end
+                    end
+                end
+            end
+
+            if closestTarget then
+                camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, closestTarget.Position), 0.2)
+            end
+        end
+    end)
+
+    local hitboxEnabled = false
+    local hitboxSize = Vector3.new(6, 6, 6)
+    createModernToggle(combatTab, "Hitbox Expander", "Rakiplerin vuruş kutusunu (Hitbox) büyütür.", function(state)
+        hitboxEnabled = state
+        task.spawn(function()
+            while hitboxEnabled do
+                task.wait(1)
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if not hitboxEnabled then break end
+                    if p ~= player and p.Character then
+                        local root = p.Character:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            root.Size = hitboxSize
+                            root.Transparency = 0.7
+                            root.CanCollide = false
+                        end
+                    end
+                end
+            end
+            if not hitboxEnabled then
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local root = p.Character:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            root.Size = Vector3.new(2, 2, 1)
+                            root.Transparency = 1
+                            root.CanCollide = true
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+
+    -- =====================================================================
+    -- 5. GAME SPECIFIC (DA GAME / MM2 / BLOX FRUITS)
+    -- =====================================================================
+    if isDaGame then
+        local crateFarmActive = false
+        createModernToggle(gameTab, "OP Crate Farm", "T1 ve T2 kasalarını TweenService ile güvenli toplar.", function(state)
+            crateFarmActive = state
+        end)
+
+        task.spawn(function()
+            while true do
+                task.wait(0.5)
+                if crateFarmActive then
+                    pcall(function()
+                        local char = player.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                        if not hrp then return end
+
+                        local cratesFolder = Workspace:FindFirstChild("Crates")
+                        if not cratesFolder then return end
+                        local lootCrates = cratesFolder:FindFirstChild("LootCrates")
+                        if not lootCrates then return end
+
+                        local targetFolders = {lootCrates:FindFirstChild("T1"), lootCrates:FindFirstChild("T2")}
+                        for _, folder in ipairs(targetFolders) do
+                            if folder and crateFarmActive then
+                                for _, model in ipairs(folder:GetChildren()) do
+                                    if not crateFarmActive then break end
+                                    local giver = model:FindFirstChild("Giver")
+                                    if giver and giver:IsA("BasePart") then
+                                        local prompt = giver:FindFirstChildOfClass("ProximityPrompt")
+                                        if prompt then
+                                            local dist = (hrp.Position - giver.Position).Magnitude
+                                            if dist > 8 then
+                                                local tweenInfo = TweenInfo.new(dist / 60, Enum.EasingStyle.Linear)
+                                                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = giver.CFrame + Vector3.new(0, 3, 0)})
+                                                tween:Play()
+                                                
+                                                while tween.PlaybackState == Enum.PlaybackState.Playing and crateFarmActive do
+                                                    task.wait()
+                                                end
+                                            end
+
+                                            if crateFarmActive then
+                                                hrp.CFrame = giver.CFrame + Vector3.new(0, 3, 0)
+                                                task.wait(0.2)
+                                                pcall(function()
+                                                    fireproximityprompt(prompt, 1)
+                                                end)
+                                                task.wait(1.1)
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        end)
+    end
 
     if isMM2 then
         local function getCoinContainer()
