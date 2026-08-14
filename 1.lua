@@ -1,5 +1,5 @@
 -- =====================================================================
---      WORTHNET ULTIMATE MASTER SYSTEM v7.0 (FINAL & COMPLETE)
+--      WORTHNET ULTIMATE MASTER SYSTEM v7.1 (FIXED & ERROR-FREE)
 -- =====================================================================
 
 pcall(function()
@@ -20,7 +20,6 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local StarterGui = game:GetService("StarterGui")
 local HttpService = game:GetService("HttpService")
-local ContentProvider = game:GetService("ContentProvider")
 
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
@@ -35,7 +34,6 @@ local VALID_KEYS = {
     ["xA"] = true
 }
 
--- 24 Saatlik Key Oturum Kontrolü
 local SESSION_FILE = "WorthNet_Session_" .. player.UserId .. ".json"
 local function checkSavedSession()
     if readfile and isfile and isfile(SESSION_FILE) then
@@ -64,7 +62,6 @@ local function showNotification(title, desc)
     end)
 end
 
--- Bypass Fonksiyonları (Anticheat Kısıtlamalarını Hafifletme)
 pcall(function()
     for _, v in ipairs(getconnections(player.Idled)) do
         v:Disable()
@@ -146,7 +143,7 @@ local function openKeySystem()
 end
 
 -- =====================================================================
--- 2. ANA HİLE MENÜSÜ (SOL TAB SİSTEMİ, MODERN TEMA, DİNAMİK OYUN ALGILAMA)
+-- 2. ANA HİLE MENÜSÜ
 -- =====================================================================
 function loadWorthNetMenu()
     showNotification("Hoşgeldin!", player.Name)
@@ -167,7 +164,6 @@ function loadWorthNetMenu()
     Window.Parent = MainGui
     Instance.new("UICorner", Window).CornerRadius = UDim.new(0, 10)
 
-    -- Üst Bilgi Paneli (Profil Resmi, DisplayName, | Oyun İsmi)
     local TopBar = Instance.new("Frame")
     TopBar.Size = UDim2.new(1, 0, 0, 50)
     TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
@@ -175,16 +171,18 @@ function loadWorthNetMenu()
     TopBar.Parent = Window
     Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 10)
 
-    -- Profil Resmi (Avatar Thumbnail)
     local ProfileImage = Instance.new("ImageLabel")
     ProfileImage.Size = UDim2.new(0, 34, 0, 34)
     ProfileImage.Position = UDim2.new(0, 12, 0.5, -17)
     ProfileImage.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    ProfileImage.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size42x42)
+    
+    -- Hata Çıkaran Enum.ThumbnailSize.Size42x42 Düzeltildi (Size150x150 Kullanıldı)
+    pcall(function()
+        ProfileImage.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+    end)
     ProfileImage.Parent = TopBar
     Instance.new("UICorner", ProfileImage).CornerRadius = UDim.new(1, 0)
 
-    -- DisplayName ve Oyun İsmi Etiketi
     local gameNameText = "Evrensel Sistem"
     local currentPlaceId = game.PlaceId
     local isMM2 = (currentPlaceId == 142823291 or Workspace:FindFirstChild("CoinContainer"))
@@ -222,7 +220,6 @@ function loadWorthNetMenu()
     MinimizeButton.Parent = TopBar
     Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(0, 6)
 
-    -- Küçültülmüş Logo
     local FloatingLogo = Instance.new("TextButton")
     FloatingLogo.Size = UDim2.new(0, 50, 0, 50)
     FloatingLogo.Position = UDim2.new(0.1, 0, 0.1, 0)
@@ -240,7 +237,6 @@ function loadWorthNetMenu()
     MinimizeButton.MouseButton1Click:Connect(function() Window.Visible = false FloatingLogo.Visible = true end)
     FloatingLogo.MouseButton1Click:Connect(function() Window.Visible = true FloatingLogo.Visible = false end)
 
-    -- SOL TAB MENÜ SİSTEMİ
     local TabContainer = Instance.new("ScrollingFrame")
     TabContainer.Size = UDim2.new(0, 130, 1, -60)
     TabContainer.Position = UDim2.new(0, 8, 0, 54)
@@ -254,7 +250,6 @@ function loadWorthNetMenu()
     TabListLayout.Padding = UDim.new(0, 6)
     TabListLayout.Parent = TabContainer
 
-    -- İçerik Sayfaları Tutucusu
     local PagesContainer = Instance.new("Frame")
     PagesContainer.Size = UDim2.new(1, -150, 1, -60)
     PagesContainer.Position = UDim2.new(0, 146, 0, 54)
@@ -308,7 +303,6 @@ function loadWorthNetMenu()
         return TabPage
     end
 
-    -- Tablar Oluşturuluyor: Main, Movement, Teleport, Trolling, Safety, (MM2 veya Blox Fruits)
     local mainTab = createTab("Main")
     local movementTab = createTab("Movement")
     local teleportTab = createTab("Teleport")
@@ -374,10 +368,9 @@ function loadWorthNetMenu()
     end
 
     -- =====================================================================
-    -- 3. HİLELER VE ÖZELLİKLER (HIZ BARLI, OPTİMİZE ANTI-FLING, MENÜLÜ FING & TP)
+    -- 3. HİLELER VE ÖZELLİKLER
     -- =====================================================================
 
-    -- SPEEDHACK VE HIZ AYARLANABİLİR SLIDER BAR
     local speedVal = 16
     local speedConn
     createModernToggle(movementTab, "SpeedHack", "Karakter hızını artırır.", function(state)
@@ -393,7 +386,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- Hız Ayar Slider Barı
     local SliderFrame = Instance.new("Frame")
     SliderFrame.Size = UDim2.new(1, 0, 0, 42)
     SliderFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
@@ -446,7 +438,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- NOCLIP
     local noclipConn
     createModernToggle(movementTab, "WorthNet Noclip", "Duvarlardan ve nesnelerden geçmeni sağlar.", function(state)
         if state then
@@ -463,7 +454,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- INFINITE JUMP
     local infJumpConn
     createModernToggle(movementTab, "Infinite Jump", "Havadayken sınırsız zıplamanı sağlar.", function(state)
         if state then
@@ -476,7 +466,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- FLY (P Tuşu)
     local flyActive = false
     local flySpeed = 50
     local bg, bv, flyConn
@@ -545,7 +534,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- OPTİMİZE EDİLMİŞ KASMA YAPMAYAN ANTI-FLING
     local antiFlingConn = nil
     createModernToggle(safetyTab, "Anti-Fling (Optimize)", "Seni uçurmaya çalışan exploitleri engeller.", function(state)
         if state then
@@ -579,9 +567,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- =====================================================================
-    -- 4. OYUNCU SEÇİMLİ TELEPORT MENÜSÜ
-    -- =====================================================================
     createModernToggle(teleportTab, "Işınlanma Menüsü Aç", "Seçilen oyuncuya anında ışınlanmanı sağlar.", function(state)
         if state then
             local TPMenuGui = Instance.new("ScreenGui")
@@ -658,9 +643,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- =====================================================================
-    -- 5. OYUNCU SEÇİMLİ FLING MENÜSÜ
-    -- =====================================================================
     createModernToggle(trollingTab, "Fling Oyuncu Menüsü", "İstediğin oyuncuya fling atmanı sağlar.", function(state)
         if state then
             local FlingMenuGui = Instance.new("ScreenGui")
@@ -751,9 +733,6 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- =====================================================================
-    -- 6. MM2 ÖZEL HİLELERİ (AUTO GUNDROP, AUTO COIN, ROL ESP, FLING SHERIFF & MURDER)
-    -- =====================================================================
     if isMM2 then
         local function getCoinContainer()
             for _, child in ipairs(Workspace:GetChildren()) do
@@ -806,7 +785,6 @@ function loadWorthNetMenu()
             end
         end)
 
-        -- DÜZELTİLMİŞ VE HIZLANDIRILMIŞ AUTO GUNDROP
         local autoGunDropEnabled = false
         createModernToggle(gameTab, "Auto GunDrop", "Harita içindeki Silahı anında toplar.", function(state)
             autoGunDropEnabled = state
@@ -868,7 +846,6 @@ function loadWorthNetMenu()
             end
         end)
 
-        -- FLING SHERIFF & FLING MURDER
         createModernToggle(gameTab, "Fling Sheriff", "Envanterinde Gun olan kişiyi flingler ve geri döner.", function(state)
             if state then
                 task.spawn(function()
@@ -973,9 +950,6 @@ function loadWorthNetMenu()
         end)
     end
 
-    -- =====================================================================
-    -- 7. BLOX FRUITS ÖZEL HİLELERİ
-    -- =====================================================================
     if isBloxFruits then
         createModernToggle(gameTab, "Blox Fruits Auto Farm", "Blox Fruits için otomatik görev ve level kasma.", function(state)
             _G.BFAutoFarm = state
