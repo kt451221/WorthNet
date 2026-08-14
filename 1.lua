@@ -1,7 +1,3 @@
--- =====================================================================
---      WORTHNET ULTIMATE MASTER SYSTEM v7.2 (TEK PARÇA & HATASIZ)
--- =====================================================================
-
 pcall(function()
     if syn and syn.secure_call then syn.secure_call(function() end) end
     getgenv().WorthNetSecure = true
@@ -69,10 +65,8 @@ pcall(function()
 end)
 
 local loadWorthNetMenu
+local activeConnections = {}
 
--- =====================================================================
--- 1. KEY SİSTEMİ EKRANI
--- =====================================================================
 local function openKeySystem()
     if checkSavedSession() then
         loadWorthNetMenu()
@@ -142,9 +136,6 @@ local function openKeySystem()
     end)
 end
 
--- =====================================================================
--- 2. ANA HİLE MENÜSÜ
--- =====================================================================
 function loadWorthNetMenu()
     showNotification("Hoşgeldin!", player.Name)
 
@@ -233,7 +224,19 @@ function loadWorthNetMenu()
     FloatingLogo.Parent = MainGui
     Instance.new("UICorner", FloatingLogo).CornerRadius = UDim.new(1, 0)
 
-    CloseButton.MouseButton1Click:Connect(function() MainGui:Destroy() end)
+    local function cleanupAll()
+        for _, conn in ipairs(activeConnections) do
+            pcall(function() conn:Disconnect() end)
+        end
+        table.clear(activeConnections)
+        _G.AutoCoinActive = false
+        _G.MM2ESP = false
+        _G.BFAutoFarm = false
+        _G.SelectedFlingTarget = nil
+        pcall(function() MainGui:Destroy() end)
+    end
+
+    CloseButton.MouseButton1Click:Connect(cleanupAll)
     MinimizeButton.MouseButton1Click:Connect(function() Window.Visible = false FloatingLogo.Visible = true end)
     FloatingLogo.MouseButton1Click:Connect(function() Window.Visible = true FloatingLogo.Visible = false end)
 
@@ -303,13 +306,20 @@ function loadWorthNetMenu()
         return TabPage
     end
 
-    local mainTab = createTab("Main")
     local movementTab = createTab("Movement")
     local teleportTab = createTab("Teleport")
     local trollingTab = createTab("Trolling")
     local safetyTab = createTab("Safety")
-    local combatTab = createTab("Combat")
-    local gameTab = createTab(isMM2 and "MM2" or (isBloxFruits and "Blox Fruits" or (isDaGame and "Da Game" or "Extra")))
+    
+    local combatTab = nil
+    if isDaGame or isBloxFruits then
+        combatTab = createTab("Combat")
+    end
+
+    local gameTab = nil
+    if isMM2 or isDaGame or isBloxFruits then
+        gameTab = createTab(isMM2 and "MM2" or (isBloxFruits and "Blox Fruits" or "Da Game"))
+    end
 
     local function createModernToggle(tab, title, desc, callback)
         local ToggleRow = Instance.new("Frame")
@@ -368,10 +378,6 @@ function loadWorthNetMenu()
         end)
     end
 
-    -- =====================================================================
-    -- 3. HİLELER VE ÖZELLİKLER
-    -- =====================================================================
-
     local speedVal = 16
     local speedConn
     createModernToggle(movementTab, "SpeedHack", "Karakter hızını artırır.", function(state)
@@ -380,8 +386,9 @@ function loadWorthNetMenu()
                 local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
                 if hum then hum.WalkSpeed = speedVal end
             end)
+            table.insert(activeConnections, speedConn)
         else
-            if speedConn then speedConn:Disconnect() speedConn = nil end
+            if speedConn then speedConn:Disconnect() end
             local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
             if hum then hum.WalkSpeed = 16 end
         end
@@ -450,8 +457,9 @@ function loadWorthNetMenu()
                     end
                 end
             end)
+            table.insert(activeConnections, noclipConn)
         else
-            if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+            if noclipConn then noclipConn:Disconnect() end
         end
     end)
 
@@ -462,8 +470,9 @@ function loadWorthNetMenu()
                 local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
                 if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
             end)
+            table.insert(activeConnections, infJumpConn)
         else
-            if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
+            if infJumpConn then infJumpConn:Disconnect() end
         end
     end)
 
@@ -472,7 +481,7 @@ function loadWorthNetMenu()
     local bg, bv, flyConn
     local keys = {W=false, S=false, A=false, D=false, Space=false, Shift=false}
 
-    UserInputService.InputBegan:Connect(function(input, gp)
+    local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
         if input.KeyCode == Enum.KeyCode.W then keys.W = true end
         if input.KeyCode == Enum.KeyCode.S then keys.S = true end
@@ -482,8 +491,9 @@ function loadWorthNetMenu()
         if input.KeyCode == Enum.KeyCode.LeftShift then keys.Shift = true end
         if input.KeyCode == Enum.KeyCode.P then flyActive = not flyActive end
     end)
+    table.insert(activeConnections, inputBeganConn)
 
-    UserInputService.InputEnded:Connect(function(input)
+    local inputEndedConn = UserInputService.InputEnded:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.W then keys.W = false end
         if input.KeyCode == Enum.KeyCode.S then keys.S = false end
         if input.KeyCode == Enum.KeyCode.A then keys.A = false end
@@ -491,6 +501,7 @@ function loadWorthNetMenu()
         if input.KeyCode == Enum.KeyCode.Space then keys.Space = false end
         if input.KeyCode == Enum.KeyCode.LeftShift then keys.Shift = false end
     end)
+    table.insert(activeConnections, inputEndedConn)
 
     createModernToggle(movementTab, "WorthNet Fly (P Tuşu)", "P tuşuna basarak uçuşu açıp kapatabilirsin.", function(state)
         flyActive = state
@@ -527,6 +538,7 @@ function loadWorthNetMenu()
                 bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * flySpeed or Vector3.new(0, 0.1, 0)
                 bg.CFrame = camCF
             end)
+            table.insert(activeConnections, flyConn)
         else
             if flyConn then flyConn:Disconnect() end
             if bv then bv:Destroy() end
@@ -561,10 +573,11 @@ function loadWorthNetMenu()
                     end
                 end
             end)
-            showNotification("Anti-Fling", "Aktif edildi.", true)
+            table.insert(activeConnections, antiFlingConn)
+            showNotification("Anti-Fling", "Aktif edildi.")
         else
-            if antiFlingConn then antiFlingConn:Disconnect() antiFlingConn = nil end
-            showNotification("Anti-Fling", "Durduruldu.", false)
+            if antiFlingConn then antiFlingConn:Disconnect() end
+            showNotification("Anti-Fling", "Durduruldu.")
         end
     end)
 
@@ -711,7 +724,7 @@ function loadWorthNetMenu()
 
                     pBtn.MouseButton1Click:Connect(function()
                         _G.SelectedFlingTarget = p
-                        showNotification("Fling", p.Name .. " hedeflendi! Fling eylemi başlatılıyor.")
+                        showNotification("Fling", p.Name .. " hedeflendi!")
                         task.spawn(function()
                             while _G.SelectedFlingTarget == p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") do
                                 task.wait()
@@ -734,115 +747,112 @@ function loadWorthNetMenu()
         end
     end)
 
-    -- =====================================================================
-    -- 4. COMBAT TAB
-    -- =====================================================================
-    local espEnabled = false
-    local espHighlights = {}
-    createModernToggle(combatTab, "Player ESP", "Oyuncuların görünürlüğünü highlight ile açar.", function(state)
-        espEnabled = state
-        if not espEnabled then
-            for _, hl in pairs(espHighlights) do if hl then hl:Destroy() end end
-            table.clear(espHighlights)
-        else
+    if combatTab then
+        local espEnabled = false
+        local espHighlights = {}
+        createModernToggle(combatTab, "Player ESP", "Oyuncuların görünürlüğünü highlight ile açar.", function(state)
+            espEnabled = state
+            if not espEnabled then
+                for _, hl in pairs(espHighlights) do if hl then hl:Destroy() end end
+                table.clear(espHighlights)
+            else
+                task.spawn(function()
+                    while espEnabled do
+                        task.wait(0.5)
+                        for _, p in ipairs(Players:GetPlayers()) do
+                            if not espEnabled then break end
+                            if p ~= player and p.Character then
+                                local char = p.Character
+                                if not espHighlights[p.Name] or espHighlights[p.Name].Parent ~= char then
+                                    if espHighlights[p.Name] then espHighlights[p.Name]:Destroy() end
+                                    local hl = Instance.new("Highlight", char)
+                                    hl.FillColor = Color3.fromRGB(255, 50, 50)
+                                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                    hl.FillTransparency = 0.5
+                                    hl.OutlineTransparency = 0
+                                    espHighlights[p.Name] = hl
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+
+        local aimbotEnabled = false
+        createModernToggle(combatTab, "Aimbot / Smooth Aim", "En yakın rakibin kafasına otomatik nişan alır.", function(state)
+            aimbotEnabled = state
+        end)
+
+        local aimConn = RunService.RenderStepped:Connect(function()
+            if aimbotEnabled then
+                local camera = Workspace.CurrentCamera
+                local mousePos = UserInputService:GetMouseLocation()
+                local closestTarget = nil
+                local shortestDist = math.huge
+
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                        local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                        if hum and hum.Health > 0 then
+                            local head = p.Character.Head
+                            local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+                            if onScreen then
+                                local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                                if dist < shortestDist then
+                                    shortestDist = dist
+                                    closestTarget = head
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if closestTarget then
+                    camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, closestTarget.Position), 0.2)
+                end
+            end
+        end)
+        table.insert(activeConnections, aimConn)
+
+        local hitboxEnabled = false
+        local hitboxSize = Vector3.new(6, 6, 6)
+        createModernToggle(combatTab, "Hitbox Expander", "Rakiplerin vuruş kutusunu büyütür.", function(state)
+            hitboxEnabled = state
             task.spawn(function()
-                while espEnabled do
-                    task.wait(0.5)
+                while hitboxEnabled do
+                    task.wait(1)
                     for _, p in ipairs(Players:GetPlayers()) do
-                        if not espEnabled then break end
+                        if not hitboxEnabled then break end
                         if p ~= player and p.Character then
-                            local char = p.Character
-                            if not espHighlights[p.Name] or espHighlights[p.Name].Parent ~= char then
-                                if espHighlights[p.Name] then espHighlights[p.Name]:Destroy() end
-                                local hl = Instance.new("Highlight", char)
-                                hl.FillColor = Color3.fromRGB(255, 50, 50)
-                                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                                hl.FillTransparency = 0.5
-                                hl.OutlineTransparency = 0
-                                espHighlights[p.Name] = hl
+                            local root = p.Character:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                root.Size = hitboxSize
+                                root.Transparency = 0.7
+                                root.CanCollide = false
+                            end
+                        end
+                    end
+                end
+                if not hitboxEnabled then
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character then
+                            local root = p.Character:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                root.Size = Vector3.new(2, 2, 1)
+                                root.Transparency = 1
+                                root.CanCollide = true
                             end
                         end
                     end
                 end
             end)
-        end
-    end)
-
-    local aimbotEnabled = false
-    createModernToggle(combatTab, "Aimbot / Smooth Aim", "En yakın rakibin kafasına otomatik nişan alır.", function(state)
-        aimbotEnabled = state
-    end)
-
-    RunService.RenderStepped:Connect(function()
-        if aimbotEnabled then
-            local camera = Workspace.CurrentCamera
-            local mousePos = UserInputService:GetMouseLocation()
-            local closestTarget = nil
-            local shortestDist = math.huge
-
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Health > 0 then
-                        local head = p.Character.Head
-                        local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
-                        if onScreen then
-                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                            if dist < shortestDist then
-                                shortestDist = dist
-                                closestTarget = head
-                            end
-                        end
-                    end
-                end
-            end
-
-            if closestTarget then
-                camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, closestTarget.Position), 0.2)
-            end
-        end
-    end)
-
-    local hitboxEnabled = false
-    local hitboxSize = Vector3.new(6, 6, 6)
-    createModernToggle(combatTab, "Hitbox Expander", "Rakiplerin vuruş kutusunu (Hitbox) büyütür.", function(state)
-        hitboxEnabled = state
-        task.spawn(function()
-            while hitboxEnabled do
-                task.wait(1)
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if not hitboxEnabled then break end
-                    if p ~= player and p.Character then
-                        local root = p.Character:FindFirstChild("HumanoidRootPart")
-                        if root then
-                            root.Size = hitboxSize
-                            root.Transparency = 0.7
-                            root.CanCollide = false
-                        end
-                    end
-                end
-            end
-            if not hitboxEnabled then
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= player and p.Character then
-                        local root = p.Character:FindFirstChild("HumanoidRootPart")
-                        if root then
-                            root.Size = Vector3.new(2, 2, 1)
-                            root.Transparency = 1
-                            root.CanCollide = true
-                        end
-                    end
-                end
-            end
         end)
-    end)
+    end
 
-    -- =====================================================================
-    -- 5. GAME SPECIFIC (DA GAME / MM2 / BLOX FRUITS)
-    -- =====================================================================
-    if isDaGame then
+    if isDaGame and gameTab then
         local crateFarmActive = false
-        createModernToggle(gameTab, "OP Crate Farm", "T1 ve T2 kasalarını TweenService ile güvenli toplar.", function(state)
+        createModernToggle(gameTab, "OP Crate Farm", "T1 ve T2 kasalarını güvenli toplar.", function(state)
             crateFarmActive = state
         end)
 
@@ -869,10 +879,20 @@ function loadWorthNetMenu()
                                     if giver and giver:IsA("BasePart") then
                                         local prompt = giver:FindFirstChildOfClass("ProximityPrompt")
                                         if prompt then
-                                            local dist = (hrp.Position - giver.Position).Magnitude
+                                            local safePos = giver.CFrame + Vector3.new(0, 0, 4)
+                                            local rayParams = RaycastParams.new()
+                                            rayParams.FilterType = RaycastParams.RaycastType.Blacklist
+                                            rayParams.FilterDescendantsInstances = {char}
+                                            local ray = Workspace:Raycast(hrp.Position, (safePos.Position - hrp.Position), rayParams)
+                                            
+                                            if ray then
+                                                safePos = giver.CFrame + (giver.CFrame.RightVector * 4) + Vector3.new(0, 1, 0)
+                                            end
+
+                                            local dist = (hrp.Position - safePos.Position).Magnitude
                                             if dist > 8 then
                                                 local tweenInfo = TweenInfo.new(dist / 60, Enum.EasingStyle.Linear)
-                                                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = giver.CFrame + Vector3.new(0, 3, 0)})
+                                                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = safePos})
                                                 tween:Play()
                                                 
                                                 while tween.PlaybackState == Enum.PlaybackState.Playing and crateFarmActive do
@@ -881,7 +901,7 @@ function loadWorthNetMenu()
                                             end
 
                                             if crateFarmActive then
-                                                hrp.CFrame = giver.CFrame + Vector3.new(0, 3, 0)
+                                                hrp.CFrame = safePos
                                                 task.wait(0.2)
                                                 pcall(function()
                                                     fireproximityprompt(prompt, 1)
@@ -899,7 +919,7 @@ function loadWorthNetMenu()
         end)
     end
 
-    if isMM2 then
+    if isMM2 and gameTab then
         local function getCoinContainer()
             for _, child in ipairs(Workspace:GetChildren()) do
                 local container = child:FindFirstChild("CoinContainer")
@@ -908,7 +928,7 @@ function loadWorthNetMenu()
             return nil
         end
 
-        createModernToggle(gameTab, "MM2 AutoCoin", "Haritadaki coinleri otomatik toplar.", function(state)
+        createModernToggle(gameTab, "MM2 AutoCoin", "Coinleri otomatik toplar.", function(state)
             _G.AutoCoinActive = state
         end)
 
@@ -952,7 +972,7 @@ function loadWorthNetMenu()
         end)
 
         local autoGunDropEnabled = false
-        createModernToggle(gameTab, "Auto GunDrop", "Harita içindeki Silahı anında toplar.", function(state)
+        createModernToggle(gameTab, "Auto GunDrop", "Haritadaki silahı toplar.", function(state)
             autoGunDropEnabled = state
         end)
 
@@ -1012,7 +1032,7 @@ function loadWorthNetMenu()
             end
         end)
 
-        createModernToggle(gameTab, "Fling Sheriff", "Envanterinde Gun olan kişiyi flingler ve geri döner.", function(state)
+        createModernToggle(gameTab, "Fling Sheriff", "Sheriff'i flingler.", function(state)
             if state then
                 task.spawn(function()
                     local char = player.Character
@@ -1037,15 +1057,13 @@ function loadWorthNetMenu()
                             RunService.Heartbeat:Wait()
                         end
                         hrp.CFrame = origCF
-                        showNotification("Fling Sheriff", "Hedef flinglendi ve eski konuma dönüldü.")
-                    else
-                        showNotification("Fling Sheriff", "Aktif Sheriff bulunamadı.")
+                        showNotification("Fling Sheriff", "Tamamlandı.")
                     end
                 end)
             end
         end)
 
-        createModernToggle(gameTab, "Fling Murder", "Envanterinde Knife olan kişiyi flingler ve geri döner.", function(state)
+        createModernToggle(gameTab, "Fling Murder", "Murderer'ı flingler.", function(state)
             if state then
                 task.spawn(function()
                     local char = player.Character
@@ -1070,16 +1088,14 @@ function loadWorthNetMenu()
                             RunService.Heartbeat:Wait()
                         end
                         hrp.CFrame = origCF
-                        showNotification("Fling Murder", "Hedef flinglendi ve eski konuma dönüldü.")
-                    else
-                        showNotification("Fling Murder", "Aktif Murderer bulunamadı.")
+                        showNotification("Fling Murder", "Tamamlandı.")
                     end
                 end)
             end
         end)
 
         local mm2Highlights = {}
-        createModernToggle(gameTab, "MM2 Rol ESP", "Murderer ve Sheriff rollerini renkli gösterir.", function(state)
+        createModernToggle(gameTab, "MM2 Rol ESP", "Rolleri renkli gösterir.", function(state)
             _G.MM2ESP = state
             if not _G.MM2ESP then
                 for _, hl in pairs(mm2Highlights) do if hl then hl:Destroy() end end
@@ -1116,13 +1132,13 @@ function loadWorthNetMenu()
         end)
     end
 
-    if isBloxFruits then
-        createModernToggle(gameTab, "Blox Fruits Auto Farm", "Blox Fruits için otomatik görev ve level kasma.", function(state)
+    if isBloxFruits and gameTab then
+        createModernToggle(gameTab, "Blox Fruits Auto Farm", "Otomatik kasılma.", function(state)
             _G.BFAutoFarm = state
         end)
     end
 
-    showNotification("WorthNet", "Sistem başarıyla yüklendi!", true)
+    showNotification("WorthNet", "Sistem yüklendi!")
 end
 
 openKeySystem()
