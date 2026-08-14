@@ -1809,55 +1809,7 @@ createModernToggle(moveTab, "Infinite Jump", "Sonsuz kez havada zıplamanızı s
 	end
 end)
 
--- ==========================================
--- FULLBRIGHT & PARLAKLIK SEVİYESİ SİSTEMİ
--- ==========================================
-local fullBrightActive = false
-local brightMultiplier = 3 -- Manuel başlangıç değeri
-local origAmbient, origColorShift, brightLoop = nil, nil, nil
 
-local function applyBrightness(multiplier)
-    Lighting.Ambient = Color3.fromRGB(255 * (multiplier / 3), 255 * (multiplier / 3), 255 * (multiplier / 3))
-    Lighting.ColorShift_Top = Color3.fromRGB(255 * (multiplier / 3), 255 * (multiplier / 3), 255 * (multiplier / 3))
-end
-
-createModernToggle(visualsTab, "FullBright", "Haritadaki tüm karanlık ve gölgeleri kaldırıp aydınlatır.", function(state)
-    fullBrightActive = state
-    if fullBrightActive then
-        origAmbient = Lighting.Ambient
-        origColorShift = Lighting.ColorShift_Top
-        applyBrightness(brightMultiplier)
-        brightLoop = RunService.RenderStepped:Connect(function()
-            if fullBrightActive then
-                applyBrightness(brightMultiplier)
-            end
-        end)
-    else
-        if brightLoop then brightLoop:Disconnect() brightLoop = nil end
-        if origAmbient then Lighting.Ambient = origAmbient Lighting.ColorShift_Top = origColorShift end
-    end
-end)
-
-createModernSlider(visualsTab, "Parlaklık Seviyesi", "FullBright aktifken uygulanacak parlaklık çarpanı.", 1, 10, 3, function(value)
-    brightMultiplier = value
-    if fullBrightActive then
-        applyBrightness(brightMultiplier)
-    end
-end)
-
-
--- No Fog
-local origFogStart, origFogEnd = nil, nil
-createModernToggle(visualsTab, "No Fog", "Görüş mesafesini düşüren tüm sis efektlerini yok eder.", function(state)
-	if state then
-		origFogStart = Lighting.FogStart
-		origFogEnd = Lighting.FogEnd
-		Lighting.FogStart = 9e9
-		Lighting.FogEnd = 9e9
-	else
-		if origFogStart then Lighting.FogStart = origFogStart Lighting.FogEnd = origFogEnd end
-	end
-end)
 
 -- Anti-Void
 local antiVoidConn = nil
