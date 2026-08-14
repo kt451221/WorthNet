@@ -173,10 +173,11 @@ function loadWorthNetMenu()
     ProfileImage.Parent = TopBar
     Instance.new("UICorner", ProfileImage).CornerRadius = UDim.new(1, 0)
 
-    local gameNameText = "Evrensel Sistem"
+    local gameNameText = "Global System"
     local currentPlaceId = game.PlaceId
     local isMM2 = (currentPlaceId == 142823291 or Workspace:FindFirstChild("CoinContainer"))
     local isDaGame = (currentPlaceId == 13712164806)
+    local isRandomizer = (currentPlaceId == 99342262733194)
     local isBloxFruits = (currentPlaceId == 2753915549)
     if isMM2 then gameNameText = "Murder Mystery 2" elseif isBloxFruits then gameNameText = "Blox Fruits" elseif isDaGame then gameNameText = "The Da Hood / Da Game" end
 
@@ -876,7 +877,7 @@ function loadWorthNetMenu()
                         if not hrp then return end
 
                         -- Da Game güncel kasa yolu kontrolleri
-                        local cratesFolder = Workspace:FindFirstChild("Crates") or Workspace:FindFirstChild("Ignored") and Workspace.Ignored:FindFirstChild("Crates")
+                        local cratesFolder = Workspace:FindFirstChild("Crates") or Workspace:FindFirstChild("Crates") and Workspace.Crates:FindFirstChild("LootCrates")
                         if not cratesFolder then
                             for _, v in ipairs(Workspace:GetChildren()) do
                                 if v.Name == "Crates" or v.Name == "LootCrates" then
@@ -1135,6 +1136,154 @@ function loadWorthNetMenu()
             end
         end)
     end
+
+    if isRandomizer and gameTab then
+        createModernToggle(gameTab, "Aimbot", "Hedefin Kafasına kitlenir!", function(state)
+            _G.RMAimbot = state
+        end)
+
+        -- Aim Ayarları ve Mantığı
+        local AimConfig = {
+            Enabled = false,
+            Part = "Head",
+            FovRadius = 150,
+            Smoothness = 0.2,
+            ESPEnabled = false
+        }
+
+        local Camera = workspace.CurrentCamera
+        local FovCircle = Drawing.new("Circle")
+        FovCircle.Color = Color3.fromRGB(0, 255, 200)
+        FovCircle.Thickness = 1.5
+        FovCircle.Transparency = 0.8
+        FovCircle.Filled = false
+
+        local function GetBestTarget()
+            local bestTarget = nil
+            local shortestDist = AimConfig.FovRadius
+
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character then
+                    local targetPart = p.Character:FindFirstChild(AimConfig.Part)
+                    local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
+                    
+                    if targetPart and humanoid and humanoid.Health > 0 then
+                        local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+                        if onScreen then
+                            local mouseDistance = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                            if mouseDistance < shortestDist then
+                                bestTarget = p.Character
+                                shortestDist = mouseDistance
+                            end
+                        end
+                    end
+                end
+            end
+            return bestTarget
+        end
+
+        RunService.RenderStepped:Connect(function()
+            FovCircle.Visible = AimConfig.Enabled and _G.RMAimbot
+            FovCircle.Radius = AimConfig.FovRadius
+            FovCircle.Position = UserInputService:GetMouseLocation()
+
+            if AimConfig.Enabled and _G.RMAimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+                local targetChar = GetBestTarget()
+                if targetChar and targetChar:FindFirstChild(AimConfig.Part) then
+                    local goalCFrame = CFrame.new(Camera.CFrame.Position, targetChar[AimConfig.Part].Position)
+                    Camera.CFrame = Camera.CFrame:Lerp(goalCFrame, AimConfig.Smoothness)
+                end
+            end
+
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= player and p.Character then
+                    local highlight = p.Character:FindFirstChild("WorthNetHighlight")
+                    if AimConfig.ESPEnabled then
+                        if not highlight then
+                            highlight = Instance.new("Highlight")
+                            highlight.Name = "WorthNetHighlight"
+                            highlight.FillColor = Color3.fromRGB(255, 40, 40)
+                            highlight.FillTransparency = 0.5
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.Parent = p.Character
+                        end
+                    else
+                        if highlight then highlight:Destroy() end
+                    end
+                end
+            end
+        end)
+
+        task.spawn(function()
+            while task.wait(0.1) do
+                AimConfig.Enabled = _G.RMAimbot == true
+            end
+        end)
+
+        -- Torso / Head Seçim Toggle'ı
+        createModernToggle(gameTab, "Hedef: Gövde", "Kapalı = Head | Açık = Torso", function(state)
+            AimConfig.Part = state and "HumanoidRootPart" or "Head"
+        end)
+
+        -- Kırmızı ESP Toggle'ı
+        createModernToggle(gameTab, "Player ESP", "Düşmanları kırmızı renkte gösterir.", function(state)
+            AimConfig.ESPEnabled = state
+        end)
+
+        -- Senin Mimarinde FOV Slider'ı
+        local SliderFrame = Instance.new("Frame")
+        SliderFrame.Size = UDim2.new(1, 0, 0, 42)
+        SliderFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+        SliderFrame.Parent = gameTab
+        Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 6)
+
+        local SliderTitle = Instance.new("TextLabel")
+        SliderTitle.Size = UDim2.new(0.7, 0, 0, 20)
+        SliderTitle.Position = UDim2.new(0, 10, 0, 2)
+        SliderTitle.BackgroundTransparency = 1
+        SliderTitle.Text = "Aimbot FOV: 150"
+        SliderTitle.TextColor3 = Color3.fromRGB(200, 200, 210)
+        SliderTitle.TextSize = 12
+        SliderTitle.Font = Enum.Font.GothamBold
+        SliderTitle.TextXAlignment = Enum.TextXAlignment.Left
+        SliderTitle.Parent = SliderFrame
+
+        local SliderBarBg = Instance.new("Frame")
+        SliderBarBg.Size = UDim2.new(0.9, 0, 0, 8)
+        SliderBarBg.Position = UDim2.new(0.05, 0, 0, 26)
+        SliderBarBg.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        SliderBarBg.BorderSizePixel = 0
+        SliderBarBg.Parent = SliderFrame
+        Instance.new("UICorner", SliderBarBg).CornerRadius = UDim.new(1, 0)
+
+        local SliderBarFill = Instance.new("Frame")
+        SliderBarFill.Size = UDim2.new((150 - 50) / (500 - 50), 0, 1, 0)
+        SliderBarFill.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
+        SliderBarFill.BorderSizePixel = 0
+        SliderBarFill.Parent = SliderBarBg
+        Instance.new("UICorner", SliderBarFill).CornerRadius = UDim.new(1, 0)
+
+        local draggingSlider = false
+        SliderBarBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingSlider = true
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingSlider = false
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local pos = math.clamp((input.Position.X - SliderBarBg.AbsolutePosition.X) / SliderBarBg.AbsoluteSize.X, 0, 1)
+                SliderBarFill.Size = UDim2.new(pos, 0, 1, 0)
+                AimConfig.FovRadius = math.floor(50 + (pos * (500 - 50)))
+                SliderTitle.Text = "Aimbot FOV: " .. AimConfig.FovRadius
+            end
+        end)
+    end
+
 
     if isBloxFruits and gameTab then
         createModernToggle(gameTab, "Blox Fruits Auto Farm", "Otomatik kasılma.", function(state)
