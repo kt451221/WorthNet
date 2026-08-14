@@ -306,13 +306,20 @@ function loadWorthNetMenu()
         return TabPage
     end
 
+    -- Dinamik Sekme Oluşturma (Oyuna özel sekmeler)
     local movementTab = createTab("Movement")
     local teleportTab = createTab("Teleport")
-    local trollingTab = createTab("Trolling")
     local safetyTab = createTab("Safety")
-    
+
+    local trollingTab = nil
+    if not isMM2 and not isDaGame then -- Örnek: Bazı oyunlarda troll kapalı olabilir
+        trollingTab = createTab("Trolling")
+    elseif isMM2 or isDaGame then
+        trollingTab = createTab("Trolling")
+    end
+
     local combatTab = nil
-    if isDaGame or isBloxFruits then
+    if isDaGame or isBloxFruits or isMM2 then
         combatTab = createTab("Combat")
     end
 
@@ -322,6 +329,7 @@ function loadWorthNetMenu()
     end
 
     local function createModernToggle(tab, title, desc, callback)
+        if not tab then return end
         local ToggleRow = Instance.new("Frame")
         ToggleRow.Size = UDim2.new(1, 0, 0, 46)
         ToggleRow.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
@@ -657,95 +665,97 @@ function loadWorthNetMenu()
         end
     end)
 
-    createModernToggle(trollingTab, "Fling Oyuncu Menüsü", "İstediğin oyuncuya fling atmanı sağlar.", function(state)
-        if state then
-            local FlingMenuGui = Instance.new("ScreenGui")
-            FlingMenuGui.Name = "WorthNetFlingMenu"
-            FlingMenuGui.DisplayOrder = 2147483647
-            FlingMenuGui.Parent = parentGui
+    if trollingTab then
+        createModernToggle(trollingTab, "Fling Oyuncu Menüsü", "İstediğin oyuncuya fling atmanı sağlar.", function(state)
+            if state then
+                local FlingMenuGui = Instance.new("ScreenGui")
+                FlingMenuGui.Name = "WorthNetFlingMenu"
+                FlingMenuGui.DisplayOrder = 2147483647
+                FlingMenuGui.Parent = parentGui
 
-            local FlingFrame = Instance.new("Frame")
-            FlingFrame.Size = UDim2.new(0, 260, 0, 320)
-            FlingFrame.Position = UDim2.new(0.5, -130, 0.5, -160)
-            FlingFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
-            FlingFrame.Active = true
-            FlingFrame.Draggable = true
-            FlingFrame.Parent = FlingMenuGui
-            Instance.new("UICorner", FlingFrame).CornerRadius = UDim.new(0, 10)
+                local FlingFrame = Instance.new("Frame")
+                FlingFrame.Size = UDim2.new(0, 260, 0, 320)
+                FlingFrame.Position = UDim2.new(0.5, -130, 0.5, -160)
+                FlingFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+                FlingFrame.Active = true
+                FlingFrame.Draggable = true
+                FlingFrame.Parent = FlingMenuGui
+                Instance.new("UICorner", FlingFrame).CornerRadius = UDim.new(0, 10)
 
-            local FTitle = Instance.new("TextLabel")
-            FTitle.Size = UDim2.new(1, 0, 0, 40)
-            FTitle.BackgroundTransparency = 1
-            FTitle.Text = "Fling Atılacak Oyuncuyu Seç"
-            FTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-            FTitle.Font = Enum.Font.GothamBold
-            FTitle.TextSize = 13
-            FTitle.Parent = FlingFrame
+                local FTitle = Instance.new("TextLabel")
+                FTitle.Size = UDim2.new(1, 0, 0, 40)
+                FTitle.BackgroundTransparency = 1
+                FTitle.Text = "Fling Atılacak Oyuncuyu Seç"
+                FTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+                FTitle.Font = Enum.Font.GothamBold
+                FTitle.TextSize = 13
+                FTitle.Parent = FlingFrame
 
-            local CloseF = Instance.new("TextButton")
-            CloseF.Size = UDim2.new(0, 24, 0, 24)
-            CloseF.Position = UDim2.new(1, -32, 0, 8)
-            CloseF.BackgroundColor3 = Color3.fromRGB(235, 60, 60)
-            CloseF.Text = "X"
-            CloseF.TextColor3 = Color3.fromRGB(255, 255, 255)
-            CloseF.Font = Enum.Font.GothamBold
-            CloseF.Parent = FlingFrame
-            Instance.new("UICorner", CloseF).CornerRadius = UDim.new(0, 4)
-            CloseF.MouseButton1Click:Connect(function()
-                _G.SelectedFlingTarget = nil
-                FlingMenuGui:Destroy()
-            end)
+                local CloseF = Instance.new("TextButton")
+                CloseF.Size = UDim2.new(0, 24, 0, 24)
+                CloseF.Position = UDim2.new(1, -32, 0, 8)
+                CloseF.BackgroundColor3 = Color3.fromRGB(235, 60, 60)
+                CloseF.Text = "X"
+                CloseF.TextColor3 = Color3.fromRGB(255, 255, 255)
+                CloseF.Font = Enum.Font.GothamBold
+                CloseF.Parent = FlingFrame
+                Instance.new("UICorner", CloseF).CornerRadius = UDim.new(0, 4)
+                CloseF.MouseButton1Click:Connect(function()
+                    _G.SelectedFlingTarget = nil
+                    FlingMenuGui:Destroy()
+                end)
 
-            local FScroll = Instance.new("ScrollingFrame")
-            FScroll.Size = UDim2.new(1, -16, 1, -55)
-            FScroll.Position = UDim2.new(0, 8, 0, 45)
-            FScroll.BackgroundTransparency = 1
-            FScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-            FScroll.ScrollBarThickness = 3
-            FScroll.Parent = FlingFrame
+                local FScroll = Instance.new("ScrollingFrame")
+                FScroll.Size = UDim2.new(1, -16, 1, -55)
+                FScroll.Position = UDim2.new(0, 8, 0, 45)
+                FScroll.BackgroundTransparency = 1
+                FScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                FScroll.ScrollBarThickness = 3
+                FScroll.Parent = FlingFrame
 
-            local FList = Instance.new("UIListLayout")
-            FList.SortOrder = Enum.SortOrder.LayoutOrder
-            FList.Padding = UDim.new(0, 5)
-            FList.Parent = FScroll
+                local FList = Instance.new("UIListLayout")
+                FList.SortOrder = Enum.SortOrder.LayoutOrder
+                FList.Padding = UDim.new(0, 5)
+                FList.Parent = FScroll
 
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= player then
-                    local pBtn = Instance.new("TextButton")
-                    pBtn.Size = UDim2.new(1, 0, 0, 32)
-                    pBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
-                    pBtn.Text = "  " .. p.DisplayName .. " (Flingle)"
-                    pBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
-                    pBtn.Font = Enum.Font.GothamMedium
-                    pBtn.TextSize = 12
-                    pBtn.TextXAlignment = Enum.TextXAlignment.Left
-                    pBtn.Parent = FScroll
-                    Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 6)
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player then
+                        local pBtn = Instance.new("TextButton")
+                        pBtn.Size = UDim2.new(1, 0, 0, 32)
+                        pBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+                        pBtn.Text = "  " .. p.DisplayName .. " (Flingle)"
+                        pBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
+                        pBtn.Font = Enum.Font.GothamMedium
+                        pBtn.TextSize = 12
+                        pBtn.TextXAlignment = Enum.TextXAlignment.Left
+                        pBtn.Parent = FScroll
+                        Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 6)
 
-                    pBtn.MouseButton1Click:Connect(function()
-                        _G.SelectedFlingTarget = p
-                        showNotification("Fling", p.Name .. " hedeflendi!")
-                        task.spawn(function()
-                            while _G.SelectedFlingTarget == p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") do
-                                task.wait()
-                                local char = player.Character
-                                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                                local target = p.Character.HumanoidRootPart
-                                if hrp and target then
-                                    hrp.CFrame = target.CFrame
-                                    hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-                                    hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-                                    RunService.Heartbeat:Wait()
+                        pBtn.MouseButton1Click:Connect(function()
+                            _G.SelectedFlingTarget = p
+                            showNotification("Fling", p.Name .. " hedeflendi!")
+                            task.spawn(function()
+                                while _G.SelectedFlingTarget == p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") do
+                                    task.wait()
+                                    local char = player.Character
+                                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                                    local target = p.Character.HumanoidRootPart
+                                    if hrp and target then
+                                        hrp.CFrame = target.CFrame
+                                        hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+                                        hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+                                        RunService.Heartbeat:Wait()
+                                    end
                                 end
-                            end
+                            end)
                         end)
-                    end)
+                    end
                 end
+            else
+                _G.SelectedFlingTarget = nil
             end
-        else
-            _G.SelectedFlingTarget = nil
-        end
-    end)
+        end)
+    end
 
     if combatTab then
         local espEnabled = false
@@ -865,49 +875,43 @@ function loadWorthNetMenu()
                         local hrp = char and char:FindFirstChild("HumanoidRootPart")
                         if not hrp then return end
 
-                        local cratesFolder = Workspace:FindFirstChild("Crates")
+                        -- Da Game güncel kasa yolu kontrolleri
+                        local cratesFolder = Workspace:FindFirstChild("Crates") or Workspace:FindFirstChild("Ignored") and Workspace.Ignored:FindFirstChild("Crates")
+                        if not cratesFolder then
+                            for _, v in ipairs(Workspace:GetChildren()) do
+                                if v.Name == "Crates" or v.Name == "LootCrates" then
+                                    cratesFolder = v
+                                    break
+                                end
+                            end
+                        end
                         if not cratesFolder then return end
-                        local lootCrates = cratesFolder:FindFirstChild("LootCrates")
-                        if not lootCrates then return end
 
-                        local targetFolders = {lootCrates:FindFirstChild("T1"), lootCrates:FindFirstChild("T2")}
-                        for _, folder in ipairs(targetFolders) do
-                            if folder and crateFarmActive then
-                                for _, model in ipairs(folder:GetChildren()) do
-                                    if not crateFarmActive then break end
-                                    local giver = model:FindFirstChild("Giver")
-                                    if giver and giver:IsA("BasePart") then
-                                        local prompt = giver:FindFirstChildOfClass("ProximityPrompt")
-                                        if prompt then
-                                            local safePos = giver.CFrame + Vector3.new(0, 0, 4)
-                                            local rayParams = RaycastParams.new()
-                                            rayParams.FilterType = RaycastParams.RaycastType.Blacklist
-                                            rayParams.FilterDescendantsInstances = {char}
-                                            local ray = Workspace:Raycast(hrp.Position, (safePos.Position - hrp.Position), rayParams)
-                                            
-                                            if ray then
-                                                safePos = giver.CFrame + (giver.CFrame.RightVector * 4) + Vector3.new(0, 1, 0)
+                        for _, model in ipairs(cratesFolder:GetDescendants()) do
+                            if not crateFarmActive then break end
+                            if model:IsA("Model") or model:IsA("BasePart") then
+                                local giver = model:IsA("Model") and (model.PrimaryPart or model:FindFirstChild("Giver") or model:FindFirstChildWhichIsA("BasePart")) or model
+                                if giver and giver:IsA("BasePart") then
+                                    local prompt = model:FindFirstChildOfClass("ProximityPrompt", true)
+                                    if prompt then
+                                        local safePos = giver.CFrame + Vector3.new(0, 3, 0)
+                                        local dist = (hrp.Position - safePos.Position).Magnitude
+                                        if dist > 6 then
+                                            local tweenInfo = TweenInfo.new(dist / 70, Enum.EasingStyle.Linear)
+                                            local tween = TweenService:Create(hrp, tweenInfo, {CFrame = safePos})
+                                            tween:Play()
+                                            while tween.PlaybackState == Enum.PlaybackState.Playing and crateFarmActive do
+                                                task.wait()
                                             end
+                                        end
 
-                                            local dist = (hrp.Position - safePos.Position).Magnitude
-                                            if dist > 8 then
-                                                local tweenInfo = TweenInfo.new(dist / 60, Enum.EasingStyle.Linear)
-                                                local tween = TweenService:Create(hrp, tweenInfo, {CFrame = safePos})
-                                                tween:Play()
-                                                
-                                                while tween.PlaybackState == Enum.PlaybackState.Playing and crateFarmActive do
-                                                    task.wait()
-                                                end
-                                            end
-
-                                            if crateFarmActive then
-                                                hrp.CFrame = safePos
-                                                task.wait(0.2)
-                                                pcall(function()
-                                                    fireproximityprompt(prompt, 1)
-                                                end)
-                                                task.wait(1.1)
-                                            end
+                                        if crateFarmActive then
+                                            hrp.CFrame = safePos
+                                            task.wait(0.1)
+                                            pcall(function()
+                                                fireproximityprompt(prompt, 1)
+                                            end)
+                                            task.wait(0.8)
                                         end
                                     end
                                 end
@@ -1138,7 +1142,7 @@ function loadWorthNetMenu()
         end)
     end
 
-    showNotification("WorthNet", "Sistem yüklendi!")
+    showNotification("WorthNet", "Sistem başarıyla güncellendi!")
 end
 
 openKeySystem()
