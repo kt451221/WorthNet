@@ -1,18 +1,24 @@
--- [[ xAworth - Ultimate FPS Booster & Auto-Loop Cleaner ]] --
+-- [[ xAworth - Ultimate God-Tier FPS Booster & Memory Cleaner ]] --
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
+local LocalPlayer = Players.LocalPlayer
 
 local function optimizeGame()
-    local success, err = pcall(function()
-        
+    pcall(function()
 
-        local Lighting = game:GetService("Lighting")
+        SoundService.Volume = 0.5 
+        
+ 
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 9e9
         Lighting.FogStart = 9e9
-        Lighting.Brightness = 1.2 
-        Lighting.ClockTime = 0 
-        Lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100)
+        Lighting.Brightness = 1.3
+        Lighting.ClockTime = 0
+        Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
         
-
         for _, v in pairs(Lighting:GetChildren()) do
             if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("Clouds") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") then
                 v:Destroy()
@@ -32,7 +38,7 @@ local function optimizeGame()
             CustomSky.Parent = Lighting
         end
 
-        local Workspace = game:GetService("Workspace")
+
         Workspace.StreamingEnabled = true
         
         for _, v in pairs(Workspace:GetDescendants()) do
@@ -51,11 +57,13 @@ local function optimizeGame()
             end
         end
 
+
         local Terrain = Workspace:FindFirstChildOfClass("Terrain")
         if Terrain then
             Terrain.WaterWaveSize = 0
             Terrain.WaterWaveSpeed = 0
             Terrain.WaterTransparency = 0
+            Terrain.WaterReflectance = 0
         end
 
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
@@ -63,17 +71,19 @@ local function optimizeGame()
         if setfpscap then
             setfpscap(999)
         end
-    end)
 
-    if not err and not success then
-    end
+
+        task.defer(function()
+            collectgarbage("collect")
+        end)
+    end)
 end
 
 
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Auto-Loop Booster Aktif",
-        Text = "Harita değişimlerine karşı koruma başlatıldı!",
+        Title = "Memory & FPS Booster",
+        Text = "Bellek temizliği ve otomatik döngü aktif!",
         Duration = 3
     })
 end)
@@ -82,6 +92,6 @@ end)
 task.spawn(function()
     while true do
         optimizeGame()
-        task.wait(5) 
+        task.wait(4) 
     end
 end)
